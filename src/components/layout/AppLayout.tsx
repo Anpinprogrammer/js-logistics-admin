@@ -37,6 +37,7 @@ export function AppLayout({ children, currentPage, onNavigate }: AppLayoutProps)
   ];
 
   const courierNavItems = [
+    { id: 'new-delivery', label: 'Nueva Entrega', icon: Package },
     { id: 'deliveries', label: 'Mis Entregas', icon: Package },
   ];
 

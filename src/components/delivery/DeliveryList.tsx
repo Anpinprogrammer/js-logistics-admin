@@ -58,7 +58,7 @@ export function DeliveryList({ courierId, showCourier }: DeliveryListProps) {
     );
   }
 
-  const renderDeliveryList = (list: Delivery[], showRegisterButton = false) => (
+  const renderDeliveryList = (list: Delivery[], showRegisterButton = false, allowCourierEdit = false) => (
     list.length === 0 ? (
       <div className="text-center py-12">
         <Package className="w-12 h-12 mx-auto text-muted-foreground/50 mb-4" />
@@ -70,7 +70,7 @@ export function DeliveryList({ courierId, showCourier }: DeliveryListProps) {
           <DeliveryCard
             key={delivery.id}
             delivery={delivery}
-            onEdit={isAdmin ? setEditingDelivery : undefined}
+            onEdit={isAdmin || (allowCourierEdit && isCourier && delivery.status === 'completed') ? setEditingDelivery : undefined}
             onCancel={isAdmin ? setCancellingDelivery : undefined}
             onRegister={showRegisterButton && isCourier ? setRegisteringDelivery : undefined}
             showCourier={showCourier}
@@ -111,10 +111,10 @@ export function DeliveryList({ courierId, showCourier }: DeliveryListProps) {
             </TabsTrigger>
           </TabsList>
           <TabsContent value="pending" className="mt-4">
-            {renderDeliveryList(filteredPending, true)}
+            {renderDeliveryList(filteredPending, true, false)}
           </TabsContent>
           <TabsContent value="completed" className="mt-4">
-            {renderDeliveryList(filteredCompleted, false)}
+            {renderDeliveryList(filteredCompleted, false, true)}
           </TabsContent>
         </Tabs>
       ) : (
@@ -127,12 +127,13 @@ export function DeliveryList({ courierId, showCourier }: DeliveryListProps) {
         delivery={editingDelivery}
         open={!!editingDelivery}
         onOpenChange={(open) => !open && setEditingDelivery(null)}
-        onSave={async (updates, reason) => {
+        onSave={async (updates, reason, autoAdvance) => {
           if (!editingDelivery) return;
           await updateDelivery.mutateAsync({
             id: editingDelivery.id,
             updates,
             reason,
+            autoAdvance,
           });
           setEditingDelivery(null);
         }}
@@ -164,7 +165,12 @@ export function DeliveryList({ courierId, showCourier }: DeliveryListProps) {
           if (!registeringDelivery) return;
           await registerDelivery.mutateAsync({
             deliveryId: registeringDelivery.id,
-            data,
+            courierId: registeringDelivery.courier_id,
+            total_to_collect: data.total_to_collect,
+            received_amount: data.received_amount,
+            payment_method: data.payment_method,
+            notes: data.notes,
+            receipt_photo_url: data.receipt_photo_url,
           });
           setRegisteringDelivery(null);
         }}

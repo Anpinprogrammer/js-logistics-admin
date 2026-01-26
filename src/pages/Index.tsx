@@ -5,10 +5,11 @@ import { AppLayout } from '@/components/layout/AppLayout';
 import { AdminDashboard } from '@/components/admin/AdminDashboard';
 import { DeliveryList } from '@/components/delivery/DeliveryList';
 import { AdminNewDeliveryForm } from '@/components/admin/AdminNewDeliveryForm';
+import { NewDeliveryForm } from '@/components/courier/NewDeliveryForm';
 import { CouriersList } from '@/components/admin/CouriersList';
 import { ClientsManager } from '@/components/admin/ClientsManager';
 import { AuditLog } from '@/components/admin/AuditLog';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Settings, Loader2 } from 'lucide-react';
 
 function AppContent() {
@@ -74,13 +75,24 @@ function AppContent() {
       }
     }
 
-    // Courier pages - solo pueden ver sus entregas
-    return (
-      <div className="space-y-4 animate-fade-in">
-        <h1 className="text-2xl font-bold">Mis Entregas</h1>
-        <DeliveryList />
-      </div>
-    );
+    // Courier pages
+    switch (page) {
+      case 'new-delivery':
+        return (
+          <div className="space-y-4 animate-fade-in">
+            <h1 className="text-2xl font-bold">Nueva Entrega</h1>
+            <NewDeliveryForm onSuccess={() => setCurrentPage('deliveries')} />
+          </div>
+        );
+      case 'deliveries':
+      default:
+        return (
+          <div className="space-y-4 animate-fade-in">
+            <h1 className="text-2xl font-bold">Mis Entregas</h1>
+            <DeliveryList />
+          </div>
+        );
+    }
   };
 
   return (

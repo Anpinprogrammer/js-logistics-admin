@@ -8,6 +8,9 @@ export interface Delivery {
   courier_id: string;
   client_id: string;
   amount: number;
+  service_value: number;
+  total_to_collect: number;
+  received_amount: number | null;
   payment_method: 'cash' | 'transfer_to_courier' | 'transfer_to_client';
   status: 'pending' | 'completed' | 'cancelled';
   receipt_photo_url: string | null;
@@ -30,7 +33,8 @@ export interface Delivery {
 
 export interface CreateDeliveryData {
   client_id: string;
-  amount: number;
+  service_value: number;
+  total_to_collect: number;
   payment_method: 'cash' | 'transfer_to_courier' | 'transfer_to_client';
   notes?: string;
   receipt_photo_url?: string;
@@ -112,12 +116,19 @@ export function useCreateDelivery() {
       const { data: delivery, error } = await supabase
         .from('deliveries')
         .insert({
-          ...data,
+          client_id: data.client_id,
           courier_id: user.id,
           created_by: user.id,
+          service_value: data.service_value,
+          total_to_collect: data.total_to_collect,
+          amount: data.total_to_collect, // Keep for backward compatibility
+          payment_method: data.payment_method,
+          notes: data.notes || null,
+          receipt_photo_url: data.receipt_photo_url || null,
           week_start: weekStart,
           week_end: weekEnd,
           delivery_date: new Date().toISOString().split('T')[0],
+          status: 'completed', // Couriers create completed deliveries
         })
         .select()
         .single();
@@ -137,17 +148,19 @@ export function useCreateDelivery() {
 
 export function useUpdateDelivery() {
   const queryClient = useQueryClient();
-  const { user } = useAuth();
+  const { user, isAdmin } = useAuth();
   
   return useMutation({
     mutationFn: async ({ 
       id, 
       updates, 
-      reason 
+      reason,
+      autoAdvance,
     }: { 
       id: string; 
       updates: Partial<Delivery>; 
       reason: string;
+      autoAdvance?: { amount: number; courierId: string };
     }) => {
       if (!user) throw new Error('No user logged in');
       
@@ -160,10 +173,35 @@ export function useUpdateDelivery() {
       
       if (fetchError) throw fetchError;
       
+      // If courier is updating, restrict which fields can be changed
+      let allowedUpdates = updates;
+      if (!isAdmin) {
+        // Couriers can only update: total_to_collect, received_amount, notes, receipt_photo_url, payment_method
+        allowedUpdates = {
+          total_to_collect: updates.total_to_collect,
+          received_amount: updates.received_amount,
+          notes: updates.notes,
+          receipt_photo_url: updates.receipt_photo_url,
+          payment_method: updates.payment_method,
+          amount: updates.total_to_collect, // Keep amount in sync
+        };
+        // Remove undefined values
+        Object.keys(allowedUpdates).forEach(key => {
+          if (allowedUpdates[key as keyof typeof allowedUpdates] === undefined) {
+            delete allowedUpdates[key as keyof typeof allowedUpdates];
+          }
+        });
+      } else {
+        // Admin can update service_value too, keep amount in sync with total_to_collect
+        if (updates.total_to_collect !== undefined) {
+          allowedUpdates.amount = updates.total_to_collect;
+        }
+      }
+      
       // Update the delivery
       const { data: newDelivery, error: updateError } = await supabase
         .from('deliveries')
-        .update(updates)
+        .update(allowedUpdates)
         .eq('id', id)
         .select()
         .single();
@@ -184,12 +222,36 @@ export function useUpdateDelivery() {
       
       if (auditError) throw auditError;
       
+      // If there's an automatic salary advance to register
+      if (autoAdvance && autoAdvance.amount > 0) {
+        const { weekStart, weekEnd } = getCurrentWeekDates();
+        const { error: advanceError } = await supabase
+          .from('salary_advances')
+          .insert({
+            courier_id: autoAdvance.courierId,
+            amount: autoAdvance.amount,
+            reason: `Faltante automático - Entrega ${id.substring(0, 8)}`,
+            created_by: user.id,
+            week_start: weekStart,
+            week_end: weekEnd,
+          });
+        
+        if (advanceError) {
+          console.error('Error creating automatic advance:', advanceError);
+        }
+      }
+      
       return newDelivery;
     },
-    onSuccess: () => {
+    onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['deliveries'] });
       queryClient.invalidateQueries({ queryKey: ['audit-log'] });
-      toast.success('Entrega actualizada exitosamente');
+      queryClient.invalidateQueries({ queryKey: ['salary-advances'] });
+      if (variables.autoAdvance && variables.autoAdvance.amount > 0) {
+        toast.success(`Entrega actualizada. Se registró adelanto de $${variables.autoAdvance.amount.toFixed(2)}`);
+      } else {
+        toast.success('Entrega actualizada exitosamente');
+      }
     },
     onError: (error) => {
       toast.error('Error al actualizar: ' + error.message);
