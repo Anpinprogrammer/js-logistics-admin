@@ -4,7 +4,7 @@ import { LoginForm } from '@/components/auth/LoginForm';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { AdminDashboard } from '@/components/admin/AdminDashboard';
 import { DeliveryList } from '@/components/delivery/DeliveryList';
-import { NewDeliveryForm } from '@/components/courier/NewDeliveryForm';
+import { AdminNewDeliveryForm } from '@/components/admin/AdminNewDeliveryForm';
 import { CouriersList } from '@/components/admin/CouriersList';
 import { ClientsManager } from '@/components/admin/ClientsManager';
 import { AuditLog } from '@/components/admin/AuditLog';
@@ -37,6 +37,8 @@ function AppContent() {
       switch (page) {
         case 'dashboard':
           return <AdminDashboard />;
+        case 'new-delivery':
+          return <AdminNewDeliveryForm onSuccess={() => setCurrentPage('deliveries')} />;
         case 'deliveries':
           return (
             <div className="space-y-4 animate-fade-in">
@@ -72,25 +74,13 @@ function AppContent() {
       }
     }
 
-    // Courier pages
-    switch (page) {
-      case 'deliveries':
-        return (
-          <div className="space-y-4 animate-fade-in">
-            <h1 className="text-2xl font-bold">Mis Entregas</h1>
-            <DeliveryList />
-          </div>
-        );
-      case 'new-delivery':
-        return <NewDeliveryForm onSuccess={() => setCurrentPage('deliveries')} />;
-      default:
-        return (
-          <div className="space-y-4 animate-fade-in">
-            <h1 className="text-2xl font-bold">Mis Entregas</h1>
-            <DeliveryList />
-          </div>
-        );
-    }
+    // Courier pages - solo pueden ver sus entregas
+    return (
+      <div className="space-y-4 animate-fade-in">
+        <h1 className="text-2xl font-bold">Mis Entregas</h1>
+        <DeliveryList />
+      </div>
+    );
   };
 
   return (
