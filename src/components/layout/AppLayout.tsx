@@ -37,7 +37,6 @@ export function AppLayout({ children, currentPage, onNavigate }: AppLayoutProps)
 
   const courierNavItems = [
     { id: 'deliveries', label: 'Mis Entregas', icon: Package },
-    { id: 'new-delivery', label: 'Nueva Entrega', icon: Truck },
   ];
 
   const navItems = isAdmin ? adminNavItems : courierNavItems;
