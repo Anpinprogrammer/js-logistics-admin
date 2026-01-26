@@ -34,6 +34,7 @@ export function AdminNewDeliveryForm({ onSuccess }: AdminNewDeliveryFormProps) {
   const [formData, setFormData] = useState({
     courier_id: '',
     client_id: '',
+    recipient_name: '',
     service_value: '',
     total_to_collect: '',
     payment_method: '' as 'cash' | 'transfer_to_courier' | 'transfer_to_client' | '',
@@ -44,6 +45,7 @@ export function AdminNewDeliveryForm({ onSuccess }: AdminNewDeliveryFormProps) {
     mutationFn: async (data: {
       courier_id: string;
       client_id: string;
+      recipient_name?: string;
       service_value: number;
       total_to_collect: number;
       payment_method: 'cash' | 'transfer_to_courier' | 'transfer_to_client';
@@ -59,6 +61,7 @@ export function AdminNewDeliveryForm({ onSuccess }: AdminNewDeliveryFormProps) {
         .insert({
           courier_id: data.courier_id,
           client_id: data.client_id,
+          recipient_name: data.recipient_name || null,
           notes: data.notes || null,
           created_by: user.id,
           week_start: weekStart,
@@ -92,6 +95,7 @@ export function AdminNewDeliveryForm({ onSuccess }: AdminNewDeliveryFormProps) {
     await createDelivery.mutateAsync({
       courier_id: formData.courier_id,
       client_id: formData.client_id,
+      recipient_name: formData.recipient_name || undefined,
       service_value: parseFloat(formData.service_value) || 0,
       total_to_collect: parseFloat(formData.total_to_collect) || 0,
       payment_method: formData.payment_method,
@@ -99,7 +103,7 @@ export function AdminNewDeliveryForm({ onSuccess }: AdminNewDeliveryFormProps) {
     });
     
     // Reset form
-    setFormData({ courier_id: '', client_id: '', service_value: '', total_to_collect: '', payment_method: '', notes: '' });
+    setFormData({ courier_id: '', client_id: '', recipient_name: '', service_value: '', total_to_collect: '', payment_method: '', notes: '' });
     onSuccess?.();
   };
 
@@ -160,6 +164,18 @@ export function AdminNewDeliveryForm({ onSuccess }: AdminNewDeliveryFormProps) {
                 ))}
               </SelectContent>
             </Select>
+          </div>
+
+          {/* Recipient name */}
+          <div className="space-y-2">
+            <Label htmlFor="recipient_name">Nombre de quien recibe</Label>
+            <Input
+              id="recipient_name"
+              type="text"
+              placeholder="Nombre del destinatario"
+              value={formData.recipient_name}
+              onChange={(e) => setFormData({ ...formData, recipient_name: e.target.value })}
+            />
           </div>
 
           {/* Service Value */}
