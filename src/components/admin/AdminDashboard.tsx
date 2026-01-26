@@ -60,10 +60,10 @@ export function AdminDashboard() {
       bgColor: 'bg-cash/10',
     },
     {
-      title: 'Transferencias Mensajero',
+      title: 'Transferencias JS',
       value: `$${totalTransfersCourier.toFixed(2)}`,
       icon: CreditCard,
-      description: 'Pagos a mensajeros',
+      description: 'Ingreso a caja empresa',
       color: 'text-transfer-courier',
       bgColor: 'bg-transfer-courier/10',
     },

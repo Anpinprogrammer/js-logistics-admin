@@ -13,7 +13,7 @@ import { cn } from '@/lib/utils';
 
 const paymentMethods = [
   { value: 'cash', label: 'Efectivo', icon: DollarSign, color: 'text-cash' },
-  { value: 'transfer_to_courier', label: 'Transferencia al Mensajero', icon: CreditCard, color: 'text-transfer-courier' },
+  { value: 'transfer_to_courier', label: 'Transferencia a JS', icon: CreditCard, color: 'text-transfer-courier' },
   { value: 'transfer_to_client', label: 'Transferencia Directa', icon: ArrowLeftRight, color: 'text-transfer-client' },
 ] as const;
 

@@ -162,7 +162,7 @@ export function EditDeliveryDialog({ delivery, open, onOpenChange, onSave, loadi
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="cash">Efectivo</SelectItem>
-                  <SelectItem value="transfer_to_courier">Transferencia al Mensajero</SelectItem>
+                  <SelectItem value="transfer_to_courier">Transferencia a JS</SelectItem>
                   <SelectItem value="transfer_to_client">Transferencia Directa</SelectItem>
                 </SelectContent>
               </Select>
