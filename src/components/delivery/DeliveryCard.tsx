@@ -36,7 +36,7 @@ const paymentIcons = {
 
 const paymentLabels = {
   cash: 'Efectivo',
-  transfer_to_courier: 'Trans. Mensajero',
+  transfer_to_courier: 'Trans. JS',
   transfer_to_client: 'Trans. Directa',
 };
 

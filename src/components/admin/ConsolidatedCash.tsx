@@ -38,21 +38,30 @@ export function ConsolidatedCash() {
   const transferCourierDeliveries = weeklyDeliveries.filter(d => d.payment_method === 'transfer_to_courier');
   const transferClientDeliveries = weeklyDeliveries.filter(d => d.payment_method === 'transfer_to_client');
 
-  // Total collected = sum of received_amount (what courier actually collected)
+  // Total collected = sum of received_amount (what courier actually collected) for cash
+  // Plus transfer_to_courier which goes to company cash
   const totalCashCollected = cashDeliveries.reduce(
     (sum, d) => sum + Number(d.received_amount || d.total_to_collect), 0
   );
   
-  // Partial deliveries = difference between total_to_collect and received_amount
-  const partialDeliveries = weeklyDeliveries.reduce((sum, d) => {
+  const totalTransferJSCollected = transferCourierDeliveries.reduce(
+    (sum, d) => sum + Number(d.received_amount || d.total_to_collect), 0
+  );
+  
+  // Combined total for company cash (efectivo + transferencias JS)
+  const totalCompanyCash = totalCashCollected + totalTransferJSCollected;
+  
+  // Partial deliveries = difference between total_to_collect and received_amount (for cash + JS transfers)
+  const cashAndJSDeliveries = [...cashDeliveries, ...transferCourierDeliveries];
+  const partialDeliveries = cashAndJSDeliveries.reduce((sum, d) => {
     const expected = Number(d.total_to_collect);
     const received = Number(d.received_amount || d.total_to_collect);
     const difference = expected - received;
     return sum + (difference > 0 ? difference : 0);
   }, 0);
 
-  // Final balance calculation
-  const expectedBalance = initialBase + totalCashCollected;
+  // Final balance calculation - now includes JS transfers
+  const expectedBalance = initialBase + totalCompanyCash;
   const actualBalance = expectedBalance - partialDeliveries;
   const isPositive = actualBalance >= 0;
 
@@ -63,9 +72,10 @@ export function ConsolidatedCash() {
       collected: totalCashCollected,
       expected: cashDeliveries.reduce((sum, d) => sum + Number(d.total_to_collect), 0),
     },
-    transferCourier: {
+    transferJS: {
       count: transferCourierDeliveries.length,
-      total: transferCourierDeliveries.reduce((sum, d) => sum + Number(d.total_to_collect), 0),
+      collected: totalTransferJSCollected,
+      expected: transferCourierDeliveries.reduce((sum, d) => sum + Number(d.total_to_collect), 0),
     },
     transferClient: {
       count: transferClientDeliveries.length,
@@ -73,13 +83,16 @@ export function ConsolidatedCash() {
     },
   };
 
-  // Courier breakdown for cash
+  // Courier breakdown for cash + JS transfers
   const courierBreakdown = couriers?.map(courier => {
     const courierCashDeliveries = cashDeliveries.filter(d => d.courier_id === courier.user_id);
-    const collected = courierCashDeliveries.reduce(
+    const courierJSDeliveries = transferCourierDeliveries.filter(d => d.courier_id === courier.user_id);
+    const allCourierDeliveries = [...courierCashDeliveries, ...courierJSDeliveries];
+    
+    const collected = allCourierDeliveries.reduce(
       (sum, d) => sum + Number(d.received_amount || d.total_to_collect), 0
     );
-    const expected = courierCashDeliveries.reduce(
+    const expected = allCourierDeliveries.reduce(
       (sum, d) => sum + Number(d.total_to_collect), 0
     );
     const difference = expected - collected;
@@ -87,7 +100,9 @@ export function ConsolidatedCash() {
     return {
       id: courier.user_id,
       name: courier.full_name,
-      deliveries: courierCashDeliveries.length,
+      deliveries: allCourierDeliveries.length,
+      cashCount: courierCashDeliveries.length,
+      jsCount: courierJSDeliveries.length,
       collected,
       expected,
       difference,
@@ -145,20 +160,20 @@ export function ConsolidatedCash() {
 
           <Separator />
 
-          {/* Total Collected */}
+          {/* Total Collected (Cash + JS Transfers) */}
           <div className="flex items-center gap-4">
             <div className="flex items-center justify-center w-10 h-10 rounded-full bg-cash/10">
               <Plus className="w-5 h-5 text-cash" />
             </div>
             <div className="flex-1">
               <p className="text-sm text-muted-foreground">
-                Total cobrado en entregas (efectivo)
+                Total cobrado (Efectivo + Trans. JS)
               </p>
               <p className="text-xl font-bold text-cash">
-                +${totalCashCollected.toFixed(2)}
+                +${totalCompanyCash.toFixed(2)}
               </p>
               <p className="text-xs text-muted-foreground">
-                {stats.cash.count} entrega{stats.cash.count !== 1 ? 's' : ''} en efectivo
+                {stats.cash.count} en efectivo + {stats.transferJS.count} trans. JS
               </p>
             </div>
           </div>
@@ -235,21 +250,26 @@ export function ConsolidatedCash() {
           </CardContent>
         </Card>
 
-        {/* Transfer Courier Stats */}
+        {/* Transfer JS Stats */}
         <Card className="border-transfer-courier/30">
           <CardContent className="pt-6">
             <div className="flex items-start justify-between">
               <div className="space-y-1">
-                <p className="text-sm text-muted-foreground">Trans. Mensajero</p>
-                <p className="text-2xl font-bold">${stats.transferCourier.total.toFixed(2)}</p>
+                <p className="text-sm text-muted-foreground">Trans. JS</p>
+                <p className="text-2xl font-bold">${stats.transferJS.collected.toFixed(2)}</p>
                 <p className="text-xs text-muted-foreground">
-                  {stats.transferCourier.count} entrega{stats.transferCourier.count !== 1 ? 's' : ''}
+                  {stats.transferJS.count} entrega{stats.transferJS.count !== 1 ? 's' : ''} • Ingresa a caja
                 </p>
               </div>
               <div className="p-3 rounded-xl bg-transfer-courier/10">
                 <TrendingUp className="w-5 h-5 text-transfer-courier" />
               </div>
             </div>
+            {stats.transferJS.expected !== stats.transferJS.collected && (
+              <div className="mt-3 p-2 rounded bg-warning/10 text-xs text-warning">
+                Esperado: ${stats.transferJS.expected.toFixed(2)}
+              </div>
+            )}
           </CardContent>
         </Card>
 
@@ -278,10 +298,10 @@ export function ConsolidatedCash() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Package className="w-5 h-5 text-primary" />
-              Desglose por Mensajero (Efectivo)
+              Desglose por Mensajero (Efectivo + Trans. JS)
             </CardTitle>
             <CardDescription>
-              Detalle del efectivo recaudado por cada mensajero
+              Detalle del dinero recaudado que ingresa a caja por cada mensajero
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -298,7 +318,7 @@ export function ConsolidatedCash() {
                   <div className="flex-1">
                     <p className="font-medium">{courier.name}</p>
                     <p className="text-sm text-muted-foreground">
-                      {courier.deliveries} entrega{courier.deliveries !== 1 ? 's' : ''}
+                      {courier.cashCount} efectivo + {courier.jsCount} trans. JS
                     </p>
                   </div>
                   <div className="text-right">

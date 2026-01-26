@@ -98,7 +98,7 @@ export function CouriersList() {
 
                   {/* Transfers to courier */}
                   <div className="flex items-center justify-between p-2 rounded bg-transfer-courier/5">
-                    <span className="text-sm text-muted-foreground">Trans. Mensajero</span>
+                    <span className="text-sm text-muted-foreground">Trans. JS</span>
                     <span className="font-medium">${stats.transferCourier.toFixed(2)}</span>
                   </div>
 
