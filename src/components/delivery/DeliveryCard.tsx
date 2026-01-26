@@ -12,7 +12,8 @@ import {
   Edit,
   Ban,
   Image,
-  ClipboardCheck
+  ClipboardCheck,
+  AlertTriangle
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -60,6 +61,12 @@ export function DeliveryCard({ delivery, onEdit, onCancel, onRegister, showCouri
   const isPending = delivery.status === 'pending';
   const showRegisterButton = isCourier && !isAdmin && isPending && onRegister;
 
+  // Calculate difference for display
+  const totalToCollect = delivery.total_to_collect || delivery.amount || 0;
+  const receivedAmount = delivery.received_amount || 0;
+  const difference = totalToCollect - receivedAmount;
+  const hasDifference = delivery.received_amount !== null && difference > 0;
+
   return (
     <Card className={cn(
       "transition-all duration-200 hover:shadow-md",
@@ -80,16 +87,71 @@ export function DeliveryCard({ delivery, onEdit, onCancel, onRegister, showCouri
               </Badge>
             </div>
 
-            {/* Amount and payment method - only show for completed deliveries */}
+            {/* Financial details - only show for non-pending deliveries */}
             {!isPending && (
-              <div className="flex items-center gap-3 flex-wrap">
-                <span className="text-xl font-bold text-foreground">
-                  ${Number(delivery.amount).toFixed(2)}
-                </span>
-                <Badge variant="outline" className={cn("text-xs", paymentColors[delivery.payment_method])}>
+              <div className="space-y-1">
+                {/* Service value */}
+                {delivery.service_value > 0 && (
+                  <div className="flex items-center gap-2 text-sm">
+                    <span className="text-muted-foreground">Valor servicio:</span>
+                    <span className="font-medium">${Number(delivery.service_value).toFixed(2)}</span>
+                    <span className="text-xs text-muted-foreground">(70% mensajero)</span>
+                  </div>
+                )}
+                
+                {/* Total to collect and received */}
+                <div className="flex items-center gap-3 flex-wrap">
+                  <div className="flex items-center gap-2">
+                    <span className="text-muted-foreground text-sm">A cobrar:</span>
+                    <span className="text-lg font-bold text-foreground">
+                      ${Number(totalToCollect).toFixed(2)}
+                    </span>
+                  </div>
+                  
+                  {delivery.received_amount !== null && (
+                    <div className="flex items-center gap-2">
+                      <span className="text-muted-foreground text-sm">Recibido:</span>
+                      <span className={cn(
+                        "text-lg font-bold",
+                        hasDifference ? "text-warning" : "text-success"
+                      )}>
+                        ${Number(receivedAmount).toFixed(2)}
+                      </span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Difference warning */}
+                {hasDifference && (
+                  <div className="flex items-center gap-1 text-xs text-warning">
+                    <AlertTriangle className="w-3 h-3" />
+                    Faltante: ${difference.toFixed(2)} (adelanto)
+                  </div>
+                )}
+
+                {/* Payment method */}
+                <Badge variant="outline" className={cn("text-xs mt-1", paymentColors[delivery.payment_method])}>
                   <PaymentIcon className="w-3 h-3 mr-1" />
                   {paymentLabels[delivery.payment_method]}
                 </Badge>
+              </div>
+            )}
+
+            {/* Pending delivery - show what's known */}
+            {isPending && (
+              <div className="space-y-1">
+                {delivery.service_value > 0 && (
+                  <div className="flex items-center gap-2 text-sm">
+                    <span className="text-muted-foreground">Valor servicio:</span>
+                    <span className="font-medium">${Number(delivery.service_value).toFixed(2)}</span>
+                  </div>
+                )}
+                {delivery.total_to_collect > 0 && (
+                  <div className="flex items-center gap-2 text-sm">
+                    <span className="text-muted-foreground">A cobrar:</span>
+                    <span className="font-medium">${Number(delivery.total_to_collect).toFixed(2)}</span>
+                  </div>
+                )}
               </div>
             )}
 
@@ -130,25 +192,29 @@ export function DeliveryCard({ delivery, onEdit, onCancel, onRegister, showCouri
             )}
           </div>
 
-          {/* Admin actions */}
-          {isAdmin && delivery.status !== 'cancelled' && (
+          {/* Actions */}
+          {delivery.status !== 'cancelled' && (onEdit || onCancel) && (
             <div className="flex flex-col gap-1">
-              <Button 
-                variant="ghost" 
-                size="icon"
-                className="h-8 w-8 text-muted-foreground hover:text-primary"
-                onClick={() => onEdit?.(delivery)}
-              >
-                <Edit className="w-4 h-4" />
-              </Button>
-              <Button 
-                variant="ghost" 
-                size="icon"
-                className="h-8 w-8 text-muted-foreground hover:text-destructive"
-                onClick={() => onCancel?.(delivery)}
-              >
-                <Ban className="w-4 h-4" />
-              </Button>
+              {onEdit && (
+                <Button 
+                  variant="ghost" 
+                  size="icon"
+                  className="h-8 w-8 text-muted-foreground hover:text-primary"
+                  onClick={() => onEdit?.(delivery)}
+                >
+                  <Edit className="w-4 h-4" />
+                </Button>
+              )}
+              {onCancel && isAdmin && (
+                <Button 
+                  variant="ghost" 
+                  size="icon"
+                  className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                  onClick={() => onCancel?.(delivery)}
+                >
+                  <Ban className="w-4 h-4" />
+                </Button>
+              )}
             </div>
           )}
         </div>

@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Camera, Loader2, DollarSign, CreditCard, ArrowLeftRight, CheckCircle } from 'lucide-react';
+import { Camera, Loader2, DollarSign, CreditCard, ArrowLeftRight, CheckCircle, AlertTriangle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
 
@@ -27,13 +27,17 @@ export function NewDeliveryForm({ onSuccess }: NewDeliveryFormProps) {
   
   const [formData, setFormData] = useState({
     client_id: '',
-    amount: '',
+    service_value: '',
+    total_to_collect: '',
     payment_method: '' as 'cash' | 'transfer_to_courier' | 'transfer_to_client' | '',
     notes: '',
   });
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Service value is read-only for couriers - they can only set total_to_collect
+  const serviceValue = parseFloat(formData.service_value) || 0;
 
   const handlePhotoCapture = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -65,18 +69,19 @@ export function NewDeliveryForm({ onSuccess }: NewDeliveryFormProps) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.client_id || !formData.amount || !formData.payment_method) return;
+    if (!formData.client_id || !formData.total_to_collect || !formData.payment_method) return;
     
     await createDelivery.mutateAsync({
       client_id: formData.client_id,
-      amount: parseFloat(formData.amount),
+      service_value: 0, // Couriers cannot set service value - admin will set it later if needed
+      total_to_collect: parseFloat(formData.total_to_collect),
       payment_method: formData.payment_method,
       notes: formData.notes || undefined,
       receipt_photo_url: photoUrl || undefined,
     });
     
     // Reset form
-    setFormData({ client_id: '', amount: '', payment_method: '', notes: '' });
+    setFormData({ client_id: '', service_value: '', total_to_collect: '', payment_method: '', notes: '' });
     setPhotoUrl(null);
     onSuccess?.();
   };
@@ -89,7 +94,7 @@ export function NewDeliveryForm({ onSuccess }: NewDeliveryFormProps) {
           Registrar Entrega
         </CardTitle>
         <CardDescription>
-          Completa los datos de la entrega. Una vez guardada, no podrás modificarla.
+          Registra una nueva entrega. El valor del servicio será asignado por el administrador.
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -114,20 +119,28 @@ export function NewDeliveryForm({ onSuccess }: NewDeliveryFormProps) {
             </Select>
           </div>
 
-          {/* Amount */}
+          {/* Info about service value */}
+          <div className="flex items-center gap-2 p-3 rounded-lg bg-muted/50 border border-border">
+            <AlertTriangle className="w-5 h-5 text-muted-foreground shrink-0" />
+            <p className="text-sm text-muted-foreground">
+              El valor del servicio será asignado por el administrador
+            </p>
+          </div>
+
+          {/* Total to Collect */}
           <div className="space-y-2">
-            <Label htmlFor="amount">Monto *</Label>
+            <Label htmlFor="total_to_collect">Valor Total a Cobrar *</Label>
             <div className="relative">
               <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <Input
-                id="amount"
+                id="total_to_collect"
                 type="number"
                 step="0.01"
                 min="0"
                 placeholder="0.00"
                 className="pl-9"
-                value={formData.amount}
-                onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
+                value={formData.total_to_collect}
+                onChange={(e) => setFormData({ ...formData, total_to_collect: e.target.value })}
                 required
               />
             </div>
@@ -221,7 +234,7 @@ export function NewDeliveryForm({ onSuccess }: NewDeliveryFormProps) {
           <Button 
             type="submit" 
             className="w-full gradient-primary text-primary-foreground"
-            disabled={createDelivery.isPending || !formData.client_id || !formData.amount || !formData.payment_method}
+            disabled={createDelivery.isPending || !formData.client_id || !formData.total_to_collect || !formData.payment_method}
           >
             {createDelivery.isPending ? (
               <Loader2 className="w-4 h-4 animate-spin mr-2" />

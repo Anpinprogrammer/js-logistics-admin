@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Delivery } from '@/hooks/useDeliveries';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -12,7 +12,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Camera, Loader2, DollarSign, CreditCard, ArrowLeftRight, CheckCircle } from 'lucide-react';
+import { Camera, Loader2, DollarSign, CreditCard, ArrowLeftRight, CheckCircle, AlertTriangle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const paymentMethods = [
@@ -26,7 +26,8 @@ interface RegisterDeliveryDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onRegister: (data: {
-    amount: number;
+    total_to_collect: number;
+    received_amount: number;
     payment_method: 'cash' | 'transfer_to_courier' | 'transfer_to_client';
     notes?: string;
     receipt_photo_url?: string;
@@ -42,13 +43,26 @@ export function RegisterDeliveryDialog({
   loading,
 }: RegisterDeliveryDialogProps) {
   const [formData, setFormData] = useState({
-    amount: '',
+    total_to_collect: '',
+    received_amount: '',
     payment_method: '' as 'cash' | 'transfer_to_courier' | 'transfer_to_client' | '',
     notes: '',
   });
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Pre-fill with delivery data when dialog opens
+  useEffect(() => {
+    if (delivery && open) {
+      setFormData({
+        total_to_collect: delivery.total_to_collect > 0 ? String(delivery.total_to_collect) : '',
+        received_amount: '',
+        payment_method: '',
+        notes: delivery.notes || '',
+      });
+    }
+  }, [delivery, open]);
 
   const handlePhotoCapture = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -80,24 +94,31 @@ export function RegisterDeliveryDialog({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.amount || !formData.payment_method) return;
+    if (!formData.total_to_collect || !formData.received_amount || !formData.payment_method) return;
     
     await onRegister({
-      amount: parseFloat(formData.amount),
+      total_to_collect: parseFloat(formData.total_to_collect),
+      received_amount: parseFloat(formData.received_amount),
       payment_method: formData.payment_method,
       notes: formData.notes || undefined,
       receipt_photo_url: photoUrl || undefined,
     });
     
     // Reset form
-    setFormData({ amount: '', payment_method: '', notes: '' });
+    setFormData({ total_to_collect: '', received_amount: '', payment_method: '', notes: '' });
     setPhotoUrl(null);
   };
 
   const resetForm = () => {
-    setFormData({ amount: '', payment_method: '', notes: '' });
+    setFormData({ total_to_collect: '', received_amount: '', payment_method: '', notes: '' });
     setPhotoUrl(null);
   };
+
+  // Calculate difference for warning
+  const totalToCollect = parseFloat(formData.total_to_collect) || 0;
+  const receivedAmount = parseFloat(formData.received_amount) || 0;
+  const difference = totalToCollect - receivedAmount;
+  const hasDifference = formData.total_to_collect && formData.received_amount && difference > 0;
 
   return (
     <Dialog open={open} onOpenChange={(isOpen) => {
@@ -116,24 +137,72 @@ export function RegisterDeliveryDialog({
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-5">
-          {/* Amount */}
+          {/* Service Value (read-only) */}
+          {delivery && delivery.service_value > 0 && (
+            <div className="space-y-2">
+              <Label className="text-muted-foreground">Valor del Servicio</Label>
+              <div className="relative">
+                <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Input
+                  type="text"
+                  value={`$${delivery.service_value.toFixed(2)}`}
+                  className="pl-9 bg-muted cursor-not-allowed"
+                  disabled
+                  readOnly
+                />
+              </div>
+              <p className="text-xs text-muted-foreground">Solo el administrador puede modificar este campo</p>
+            </div>
+          )}
+
+          {/* Total to Collect */}
           <div className="space-y-2">
-            <Label htmlFor="amount">Monto Cobrado *</Label>
+            <Label htmlFor="total_to_collect">Valor Total a Cobrar *</Label>
             <div className="relative">
               <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <Input
-                id="amount"
+                id="total_to_collect"
                 type="number"
                 step="0.01"
                 min="0"
                 placeholder="0.00"
                 className="pl-9"
-                value={formData.amount}
-                onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
+                value={formData.total_to_collect}
+                onChange={(e) => setFormData({ ...formData, total_to_collect: e.target.value })}
                 required
               />
             </div>
           </div>
+
+          {/* Received Amount */}
+          <div className="space-y-2">
+            <Label htmlFor="received_amount">Valor Recibido en Destino *</Label>
+            <div className="relative">
+              <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <Input
+                id="received_amount"
+                type="number"
+                step="0.01"
+                min="0"
+                placeholder="0.00"
+                className="pl-9"
+                value={formData.received_amount}
+                onChange={(e) => setFormData({ ...formData, received_amount: e.target.value })}
+                required
+              />
+            </div>
+          </div>
+
+          {/* Difference Warning */}
+          {hasDifference && (
+            <div className="flex items-center gap-2 p-3 rounded-lg bg-warning/10 border border-warning/30">
+              <AlertTriangle className="w-5 h-5 text-warning shrink-0" />
+              <div className="text-sm">
+                <p className="font-medium text-warning">Faltante detectado: ${difference.toFixed(2)}</p>
+                <p className="text-muted-foreground">Se registrará automáticamente como adelanto de sueldo</p>
+              </div>
+            </div>
+          )}
 
           {/* Payment method */}
           <div className="space-y-3">
@@ -223,7 +292,7 @@ export function RegisterDeliveryDialog({
           <Button 
             type="submit" 
             className="w-full gradient-primary text-primary-foreground"
-            disabled={loading || !formData.amount || !formData.payment_method}
+            disabled={loading || !formData.total_to_collect || !formData.received_amount || !formData.payment_method}
           >
             {loading ? (
               <Loader2 className="w-4 h-4 animate-spin mr-2" />
