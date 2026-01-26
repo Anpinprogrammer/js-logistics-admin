@@ -11,6 +11,7 @@ export interface Delivery {
   service_value: number;
   total_to_collect: number;
   received_amount: number | null;
+  recipient_name: string | null;
   payment_method: 'cash' | 'transfer_to_courier' | 'transfer_to_client';
   status: 'pending' | 'completed' | 'cancelled';
   receipt_photo_url: string | null;
@@ -33,6 +34,7 @@ export interface Delivery {
 
 export interface CreateDeliveryData {
   client_id: string;
+  recipient_name?: string;
   service_value: number;
   total_to_collect: number;
   payment_method: 'cash' | 'transfer_to_courier' | 'transfer_to_client';
@@ -119,6 +121,7 @@ export function useCreateDelivery() {
           client_id: data.client_id,
           courier_id: user.id,
           created_by: user.id,
+          recipient_name: data.recipient_name || null,
           service_value: data.service_value,
           total_to_collect: data.total_to_collect,
           amount: data.total_to_collect, // Keep for backward compatibility

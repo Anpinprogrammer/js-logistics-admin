@@ -27,6 +27,7 @@ export function NewDeliveryForm({ onSuccess }: NewDeliveryFormProps) {
   
   const [formData, setFormData] = useState({
     client_id: '',
+    recipient_name: '',
     service_value: '',
     total_to_collect: '',
     payment_method: '' as 'cash' | 'transfer_to_courier' | 'transfer_to_client' | '',
@@ -73,6 +74,7 @@ export function NewDeliveryForm({ onSuccess }: NewDeliveryFormProps) {
     
     await createDelivery.mutateAsync({
       client_id: formData.client_id,
+      recipient_name: formData.recipient_name || undefined,
       service_value: 0, // Couriers cannot set service value - admin will set it later if needed
       total_to_collect: parseFloat(formData.total_to_collect),
       payment_method: formData.payment_method,
@@ -81,7 +83,7 @@ export function NewDeliveryForm({ onSuccess }: NewDeliveryFormProps) {
     });
     
     // Reset form
-    setFormData({ client_id: '', service_value: '', total_to_collect: '', payment_method: '', notes: '' });
+    setFormData({ client_id: '', recipient_name: '', service_value: '', total_to_collect: '', payment_method: '', notes: '' });
     setPhotoUrl(null);
     onSuccess?.();
   };
@@ -117,6 +119,18 @@ export function NewDeliveryForm({ onSuccess }: NewDeliveryFormProps) {
                 ))}
               </SelectContent>
             </Select>
+          </div>
+
+          {/* Recipient name */}
+          <div className="space-y-2">
+            <Label htmlFor="recipient_name">Nombre de quien recibe</Label>
+            <Input
+              id="recipient_name"
+              type="text"
+              placeholder="Nombre del destinatario"
+              value={formData.recipient_name}
+              onChange={(e) => setFormData({ ...formData, recipient_name: e.target.value })}
+            />
           </div>
 
           {/* Info about service value */}
