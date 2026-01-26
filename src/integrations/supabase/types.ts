@@ -60,6 +60,7 @@ export type Database = {
           payment_method: Database["public"]["Enums"]["payment_method"]
           receipt_photo_url: string | null
           received_amount: number | null
+          recipient_name: string | null
           service_value: number
           status: Database["public"]["Enums"]["delivery_status"]
           total_to_collect: number
@@ -79,6 +80,7 @@ export type Database = {
           payment_method: Database["public"]["Enums"]["payment_method"]
           receipt_photo_url?: string | null
           received_amount?: number | null
+          recipient_name?: string | null
           service_value?: number
           status?: Database["public"]["Enums"]["delivery_status"]
           total_to_collect?: number
@@ -98,6 +100,7 @@ export type Database = {
           payment_method?: Database["public"]["Enums"]["payment_method"]
           receipt_photo_url?: string | null
           received_amount?: number | null
+          recipient_name?: string | null
           service_value?: number
           status?: Database["public"]["Enums"]["delivery_status"]
           total_to_collect?: number
