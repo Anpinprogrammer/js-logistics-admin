@@ -9,6 +9,7 @@ import { NewDeliveryForm } from '@/components/courier/NewDeliveryForm';
 import { CouriersList } from '@/components/admin/CouriersList';
 import { ClientsManager } from '@/components/admin/ClientsManager';
 import { AuditLog } from '@/components/admin/AuditLog';
+import { ConsolidatedCash } from '@/components/admin/ConsolidatedCash';
 import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Settings, Loader2 } from 'lucide-react';
 
@@ -47,6 +48,8 @@ function AppContent() {
               <DeliveryList showCourier />
             </div>
           );
+        case 'cash':
+          return <ConsolidatedCash />;
         case 'couriers':
           return <CouriersList />;
         case 'clients':

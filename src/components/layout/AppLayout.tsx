@@ -11,7 +11,8 @@ import {
   Menu, 
   X,
   LogOut,
-  User
+  User,
+  Wallet
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
@@ -30,6 +31,7 @@ export function AppLayout({ children, currentPage, onNavigate }: AppLayoutProps)
     { id: 'dashboard', label: 'Dashboard', icon: BarChart3 },
     { id: 'new-delivery', label: 'Nuevo Pedido', icon: Package },
     { id: 'deliveries', label: 'Entregas', icon: Package },
+    { id: 'cash', label: 'Caja Consolidada', icon: Wallet },
     { id: 'couriers', label: 'Mensajeros', icon: Truck },
     { id: 'clients', label: 'Clientes', icon: Users },
     { id: 'audit', label: 'Auditoría', icon: History },
