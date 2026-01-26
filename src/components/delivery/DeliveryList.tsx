@@ -1,10 +1,14 @@
 import { useState } from 'react';
 import { useDeliveries, Delivery, useUpdateDelivery, useCancelDelivery } from '@/hooks/useDeliveries';
+import { useRegisterDelivery } from '@/hooks/useRegisterDelivery';
 import { DeliveryCard } from './DeliveryCard';
 import { EditDeliveryDialog } from './EditDeliveryDialog';
 import { CancelDeliveryDialog } from './CancelDeliveryDialog';
-import { Loader2, Package, Search } from 'lucide-react';
+import { RegisterDeliveryDialog } from '@/components/courier/RegisterDeliveryDialog';
+import { Loader2, Package, Search, ClipboardList } from 'lucide-react';
 import { Input } from '@/components/ui/input';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/contexts/AuthContext';
 
 interface DeliveryListProps {
@@ -14,18 +18,29 @@ interface DeliveryListProps {
 
 export function DeliveryList({ courierId, showCourier }: DeliveryListProps) {
   const { data: deliveries, isLoading, error } = useDeliveries(courierId);
-  const { isAdmin } = useAuth();
+  const { isAdmin, isCourier } = useAuth();
   const [search, setSearch] = useState('');
   const [editingDelivery, setEditingDelivery] = useState<Delivery | null>(null);
   const [cancellingDelivery, setCancellingDelivery] = useState<Delivery | null>(null);
+  const [registeringDelivery, setRegisteringDelivery] = useState<Delivery | null>(null);
   
   const updateDelivery = useUpdateDelivery();
   const cancelDelivery = useCancelDelivery();
+  const registerDelivery = useRegisterDelivery();
 
-  const filteredDeliveries = deliveries?.filter(d => 
-    d.client?.name?.toLowerCase().includes(search.toLowerCase()) ||
-    d.notes?.toLowerCase().includes(search.toLowerCase())
-  );
+  // Split deliveries by status for couriers
+  const pendingDeliveries = deliveries?.filter(d => d.status === 'pending') || [];
+  const completedDeliveries = deliveries?.filter(d => d.status !== 'pending') || [];
+
+  const filterDeliveries = (list: Delivery[]) => 
+    list.filter(d => 
+      d.client?.name?.toLowerCase().includes(search.toLowerCase()) ||
+      d.notes?.toLowerCase().includes(search.toLowerCase())
+    );
+
+  const filteredPending = filterDeliveries(pendingDeliveries);
+  const filteredCompleted = filterDeliveries(completedDeliveries);
+  const filteredAll = filterDeliveries(deliveries || []);
 
   if (isLoading) {
     return (
@@ -43,6 +58,28 @@ export function DeliveryList({ courierId, showCourier }: DeliveryListProps) {
     );
   }
 
+  const renderDeliveryList = (list: Delivery[], showRegisterButton = false) => (
+    list.length === 0 ? (
+      <div className="text-center py-12">
+        <Package className="w-12 h-12 mx-auto text-muted-foreground/50 mb-4" />
+        <p className="text-muted-foreground">No hay entregas para mostrar</p>
+      </div>
+    ) : (
+      <div className="space-y-3">
+        {list.map((delivery) => (
+          <DeliveryCard
+            key={delivery.id}
+            delivery={delivery}
+            onEdit={isAdmin ? setEditingDelivery : undefined}
+            onCancel={isAdmin ? setCancellingDelivery : undefined}
+            onRegister={showRegisterButton && isCourier ? setRegisteringDelivery : undefined}
+            showCourier={showCourier}
+          />
+        ))}
+      </div>
+    )
+  );
+
   return (
     <div className="space-y-4">
       {/* Search */}
@@ -56,27 +93,36 @@ export function DeliveryList({ courierId, showCourier }: DeliveryListProps) {
         />
       </div>
 
-      {/* Delivery list */}
-      {filteredDeliveries?.length === 0 ? (
-        <div className="text-center py-12">
-          <Package className="w-12 h-12 mx-auto text-muted-foreground/50 mb-4" />
-          <p className="text-muted-foreground">No hay entregas para mostrar</p>
-        </div>
+      {/* Courier view with tabs */}
+      {isCourier && !isAdmin ? (
+        <Tabs defaultValue="pending" className="w-full">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="pending" className="flex items-center gap-2">
+              <ClipboardList className="w-4 h-4" />
+              Pendientes
+              {pendingDeliveries.length > 0 && (
+                <Badge variant="destructive" className="ml-1">
+                  {pendingDeliveries.length}
+                </Badge>
+              )}
+            </TabsTrigger>
+            <TabsTrigger value="completed">
+              Completadas
+            </TabsTrigger>
+          </TabsList>
+          <TabsContent value="pending" className="mt-4">
+            {renderDeliveryList(filteredPending, true)}
+          </TabsContent>
+          <TabsContent value="completed" className="mt-4">
+            {renderDeliveryList(filteredCompleted, false)}
+          </TabsContent>
+        </Tabs>
       ) : (
-        <div className="space-y-3">
-          {filteredDeliveries?.map((delivery) => (
-            <DeliveryCard
-              key={delivery.id}
-              delivery={delivery}
-              onEdit={isAdmin ? setEditingDelivery : undefined}
-              onCancel={isAdmin ? setCancellingDelivery : undefined}
-              showCourier={showCourier}
-            />
-          ))}
-        </div>
+        // Admin view - all deliveries
+        renderDeliveryList(filteredAll, false)
       )}
 
-      {/* Edit dialog */}
+      {/* Edit dialog (admin only) */}
       <EditDeliveryDialog
         delivery={editingDelivery}
         open={!!editingDelivery}
@@ -93,7 +139,7 @@ export function DeliveryList({ courierId, showCourier }: DeliveryListProps) {
         loading={updateDelivery.isPending}
       />
 
-      {/* Cancel dialog */}
+      {/* Cancel dialog (admin only) */}
       <CancelDeliveryDialog
         delivery={cancellingDelivery}
         open={!!cancellingDelivery}
@@ -107,6 +153,22 @@ export function DeliveryList({ courierId, showCourier }: DeliveryListProps) {
           setCancellingDelivery(null);
         }}
         loading={cancelDelivery.isPending}
+      />
+
+      {/* Register dialog (courier only) */}
+      <RegisterDeliveryDialog
+        delivery={registeringDelivery}
+        open={!!registeringDelivery}
+        onOpenChange={(open) => !open && setRegisteringDelivery(null)}
+        onRegister={async (data) => {
+          if (!registeringDelivery) return;
+          await registerDelivery.mutateAsync({
+            deliveryId: registeringDelivery.id,
+            data,
+          });
+          setRegisteringDelivery(null);
+        }}
+        loading={registerDelivery.isPending}
       />
     </div>
   );

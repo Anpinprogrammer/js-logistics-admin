@@ -28,7 +28,7 @@ export function AppLayout({ children, currentPage, onNavigate }: AppLayoutProps)
 
   const adminNavItems = [
     { id: 'dashboard', label: 'Dashboard', icon: BarChart3 },
-    { id: 'new-delivery', label: 'Nueva Entrega', icon: Package },
+    { id: 'new-delivery', label: 'Nuevo Pedido', icon: Package },
     { id: 'deliveries', label: 'Entregas', icon: Package },
     { id: 'couriers', label: 'Mensajeros', icon: Truck },
     { id: 'clients', label: 'Clientes', icon: Users },
