@@ -11,7 +11,8 @@ import {
   XCircle,
   Edit,
   Ban,
-  Image
+  Image,
+  ClipboardCheck
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -22,6 +23,7 @@ interface DeliveryCardProps {
   delivery: Delivery;
   onEdit?: (delivery: Delivery) => void;
   onCancel?: (delivery: Delivery) => void;
+  onRegister?: (delivery: Delivery) => void;
   showCourier?: boolean;
 }
 
@@ -49,16 +51,20 @@ const statusConfig = {
   cancelled: { icon: XCircle, label: 'Anulada', color: 'bg-destructive/10 text-destructive' },
 };
 
-export function DeliveryCard({ delivery, onEdit, onCancel, showCourier }: DeliveryCardProps) {
-  const { isAdmin } = useAuth();
+export function DeliveryCard({ delivery, onEdit, onCancel, onRegister, showCourier }: DeliveryCardProps) {
+  const { isAdmin, isCourier } = useAuth();
   const PaymentIcon = paymentIcons[delivery.payment_method];
   const status = statusConfig[delivery.status];
   const StatusIcon = status.icon;
 
+  const isPending = delivery.status === 'pending';
+  const showRegisterButton = isCourier && !isAdmin && isPending && onRegister;
+
   return (
     <Card className={cn(
       "transition-all duration-200 hover:shadow-md",
-      delivery.status === 'cancelled' && "opacity-60"
+      delivery.status === 'cancelled' && "opacity-60",
+      isPending && isCourier && !isAdmin && "border-warning/50 bg-warning/5"
     )}>
       <CardContent className="p-4">
         <div className="flex items-start justify-between gap-4">
@@ -74,16 +80,18 @@ export function DeliveryCard({ delivery, onEdit, onCancel, showCourier }: Delive
               </Badge>
             </div>
 
-            {/* Amount and payment method */}
-            <div className="flex items-center gap-3 flex-wrap">
-              <span className="text-xl font-bold text-foreground">
-                ${Number(delivery.amount).toFixed(2)}
-              </span>
-              <Badge variant="outline" className={cn("text-xs", paymentColors[delivery.payment_method])}>
-                <PaymentIcon className="w-3 h-3 mr-1" />
-                {paymentLabels[delivery.payment_method]}
-              </Badge>
-            </div>
+            {/* Amount and payment method - only show for completed deliveries */}
+            {!isPending && (
+              <div className="flex items-center gap-3 flex-wrap">
+                <span className="text-xl font-bold text-foreground">
+                  ${Number(delivery.amount).toFixed(2)}
+                </span>
+                <Badge variant="outline" className={cn("text-xs", paymentColors[delivery.payment_method])}>
+                  <PaymentIcon className="w-3 h-3 mr-1" />
+                  {paymentLabels[delivery.payment_method]}
+                </Badge>
+              </div>
+            )}
 
             {/* Meta info */}
             <div className="flex items-center gap-4 text-xs text-muted-foreground flex-wrap">
@@ -108,6 +116,17 @@ export function DeliveryCard({ delivery, onEdit, onCancel, showCourier }: Delive
               <p className="text-sm text-muted-foreground line-clamp-2">
                 {delivery.notes}
               </p>
+            )}
+
+            {/* Register button for couriers - prominent for pending deliveries */}
+            {showRegisterButton && (
+              <Button 
+                className="w-full mt-2 gradient-primary text-primary-foreground"
+                onClick={() => onRegister?.(delivery)}
+              >
+                <ClipboardCheck className="w-4 h-4 mr-2" />
+                Registrar Entrega
+              </Button>
             )}
           </div>
 

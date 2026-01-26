@@ -38,7 +38,7 @@ function AppContent() {
         case 'dashboard':
           return <AdminDashboard />;
         case 'new-delivery':
-          return <AdminNewDeliveryForm onSuccess={() => setCurrentPage('deliveries')} />;
+          return <AdminNewDeliveryForm />;
         case 'deliveries':
           return (
             <div className="space-y-4 animate-fade-in">
