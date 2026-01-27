@@ -13,7 +13,8 @@ import {
   Ban,
   Image,
   ClipboardCheck,
-  AlertTriangle
+  AlertTriangle,
+  Package
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -48,14 +49,16 @@ const paymentColors = {
 
 const statusConfig = {
   pending: { icon: Clock, label: 'Pendiente', color: 'bg-warning/10 text-warning' },
-  completed: { icon: CheckCircle, label: 'Completada', color: 'bg-success/10 text-success' },
+  completed: { icon: CheckCircle, label: 'Entregado', color: 'bg-success/10 text-success' },
+  not_delivered_collected: { icon: Package, label: 'No entregado (con cobro)', color: 'bg-warning/10 text-warning' },
+  not_delivered_no_collection: { icon: XCircle, label: 'No entregado (sin cobro)', color: 'bg-destructive/10 text-destructive' },
   cancelled: { icon: XCircle, label: 'Anulada', color: 'bg-destructive/10 text-destructive' },
-};
+} as const;
 
 export function DeliveryCard({ delivery, onEdit, onCancel, onRegister, showCourier }: DeliveryCardProps) {
   const { isAdmin, isCourier } = useAuth();
   const PaymentIcon = paymentIcons[delivery.payment_method];
-  const status = statusConfig[delivery.status];
+  const status = statusConfig[delivery.status as keyof typeof statusConfig] || statusConfig.pending;
   const StatusIcon = status.icon;
 
   const isPending = delivery.status === 'pending';
@@ -86,6 +89,13 @@ export function DeliveryCard({ delivery, onEdit, onCancel, onRegister, showCouri
                 {status.label}
               </Badge>
             </div>
+
+            {/* Recipient name if different from client */}
+            {delivery.recipient_name && (
+              <p className="text-sm text-muted-foreground">
+                <span className="font-medium">Destinatario:</span> {delivery.recipient_name}
+              </p>
+            )}
 
             {/* Financial details - only show for non-pending deliveries */}
             {!isPending && (

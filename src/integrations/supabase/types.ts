@@ -307,7 +307,12 @@ export type Database = {
     }
     Enums: {
       app_role: "admin" | "courier"
-      delivery_status: "pending" | "completed" | "cancelled"
+      delivery_status:
+        | "pending"
+        | "completed"
+        | "cancelled"
+        | "not_delivered_collected"
+        | "not_delivered_no_collection"
       payment_method: "cash" | "transfer_to_courier" | "transfer_to_client"
     }
     CompositeTypes: {
@@ -437,7 +442,13 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "courier"],
-      delivery_status: ["pending", "completed", "cancelled"],
+      delivery_status: [
+        "pending",
+        "completed",
+        "cancelled",
+        "not_delivered_collected",
+        "not_delivered_no_collection",
+      ],
       payment_method: ["cash", "transfer_to_courier", "transfer_to_client"],
     },
   },

@@ -7,7 +7,6 @@ import { CancelDeliveryDialog } from './CancelDeliveryDialog';
 import { RegisterDeliveryDialog } from '@/components/courier/RegisterDeliveryDialog';
 import { Loader2, Package, Search, ClipboardList } from 'lucide-react';
 import { Input } from '@/components/ui/input';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -28,9 +27,11 @@ export function DeliveryList({ courierId, showCourier }: DeliveryListProps) {
   const cancelDelivery = useCancelDelivery();
   const registerDelivery = useRegisterDelivery();
 
-  // Split deliveries by status for couriers
-  const pendingDeliveries = deliveries?.filter(d => d.status === 'pending') || [];
-  const completedDeliveries = deliveries?.filter(d => d.status !== 'pending') || [];
+  // For couriers: ONLY show pending deliveries assigned to them
+  // For admins: show all deliveries
+  const visibleDeliveries = isCourier && !isAdmin 
+    ? deliveries?.filter(d => d.status === 'pending') || []
+    : deliveries || [];
 
   const filterDeliveries = (list: Delivery[]) => 
     list.filter(d => 
@@ -38,9 +39,7 @@ export function DeliveryList({ courierId, showCourier }: DeliveryListProps) {
       d.notes?.toLowerCase().includes(search.toLowerCase())
     );
 
-  const filteredPending = filterDeliveries(pendingDeliveries);
-  const filteredCompleted = filterDeliveries(completedDeliveries);
-  const filteredAll = filterDeliveries(deliveries || []);
+  const filteredDeliveries = filterDeliveries(visibleDeliveries);
 
   if (isLoading) {
     return (
@@ -93,33 +92,35 @@ export function DeliveryList({ courierId, showCourier }: DeliveryListProps) {
         />
       </div>
 
-      {/* Courier view with tabs */}
+      {/* Courier view - simple list of pending deliveries only */}
       {isCourier && !isAdmin ? (
-        <Tabs defaultValue="pending" className="w-full">
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="pending" className="flex items-center gap-2">
-              <ClipboardList className="w-4 h-4" />
-              Pendientes
-              {pendingDeliveries.length > 0 && (
-                <Badge variant="destructive" className="ml-1">
-                  {pendingDeliveries.length}
-                </Badge>
-              )}
-            </TabsTrigger>
-            <TabsTrigger value="completed">
-              Completadas
-            </TabsTrigger>
-          </TabsList>
-          <TabsContent value="pending" className="mt-4">
-            {renderDeliveryList(filteredPending, true, false)}
-          </TabsContent>
-          <TabsContent value="completed" className="mt-4">
-            {renderDeliveryList(filteredCompleted, false, true)}
-          </TabsContent>
-        </Tabs>
+        <div className="space-y-3">
+          {filteredDeliveries.length === 0 ? (
+            <div className="text-center py-12">
+              <Package className="w-12 h-12 mx-auto text-muted-foreground/50 mb-4" />
+              <p className="text-muted-foreground">No tienes entregas pendientes</p>
+            </div>
+          ) : (
+            <>
+              <div className="flex items-center gap-2 mb-4">
+                <ClipboardList className="w-5 h-5 text-warning" />
+                <span className="font-medium">Entregas Pendientes</span>
+                <Badge variant="destructive">{filteredDeliveries.length}</Badge>
+              </div>
+              {filteredDeliveries.map((delivery) => (
+                <DeliveryCard
+                  key={delivery.id}
+                  delivery={delivery}
+                  onRegister={setRegisteringDelivery}
+                  showCourier={false}
+                />
+              ))}
+            </>
+          )}
+        </div>
       ) : (
         // Admin view - all deliveries
-        renderDeliveryList(filteredAll, false)
+        renderDeliveryList(filteredDeliveries, false)
       )}
 
       {/* Edit dialog (admin only) */}
@@ -166,7 +167,7 @@ export function DeliveryList({ courierId, showCourier }: DeliveryListProps) {
           await registerDelivery.mutateAsync({
             deliveryId: registeringDelivery.id,
             courierId: registeringDelivery.courier_id,
-            total_to_collect: data.total_to_collect,
+            final_status: data.final_status,
             received_amount: data.received_amount,
             payment_method: data.payment_method,
             notes: data.notes,
