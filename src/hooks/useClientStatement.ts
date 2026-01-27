@@ -101,12 +101,20 @@ export function useClientStatement(clientId: string, startDate?: string, endDate
         };
       });
       
-      // Calculate accounts
-      // Accounts Payable = excess collected (client's favor)
-      // Accounts Receivable = balance (client owes us) - from direct transfers + lost trips
+      // Calculate accounts based on transactions
+      // Net = totalCollected - totalServices - totalLostTrips
+      // If positive: client has credit (saldo a favor / accountsPayable)
+      // If negative: client owes us (cuenta por cobrar / accountsReceivable)
+      const netFromDeliveries = totalCollected - totalServices - totalLostTrips;
+      
+      // Also consider existing balance from direct transfers
       const clientBalance = Number(client.balance) || 0;
-      const accountsReceivable = clientBalance > 0 ? clientBalance : 0;
-      const accountsPayable = clientBalance < 0 ? Math.abs(clientBalance) : 0;
+      
+      // Combined: positive means client has money in their favor
+      const combinedBalance = netFromDeliveries - clientBalance;
+      
+      const accountsPayable = combinedBalance > 0 ? combinedBalance : 0;
+      const accountsReceivable = combinedBalance < 0 ? Math.abs(combinedBalance) : clientBalance > 0 ? clientBalance : 0;
       
       const statement: ClientStatement = {
         id: client.id,
