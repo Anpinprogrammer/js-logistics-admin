@@ -5,17 +5,20 @@ import { AppLayout } from '@/components/layout/AppLayout';
 import { AdminDashboard } from '@/components/admin/AdminDashboard';
 import { DeliveryList } from '@/components/delivery/DeliveryList';
 import { AdminNewDeliveryForm } from '@/components/admin/AdminNewDeliveryForm';
-import { NewDeliveryForm } from '@/components/courier/NewDeliveryForm';
 import { CouriersList } from '@/components/admin/CouriersList';
 import { ClientsManager } from '@/components/admin/ClientsManager';
 import { AuditLog } from '@/components/admin/AuditLog';
 import { ConsolidatedCash } from '@/components/admin/ConsolidatedCash';
+import { DailySettlements } from '@/components/admin/DailySettlements';
+import { WeeklyPayroll } from '@/components/admin/WeeklyPayroll';
+import { CourierSummary } from '@/components/courier/CourierSummary';
+import { CourierTodayDeliveries } from '@/components/courier/CourierTodayDeliveries';
 import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Settings, Loader2 } from 'lucide-react';
 
 function AppContent() {
   const { user, loading, isAdmin, isCourier } = useAuth();
-  const [currentPage, setCurrentPage] = useState(isAdmin ? 'dashboard' : 'deliveries');
+  const [currentPage, setCurrentPage] = useState(isAdmin ? 'dashboard' : 'summary');
 
   if (loading) {
     return (
@@ -30,7 +33,7 @@ function AppContent() {
   }
 
   // Set default page based on role
-  const defaultPage = isAdmin ? 'dashboard' : 'deliveries';
+  const defaultPage = isAdmin ? 'dashboard' : 'summary';
   const page = currentPage || defaultPage;
 
   const renderPage = () => {
@@ -48,8 +51,12 @@ function AppContent() {
               <DeliveryList showCourier />
             </div>
           );
+        case 'daily-settlements':
+          return <DailySettlements />;
         case 'cash':
           return <ConsolidatedCash />;
+        case 'payroll':
+          return <WeeklyPayroll />;
         case 'couriers':
           return <CouriersList />;
         case 'clients':
@@ -80,18 +87,24 @@ function AppContent() {
 
     // Courier pages
     switch (page) {
-      case 'new-delivery':
+      case 'summary':
         return (
           <div className="space-y-4 animate-fade-in">
-            <h1 className="text-2xl font-bold">Nueva Entrega</h1>
-            <NewDeliveryForm onSuccess={() => setCurrentPage('deliveries')} />
+            <h1 className="text-2xl font-bold">Mi Resumen</h1>
+            <CourierSummary />
+          </div>
+        );
+      case 'today':
+        return (
+          <div className="space-y-4 animate-fade-in">
+            <CourierTodayDeliveries />
           </div>
         );
       case 'deliveries':
       default:
         return (
           <div className="space-y-4 animate-fade-in">
-            <h1 className="text-2xl font-bold">Mis Entregas</h1>
+            <h1 className="text-2xl font-bold">Entregas Pendientes</h1>
             <DeliveryList />
           </div>
         );
