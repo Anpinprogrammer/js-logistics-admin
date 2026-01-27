@@ -19,7 +19,8 @@ import {
   Package,
   AlertTriangle,
   CheckCircle2,
-  XCircle
+  XCircle,
+  Printer
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -56,17 +57,33 @@ export function ClientStatementView({ clientId, open, onOpenChange }: ClientStat
     }).format(value);
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <FileText className="w-5 h-5 text-primary" />
-            Estado de Cuenta
-          </DialogTitle>
-          <DialogDescription>
-            Detalle completo del cliente y sus pedidos
-          </DialogDescription>
-        </DialogHeader>
+    <>
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <div className="flex items-center justify-between">
+              <div>
+                <DialogTitle className="flex items-center gap-2">
+                  <FileText className="w-5 h-5 text-primary" />
+                  Estado de Cuenta
+                </DialogTitle>
+                <DialogDescription>
+                  Detalle completo del cliente y sus pedidos
+                </DialogDescription>
+              </div>
+              {statement && (
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={() => setShowPDF(true)}
+                  className="flex items-center gap-2"
+                >
+                  <Printer className="w-4 h-4" />
+                  Imprimir
+                </Button>
+              )}
+            </div>
+          </DialogHeader>
         
         {isLoading ? (
           <div className="flex items-center justify-center py-12">
@@ -207,7 +224,15 @@ export function ClientStatementView({ clientId, open, onOpenChange }: ClientStat
             No se pudo cargar la información del cliente
           </div>
         )}
-      </DialogContent>
-    </Dialog>
+        </DialogContent>
+      </Dialog>
+
+      {/* PDF Report Dialog */}
+      <ClientReportPDF 
+        clientId={clientId}
+        open={showPDF}
+        onOpenChange={setShowPDF}
+      />
+    </>
   );
 }
