@@ -43,9 +43,13 @@ export function useRegisterDelivery() {
 
       // Use the total_to_collect from the original delivery (set by admin)
       const totalToCollect = oldDelivery.total_to_collect || 0;
+      const serviceValue = oldDelivery.service_value || 0;
+
+      // Determine if this status involves collection/service
+      const hasCollection = data.final_status === 'completed' || data.final_status === 'not_delivered_collected';
+      const isValidService = hasCollection; // Both completed and ida perdida count as valid service
 
       // Calculate difference for automatic advance (only for statuses with collection)
-      const hasCollection = data.final_status === 'completed' || data.final_status === 'not_delivered_collected';
       const difference = hasCollection ? totalToCollect - data.received_amount : 0;
 
       // Update the delivery with the final status
@@ -56,7 +60,7 @@ export function useRegisterDelivery() {
           payment_method: data.payment_method,
           notes: data.notes || null,
           receipt_photo_url: data.receipt_photo_url || null,
-          status: data.final_status as any, // The new status values
+          status: data.final_status as any,
           delivery_date: new Date().toISOString().split('T')[0],
         })
         .eq('id', data.deliveryId)
@@ -65,10 +69,29 @@ export function useRegisterDelivery() {
 
       if (updateError) throw updateError;
 
+      // For "not_delivered_collected" (ida perdida), update client balance
+      // The total_to_collect becomes a debt for the client
+      if (data.final_status === 'not_delivered_collected') {
+        // Get current client balance and increment it
+        const { data: currentClient } = await supabase
+          .from('clients')
+          .select('balance')
+          .eq('id', oldDelivery.client_id)
+          .single();
+        
+        if (currentClient) {
+          const newBalance = Number(currentClient.balance || 0) + totalToCollect;
+          await supabase
+            .from('clients')
+            .update({ balance: newBalance })
+            .eq('id', oldDelivery.client_id);
+        }
+      }
+
       // Create audit log with status description
       const statusLabels: Record<DeliveryFinalStatus, string> = {
         completed: 'Entregado',
-        not_delivered_collected: 'No entregado (con cobro)',
+        not_delivered_collected: 'No entregado (con cobro) - Ida Perdida',
         not_delivered_no_collection: 'No entregado (sin cobro)',
       };
       
@@ -105,27 +128,45 @@ export function useRegisterDelivery() {
           console.error('Error creating automatic advance:', advanceError);
         }
 
-        return { delivery: newDelivery, advance: difference, status: data.final_status };
+        return { 
+          delivery: newDelivery, 
+          advance: difference, 
+          status: data.final_status,
+          clientDebtAdded: data.final_status === 'not_delivered_collected' ? totalToCollect : 0,
+        };
       }
 
-      return { delivery: newDelivery, advance: 0, status: data.final_status };
+      return { 
+        delivery: newDelivery, 
+        advance: 0, 
+        status: data.final_status,
+        clientDebtAdded: data.final_status === 'not_delivered_collected' ? totalToCollect : 0,
+      };
     },
     onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey: ['deliveries'] });
       queryClient.invalidateQueries({ queryKey: ['audit-log'] });
       queryClient.invalidateQueries({ queryKey: ['salary-advances'] });
+      queryClient.invalidateQueries({ queryKey: ['clients'] });
+      queryClient.invalidateQueries({ queryKey: ['clients-with-debt'] });
       
       const statusMessages: Record<DeliveryFinalStatus, string> = {
         completed: '¡Entrega registrada exitosamente!',
-        not_delivered_collected: 'Registro guardado (no entregado con cobro)',
-        not_delivered_no_collection: 'Registro guardado (no entregado sin cobro)',
+        not_delivered_collected: 'Ida perdida registrada (cobro agregado a deuda del cliente)',
+        not_delivered_no_collection: 'Registro guardado (sin cobro ni pago)',
       };
       
-      if (result.advance > 0) {
-        toast.success(`${statusMessages[result.status]} Se registró adelanto de $${result.advance.toFixed(2)}`);
-      } else {
-        toast.success(statusMessages[result.status]);
+      let message = statusMessages[result.status];
+      
+      if (result.clientDebtAdded > 0) {
+        message += ` • Deuda cliente: +$${result.clientDebtAdded.toFixed(2)}`;
       }
+      
+      if (result.advance > 0) {
+        message += ` • Adelanto: $${result.advance.toFixed(2)}`;
+      }
+      
+      toast.success(message);
     },
     onError: (error) => {
       toast.error('Error al registrar: ' + error.message);

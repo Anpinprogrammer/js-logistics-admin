@@ -13,7 +13,7 @@ export interface Delivery {
   received_amount: number | null;
   recipient_name: string | null;
   payment_method: 'cash' | 'transfer_to_courier' | 'transfer_to_client';
-  status: 'pending' | 'completed' | 'cancelled';
+  status: 'pending' | 'completed' | 'cancelled' | 'not_delivered_collected' | 'not_delivered_no_collection';
   receipt_photo_url: string | null;
   notes: string | null;
   delivery_date: string;
