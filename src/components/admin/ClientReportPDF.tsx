@@ -47,53 +47,128 @@ export function ClientReportPDF({ clientId, open, onOpenChange, startDate, endDa
     const printContent = printRef.current;
     if (!printContent) return;
     
-    const printWindow = window.open('', '_blank');
-    if (!printWindow) return;
+    const printWindow = window.open('', '_blank', 'width=800,height=600');
+    if (!printWindow) {
+      alert('Por favor permite las ventanas emergentes para imprimir');
+      return;
+    }
     
     const styles = `
       <style>
-        * { font-family: system-ui, -apple-system, sans-serif; }
-        body { padding: 20px; }
-        table { width: 100%; border-collapse: collapse; margin: 15px 0; font-size: 12px; }
-        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
-        th { background-color: #f5f5f5; font-weight: 600; }
+        * { font-family: system-ui, -apple-system, sans-serif; box-sizing: border-box; }
+        body { padding: 20px; margin: 0; background: white; color: black; }
+        table { width: 100%; border-collapse: collapse; margin: 15px 0; font-size: 11px; }
+        th, td { border: 1px solid #333; padding: 6px 8px; text-align: left; }
+        th { background-color: #e5e5e5; font-weight: 600; }
         .header { text-align: center; margin-bottom: 20px; }
-        .header h1 { margin: 0; font-size: 24px; }
-        .header p { margin: 5px 0; color: #666; }
-        .summary { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin: 20px 0; }
-        .summary-item { background: #f9f9f9; padding: 10px; border-radius: 4px; text-align: center; }
-        .summary-item .label { font-size: 11px; color: #666; }
-        .summary-item .value { font-size: 16px; font-weight: bold; }
+        .header h1 { margin: 0; font-size: 22px; color: black; }
+        .header p { margin: 5px 0; color: #333; }
+        .summary { display: flex; justify-content: space-between; gap: 10px; margin: 20px 0; flex-wrap: wrap; }
+        .summary-item { background: #f0f0f0; padding: 12px; border-radius: 4px; text-align: center; flex: 1; min-width: 120px; border: 1px solid #ccc; }
+        .summary-item .label { font-size: 10px; color: #333; display: block; margin-bottom: 4px; }
+        .summary-item .value { font-size: 14px; font-weight: bold; color: black; }
         .text-right { text-align: right; }
         .text-center { text-align: center; }
-        .text-success { color: #22c55e; }
-        .text-warning { color: #f59e0b; }
-        .text-destructive { color: #ef4444; }
-        .footer { margin-top: 30px; padding-top: 20px; border-top: 1px solid #ddd; font-size: 11px; color: #666; text-align: center; }
-        @media print { body { print-color-adjust: exact; -webkit-print-color-adjust: exact; } }
+        .text-success { color: #166534 !important; }
+        .text-warning { color: #a16207 !important; }
+        .text-destructive { color: #dc2626 !important; }
+        .separator { border-top: 2px solid #333; margin: 15px 0; }
+        .footer { margin-top: 30px; padding-top: 15px; border-top: 1px solid #333; font-size: 10px; color: #333; text-align: center; }
+        h3 { margin: 20px 0 10px; font-size: 14px; color: black; }
+        @media print { 
+          body { print-color-adjust: exact; -webkit-print-color-adjust: exact; } 
+          @page { margin: 1cm; }
+        }
       </style>
     `;
     
-    printWindow.document.write(`
+    const htmlContent = `
       <!DOCTYPE html>
       <html>
         <head>
-          <title>Estado de Cuenta - ${statement?.name}</title>
+          <meta charset="UTF-8">
+          <title>Estado de Cuenta - ${statement?.name || 'Cliente'}</title>
           ${styles}
         </head>
         <body>
-          ${printContent.innerHTML}
+          <div class="header">
+            <h1>Estado de Cuenta</h1>
+            <p style="font-size: 16px; font-weight: bold; margin-top: 10px;">${statement?.name || ''}</p>
+            ${statement?.phone ? `<p>Tel: ${statement.phone}</p>` : ''}
+            ${statement?.address ? `<p>${statement.address}</p>` : ''}
+            <p style="font-size: 11px; margin-top: 10px;">Generado: ${format(new Date(), "d 'de' MMMM 'de' yyyy, HH:mm", { locale: es })}</p>
+          </div>
+          
+          <div class="separator"></div>
+          
+          <div class="summary">
+            <div class="summary-item">
+              <span class="label">Total Recaudado</span>
+              <span class="value text-success">${formatCurrency(statement?.totalCollected || 0)}</span>
+            </div>
+            <div class="summary-item">
+              <span class="label">Total Servicios</span>
+              <span class="value">${formatCurrency(statement?.totalServices || 0)}</span>
+            </div>
+            <div class="summary-item">
+              <span class="label">Idas Perdidas</span>
+              <span class="value text-warning">${formatCurrency(statement?.totalLostTrips || 0)}</span>
+            </div>
+            <div class="summary-item">
+              <span class="label">${(statement?.accountsReceivable || 0) > 0 ? 'Saldo Deudor' : 'Saldo a Favor'}</span>
+              <span class="value ${(statement?.accountsReceivable || 0) > 0 ? 'text-destructive' : 'text-success'}">
+                ${formatCurrency((statement?.accountsReceivable || 0) > 0 ? statement?.accountsReceivable || 0 : statement?.accountsPayable || 0)}
+              </span>
+            </div>
+          </div>
+          
+          <div class="separator"></div>
+          
+          <h3>Detalle de Pedidos (${statement?.deliveries?.length || 0})</h3>
+          <table>
+            <thead>
+              <tr>
+                <th>Fecha</th>
+                <th>Destinatario</th>
+                <th class="text-center">Estado</th>
+                <th class="text-center">Pago</th>
+                <th class="text-right">Servicio</th>
+                <th class="text-right">Cobro</th>
+                <th class="text-right">Recibido</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${(statement?.deliveries || []).map(delivery => `
+                <tr>
+                  <td>${format(new Date(delivery.delivery_date), 'dd/MM/yyyy')}</td>
+                  <td>${delivery.recipient_name || '-'}</td>
+                  <td class="text-center">${statusLabels[delivery.status] || delivery.status}</td>
+                  <td class="text-center">${paymentLabels[delivery.payment_method] || delivery.payment_method}</td>
+                  <td class="text-right">${formatCurrency(delivery.service_value)}</td>
+                  <td class="text-right">${formatCurrency(delivery.total_to_collect)}</td>
+                  <td class="text-right">${delivery.received_amount !== null ? formatCurrency(delivery.received_amount) : '-'}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+          
+          <div class="footer">
+            <p><strong>JS Logística</strong> - Sistema de Gestión de Entregas</p>
+            <p>Este documento es un resumen informativo. Para aclaraciones contacte a administración.</p>
+          </div>
         </body>
       </html>
-    `);
+    `;
     
+    printWindow.document.write(htmlContent);
     printWindow.document.close();
-    printWindow.focus();
     
-    setTimeout(() => {
-      printWindow.print();
-      printWindow.close();
-    }, 250);
+    // Wait for content to load then print
+    printWindow.onload = () => {
+      setTimeout(() => {
+        printWindow.print();
+      }, 300);
+    };
   };
 
   return (

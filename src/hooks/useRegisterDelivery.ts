@@ -47,10 +47,11 @@ export function useRegisterDelivery() {
 
       // Determine if this status involves collection/service
       const hasCollection = data.final_status === 'completed' || data.final_status === 'not_delivered_collected';
-      const isValidService = hasCollection; // Both completed and ida perdida count as valid service
 
-      // Calculate difference for automatic advance (only for statuses with collection)
-      const difference = hasCollection ? totalToCollect - data.received_amount : 0;
+      // For IDA PERDIDA: NO advance is created - the CLIENT is charged instead
+      // Only create advance for COMPLETED deliveries where received < total
+      const isCompleted = data.final_status === 'completed';
+      const difference = isCompleted ? totalToCollect - data.received_amount : 0;
 
       // Update the delivery with the final status
       const { data: newDelivery, error: updateError } = await supabase
@@ -72,7 +73,8 @@ export function useRegisterDelivery() {
       // Handle client balance updates based on status and payment method
       let clientDebtAdded = 0;
       
-      // For "not_delivered_collected" (ida perdida), add total_to_collect to client debt
+      // For "not_delivered_collected" (ida perdida): charge the SERVICE VALUE to client
+      // This is what the client owes because the trip was made but delivery failed
       if (data.final_status === 'not_delivered_collected') {
         const { data: currentClient } = await supabase
           .from('clients')
@@ -81,12 +83,13 @@ export function useRegisterDelivery() {
           .single();
         
         if (currentClient) {
-          const newBalance = Number(currentClient.balance || 0) + totalToCollect;
+          // Client owes the SERVICE VALUE (not total_to_collect)
+          const newBalance = Number(currentClient.balance || 0) + serviceValue;
           await supabase
             .from('clients')
             .update({ balance: newBalance })
             .eq('id', oldDelivery.client_id);
-          clientDebtAdded = totalToCollect;
+          clientDebtAdded = serviceValue;
         }
       }
       
@@ -131,8 +134,9 @@ export function useRegisterDelivery() {
         console.error('Error creating audit log:', auditError);
       }
 
-      // If there's a difference and the status involves collection, create automatic salary advance
-      if (hasCollection && difference > 0) {
+      // Only create automatic salary advance for COMPLETED deliveries with shortfall
+      // IDA PERDIDA does NOT create advances - the client is charged instead
+      if (isCompleted && difference > 0) {
         const { weekStart, weekEnd } = getCurrentWeekDates();
         const { error: advanceError } = await supabase
           .from('salary_advances')
