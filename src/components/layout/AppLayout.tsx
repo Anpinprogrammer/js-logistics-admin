@@ -12,7 +12,10 @@ import {
   X,
   LogOut,
   User,
-  Wallet
+  Wallet,
+  Calendar,
+  ClipboardList,
+  TrendingUp
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
@@ -31,7 +34,9 @@ export function AppLayout({ children, currentPage, onNavigate }: AppLayoutProps)
     { id: 'dashboard', label: 'Dashboard', icon: BarChart3 },
     { id: 'new-delivery', label: 'Nuevo Pedido', icon: Package },
     { id: 'deliveries', label: 'Entregas', icon: Package },
+    { id: 'daily-settlements', label: 'Cuadres Diarios', icon: ClipboardList },
     { id: 'cash', label: 'Caja Consolidada', icon: Wallet },
+    { id: 'payroll', label: 'Nómina Semanal', icon: Calendar },
     { id: 'couriers', label: 'Mensajeros', icon: Truck },
     { id: 'clients', label: 'Clientes', icon: Users },
     { id: 'audit', label: 'Auditoría', icon: History },
@@ -39,8 +44,9 @@ export function AppLayout({ children, currentPage, onNavigate }: AppLayoutProps)
   ];
 
   const courierNavItems = [
-    { id: 'new-delivery', label: 'Nueva Entrega', icon: Package },
-    { id: 'deliveries', label: 'Mis Entregas', icon: Package },
+    { id: 'summary', label: 'Mi Resumen', icon: TrendingUp },
+    { id: 'deliveries', label: 'Entregas Pendientes', icon: ClipboardList },
+    { id: 'today', label: 'Entregas del Día', icon: Package },
   ];
 
   const navItems = isAdmin ? adminNavItems : courierNavItems;

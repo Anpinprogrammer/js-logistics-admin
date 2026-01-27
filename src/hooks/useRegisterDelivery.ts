@@ -69,10 +69,11 @@ export function useRegisterDelivery() {
 
       if (updateError) throw updateError;
 
-      // For "not_delivered_collected" (ida perdida), update client balance
-      // The total_to_collect becomes a debt for the client
+      // Handle client balance updates based on status and payment method
+      let clientDebtAdded = 0;
+      
+      // For "not_delivered_collected" (ida perdida), add total_to_collect to client debt
       if (data.final_status === 'not_delivered_collected') {
-        // Get current client balance and increment it
         const { data: currentClient } = await supabase
           .from('clients')
           .select('balance')
@@ -85,6 +86,26 @@ export function useRegisterDelivery() {
             .from('clients')
             .update({ balance: newBalance })
             .eq('id', oldDelivery.client_id);
+          clientDebtAdded = totalToCollect;
+        }
+      }
+      
+      // For "transfer_to_client" payment method, client owes the SERVICE VALUE (not total_to_collect)
+      if (data.payment_method === 'transfer_to_client' && 
+          (data.final_status === 'completed' || data.final_status === 'not_delivered_collected')) {
+        const { data: currentClient } = await supabase
+          .from('clients')
+          .select('balance')
+          .eq('id', oldDelivery.client_id)
+          .single();
+        
+        if (currentClient) {
+          const newBalance = Number(currentClient.balance || 0) + serviceValue;
+          await supabase
+            .from('clients')
+            .update({ balance: newBalance })
+            .eq('id', oldDelivery.client_id);
+          clientDebtAdded += serviceValue;
         }
       }
 
@@ -132,7 +153,7 @@ export function useRegisterDelivery() {
           delivery: newDelivery, 
           advance: difference, 
           status: data.final_status,
-          clientDebtAdded: data.final_status === 'not_delivered_collected' ? totalToCollect : 0,
+          clientDebtAdded,
         };
       }
 
@@ -140,7 +161,7 @@ export function useRegisterDelivery() {
         delivery: newDelivery, 
         advance: 0, 
         status: data.final_status,
-        clientDebtAdded: data.final_status === 'not_delivered_collected' ? totalToCollect : 0,
+        clientDebtAdded,
       };
     },
     onSuccess: (result) => {

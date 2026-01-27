@@ -47,6 +47,87 @@ export type Database = {
         }
         Relationships: []
       }
+      daily_base_money: {
+        Row: {
+          amount: number
+          assigned_by: string
+          courier_id: string
+          created_at: string
+          date: string
+          id: string
+          notes: string | null
+        }
+        Insert: {
+          amount?: number
+          assigned_by: string
+          courier_id: string
+          created_at?: string
+          date?: string
+          id?: string
+          notes?: string | null
+        }
+        Update: {
+          amount?: number
+          assigned_by?: string
+          courier_id?: string
+          created_at?: string
+          date?: string
+          id?: string
+          notes?: string | null
+        }
+        Relationships: []
+      }
+      daily_settlements: {
+        Row: {
+          actual_balance: number | null
+          base_money: number
+          courier_id: string
+          created_at: string
+          date: string
+          difference: number | null
+          expected_balance: number
+          id: string
+          is_settled: boolean
+          notes: string | null
+          partial_deliveries_sum: number
+          settled_at: string | null
+          settled_by: string | null
+          total_collected: number
+        }
+        Insert: {
+          actual_balance?: number | null
+          base_money?: number
+          courier_id: string
+          created_at?: string
+          date?: string
+          difference?: number | null
+          expected_balance?: number
+          id?: string
+          is_settled?: boolean
+          notes?: string | null
+          partial_deliveries_sum?: number
+          settled_at?: string | null
+          settled_by?: string | null
+          total_collected?: number
+        }
+        Update: {
+          actual_balance?: number | null
+          base_money?: number
+          courier_id?: string
+          created_at?: string
+          date?: string
+          difference?: number | null
+          expected_balance?: number
+          id?: string
+          is_settled?: boolean
+          notes?: string | null
+          partial_deliveries_sum?: number
+          settled_at?: string | null
+          settled_by?: string | null
+          total_collected?: number
+        }
+        Relationships: []
+      }
       deliveries: {
         Row: {
           amount: number
@@ -159,6 +240,63 @@ export type Database = {
           },
         ]
       }
+      operational_charges: {
+        Row: {
+          amount: number
+          created_at: string
+          created_by: string
+          date: string
+          description: string
+          id: string
+        }
+        Insert: {
+          amount?: number
+          created_at?: string
+          created_by: string
+          date?: string
+          description: string
+          id?: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          created_by?: string
+          date?: string
+          description?: string
+          id?: string
+        }
+        Relationships: []
+      }
+      partial_deliveries: {
+        Row: {
+          amount: number
+          courier_id: string
+          created_at: string
+          date: string
+          id: string
+          notes: string | null
+          received_by: string
+        }
+        Insert: {
+          amount: number
+          courier_id: string
+          created_at?: string
+          date?: string
+          id?: string
+          notes?: string | null
+          received_by: string
+        }
+        Update: {
+          amount?: number
+          courier_id?: string
+          created_at?: string
+          date?: string
+          id?: string
+          notes?: string | null
+          received_by?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           created_at: string
@@ -216,6 +354,30 @@ export type Database = {
           reason?: string
           week_end?: string
           week_start?: string
+        }
+        Relationships: []
+      }
+      system_settings: {
+        Row: {
+          id: string
+          key: string
+          updated_at: string
+          updated_by: string | null
+          value: Json
+        }
+        Insert: {
+          id?: string
+          key: string
+          updated_at?: string
+          updated_by?: string | null
+          value: Json
+        }
+        Update: {
+          id?: string
+          key?: string
+          updated_at?: string
+          updated_by?: string | null
+          value?: Json
         }
         Relationships: []
       }
