@@ -22,9 +22,9 @@ export function AdminDashboard() {
   
   const { weekStart, weekEnd } = getCurrentWeekDates();
 
-  // Calculate weekly stats
+  // Calculate weekly stats - include both completed and not_delivered_collected (ida perdida)
   const weeklyDeliveries = deliveries?.filter(d => 
-    d.status === 'completed' && 
+    (d.status === 'completed' || d.status === 'not_delivered_collected') && 
     d.week_start === weekStart
   ) || [];
 

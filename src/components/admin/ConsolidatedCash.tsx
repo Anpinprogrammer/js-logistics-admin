@@ -27,9 +27,10 @@ export function ConsolidatedCash() {
   const { data: couriers } = useCouriers();
   const { weekStart, weekEnd } = getCurrentWeekDates();
 
-  // Filter completed deliveries for current week
+  // Filter deliveries for current week - include both 'completed' and 'not_delivered_collected' (ida perdida)
+  // Both count as valid services and affect cash/payments
   const weeklyDeliveries = deliveries?.filter(d => 
-    d.status === 'completed' && 
+    (d.status === 'completed' || d.status === 'not_delivered_collected') && 
     d.week_start === weekStart
   ) || [];
 

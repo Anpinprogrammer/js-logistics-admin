@@ -40,9 +40,10 @@ export function CouriersList() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {couriers?.map((courier) => {
+            // Include both 'completed' and 'not_delivered_collected' as valid services for payment
             const courierDeliveries = deliveries?.filter(
               d => d.courier_id === courier.user_id && 
-                   d.status === 'completed' && 
+                   (d.status === 'completed' || d.status === 'not_delivered_collected') && 
                    d.week_start === weekStart
             ) || [];
 
