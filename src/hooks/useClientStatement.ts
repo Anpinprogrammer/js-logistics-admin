@@ -74,13 +74,12 @@ export function useClientStatement(clientId: string, startDate?: string, endDate
       
       const enrichedDeliveries: ClientDelivery[] = (deliveries || []).map(d => {
         // Only count completed deliveries and lost trips with collection
-      if (d.status === 'completed' || d.status === 'not_delivered_collected') {
-        totalServices += Number(d.service_value) || 0;
-        
-        if (d.status === 'not_delivered_collected') {
-          // Ida perdida cobra el service_value al cliente
-          totalLostTrips += Number(d.service_value) || 0;
-        }
+        if (d.status === 'completed' || d.status === 'not_delivered_collected') {
+          totalServices += Number(d.service_value) || 0;
+          
+          if (d.status === 'not_delivered_collected') {
+            totalLostTrips += Number(d.total_to_collect) || 0;
+          }
           
           // Collected amount (cash or transfer to courier)
           if (d.payment_method === 'cash' || d.payment_method === 'transfer_to_courier') {
@@ -103,19 +102,19 @@ export function useClientStatement(clientId: string, startDate?: string, endDate
       });
       
       // Calculate accounts based on transactions
-      // Net = totalCollected - totalServices (totalLostTrips ya está incluido en totalServices)
+      // Net = totalCollected - totalServices - totalLostTrips
       // If positive: client has credit (saldo a favor / accountsPayable)
       // If negative: client owes us (cuenta por cobrar / accountsReceivable)
-      const netFromDeliveries = totalCollected - totalServices;
+      const netFromDeliveries = totalCollected - totalServices - totalLostTrips;
       
-      // Also consider existing balance from direct transfers (client.balance > 0 means client owes us)
+      // Also consider existing balance from direct transfers
       const clientBalance = Number(client.balance) || 0;
       
-      // Combined balance: net from deliveries minus what client owes from direct transfers
+      // Combined: positive means client has money in their favor
       const combinedBalance = netFromDeliveries - clientBalance;
       
       const accountsPayable = combinedBalance > 0 ? combinedBalance : 0;
-      const accountsReceivable = combinedBalance < 0 ? Math.abs(combinedBalance) : 0;
+      const accountsReceivable = combinedBalance < 0 ? Math.abs(combinedBalance) : clientBalance > 0 ? clientBalance : 0;
       
       const statement: ClientStatement = {
         id: client.id,
