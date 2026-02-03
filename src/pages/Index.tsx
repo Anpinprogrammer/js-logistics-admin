@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { AuthProvider, useAuth } from '@/contexts/AuthContext';
 import { LoginForm } from '@/components/auth/LoginForm';
+import { LoginFormTest } from '@/components/auth/LoginFormTest';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { AdminDashboard } from '@/components/admin/AdminDashboard';
 import { DeliveryList } from '@/components/delivery/DeliveryList';
@@ -29,7 +30,7 @@ function AppContent() {
   }
 
   if (!user) {
-    return <LoginForm />;
+    return <LoginFormTest />;
   }
 
   // Set default page based on role
