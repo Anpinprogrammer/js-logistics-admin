@@ -164,6 +164,96 @@ Agrega en tu `.env` local:
 VITE_API_URL=https://tu-backend.com/api
 ```
 
+## Archivos a Modificar para Backend Propio
+
+Si deseas migrar de Lovable Cloud a tu propio backend, estos son los archivos que debes modificar:
+
+### 1. Crear Servicio API (Nuevo archivo)
+
+```
+src/services/api.ts  ← Crear este archivo con la configuración de Axios
+```
+
+### 2. Contexto de Autenticación
+
+```
+src/contexts/AuthContext.tsx
+```
+**Cambios necesarios:**
+- Reemplazar `supabase.auth.signIn()` por llamadas a tu endpoint `/api/auth/login`
+- Reemplazar `supabase.auth.signUp()` por `/api/auth/register`
+- Guardar el token JWT en localStorage
+- Validar sesión con `/api/auth/me`
+
+### 3. Hooks de Datos (React Query)
+
+| Archivo | Función | Endpoint a conectar |
+|---------|---------|---------------------|
+| `src/hooks/useClients.ts` | CRUD clientes | `/api/clients` |
+| `src/hooks/useCouriers.ts` | Listar mensajeros | `/api/couriers` |
+| `src/hooks/useDeliveries.ts` | CRUD entregas | `/api/deliveries` |
+| `src/hooks/useClientStatement.ts` | Estado de cuenta | `/api/clients/:id/statement` |
+| `src/hooks/useCourierSummary.ts` | Resumen mensajero | `/api/couriers/:id/summary` |
+| `src/hooks/useDailyOperations.ts` | Operaciones diarias | `/api/operations/daily` |
+| `src/hooks/useRegisterDelivery.ts` | Registrar entrega | `/api/deliveries/:id/register` |
+
+### 4. Ejemplo de Migración de Hook
+
+**Antes (Supabase):**
+```typescript
+// src/hooks/useClients.ts
+import { supabase } from '@/integrations/supabase/client';
+
+export function useClients() {
+  return useQuery({
+    queryKey: ['clients'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('clients')
+        .select('*')
+        .order('name');
+      if (error) throw error;
+      return data;
+    },
+  });
+}
+```
+
+**Después (Backend propio):**
+```typescript
+// src/hooks/useClients.ts
+import api from '@/services/api';
+
+export function useClients() {
+  return useQuery({
+    queryKey: ['clients'],
+    queryFn: async () => {
+      const { data } = await api.get('/clients');
+      return data.data; // Ajustar según tu respuesta
+    },
+  });
+}
+```
+
+### 5. Archivos que NO necesitan cambios
+
+```
+src/components/ui/*          # Componentes UI (shadcn)
+src/components/admin/*       # Solo usan los hooks
+src/components/courier/*     # Solo usan los hooks
+src/components/delivery/*    # Solo usan los hooks
+src/pages/*                  # Páginas (usan hooks y componentes)
+```
+
+### 6. Resumen de Pasos
+
+1. ✅ Crear `src/services/api.ts` con Axios configurado
+2. ✅ Agregar `VITE_API_URL` en `.env`
+3. ✅ Modificar `src/contexts/AuthContext.tsx` para tu auth
+4. ✅ Migrar cada hook en `src/hooks/` a usar `api` en lugar de `supabase`
+5. ✅ Ajustar tipos en cada hook según tu respuesta de API
+6. ❌ Eliminar dependencia de `@supabase/supabase-js` (opcional)
+
 ## Project info
 
 **URL**: https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID
