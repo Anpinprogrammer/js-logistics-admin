@@ -1,4 +1,51 @@
-# Welcome to your Lovable project
+# Cargo Guardian - Sistema de Gestión de Entregas
+
+## Arquitectura Frontend-Backend
+
+### Comunicación con el Backend
+
+El frontend se comunica con **Lovable Cloud** (backend integrado) usando el cliente oficial de Supabase JS:
+
+```typescript
+import { supabase } from "@/integrations/supabase/client";
+
+// Ejemplo de consulta
+const { data, error } = await supabase
+  .from('deliveries')
+  .select('*')
+  .eq('status', 'pending');
+```
+
+### ¿Por qué NO usar Axios?
+
+**No se recomienda usar Axios** para consultas al backend de Lovable Cloud porque:
+
+1. **Autenticación automática**: El cliente Supabase maneja tokens JWT automáticamente
+2. **Tipado TypeScript**: Los tipos se generan automáticamente desde el esquema de la base de datos
+3. **Realtime incluido**: Soporte nativo para suscripciones en tiempo real
+4. **RLS (Row Level Security)**: Las políticas de seguridad se aplican automáticamente
+
+**Cuándo SÍ usar Axios:**
+- Para conectar con APIs externas (ej: pasarelas de pago, servicios de terceros)
+- Para webhooks o integraciones con sistemas externos
+
+### Estructura de Comunicación
+
+```
+Frontend (React)
+    │
+    ├── @/integrations/supabase/client.ts  → Cliente Supabase configurado
+    │
+    ├── @/hooks/useDeliveries.ts           → React Query + Supabase
+    ├── @/hooks/useClients.ts              → React Query + Supabase
+    ├── @/hooks/useCouriers.ts             → React Query + Supabase
+    │
+    └── Lovable Cloud (Supabase)
+        ├── Base de datos PostgreSQL
+        ├── Autenticación
+        ├── Row Level Security (RLS)
+        └── Edge Functions (si se necesitan)
+```
 
 ## Project info
 
