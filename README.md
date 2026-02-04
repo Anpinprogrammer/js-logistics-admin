@@ -47,6 +47,123 @@ Frontend (React)
         └── Edge Functions (si se necesitan)
 ```
 
+## Integrar un Backend Externo (API Propia)
+
+Si deseas conectar este proyecto a tu propio backend (Node.js, Python, etc.), aquí está la estructura recomendada:
+
+### Estructura del Backend
+
+```
+mi-backend/
+├── src/
+│   ├── controllers/
+│   │   ├── deliveriesController.js
+│   │   ├── clientsController.js
+│   │   └── couriersController.js
+│   ├── routes/
+│   │   ├── deliveries.js
+│   │   ├── clients.js
+│   │   └── couriers.js
+│   ├── middleware/
+│   │   ├── auth.js          # Validar JWT tokens
+│   │   └── cors.js          # Configuración CORS
+│   ├── services/
+│   │   └── database.js      # Conexión a BD
+│   └── app.js
+├── .env
+└── package.json
+```
+
+### Endpoints Requeridos
+
+Tu API debe exponer estos endpoints para ser compatible:
+
+```
+# Clientes
+GET    /api/clients              # Listar clientes
+POST   /api/clients              # Crear cliente
+PUT    /api/clients/:id          # Actualizar cliente
+DELETE /api/clients/:id          # Eliminar cliente
+
+# Entregas
+GET    /api/deliveries           # Listar entregas (con filtros)
+POST   /api/deliveries           # Crear entrega
+PUT    /api/deliveries/:id       # Actualizar entrega
+PATCH  /api/deliveries/:id/status # Cambiar estado
+
+# Mensajeros
+GET    /api/couriers             # Listar mensajeros
+GET    /api/couriers/:id/stats   # Estadísticas del mensajero
+
+# Autenticación
+POST   /api/auth/login           # Iniciar sesión
+POST   /api/auth/register        # Registrar usuario
+GET    /api/auth/me              # Obtener usuario actual
+```
+
+### Headers CORS Requeridos
+
+```javascript
+// Tu backend debe permitir estos headers
+const corsOptions = {
+  origin: ['https://tu-dominio.lovable.app', 'http://localhost:5173'],
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: true
+};
+```
+
+### Ejemplo de Respuesta
+
+```json
+// GET /api/clients
+{
+  "data": [
+    {
+      "id": "uuid",
+      "name": "Cliente Ejemplo",
+      "phone": "3001234567",
+      "address": "Calle 123",
+      "balance": 0,
+      "created_at": "2024-01-01T00:00:00Z"
+    }
+  ],
+  "error": null
+}
+```
+
+### Conectar desde el Frontend
+
+```typescript
+// src/services/api.ts
+import axios from 'axios';
+
+const api = axios.create({
+  baseURL: import.meta.env.VITE_API_URL, // Tu backend
+  headers: {
+    'Content-Type': 'application/json',
+  },
+});
+
+// Interceptor para agregar token
+api.interceptors.request.use((config) => {
+  const token = localStorage.getItem('auth_token');
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
+
+export default api;
+```
+
+### Variables de Entorno
+
+Agrega en tu `.env` local:
+```
+VITE_API_URL=https://tu-backend.com/api
+```
+
 ## Project info
 
 **URL**: https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID
