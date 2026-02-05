@@ -1,40 +1,11 @@
 import { useState } from 'react';
-import useSWR from 'swr';
-import Modal from 'react-modal';
 import { Search, PlusCircle } from 'lucide-react';
 import ModalDomis from './ModalDomis';
-import { AdminNewDeliveryForm } from '../AdminNewDeliveryForm';
 import DomisTab from './DomisTab';
-//import clienteAxios from '@/config/axios';
-//import { useAdmin } from '@/hooks/useAdmin';
 
 interface DeliveryListProps {
   courierId?: string;
   showCourier?: boolean;
-}
-
-// Estilos del modal
-const customStyles = {
-  overlay: {
-    backgroundColor: 'rgba(0,0,0,0.45)',
-    zIndex: 50,
-  },
-  content: {
-    top: '50%',
-    left: '50%',
-    transform: 'translate(-50%, -50%)',
-    background: '#fff',
-    padding: '0',
-    maxWidth: '90%',
-    maxHeight: '90%',
-    borderRadius: '1rem',
-    overflow: 'auto',
-  },
-};
-
-// Configurar Modal para Next.js
-if (typeof window !== 'undefined') {
-  Modal.setAppElement('body');
 }
 
 const Deliveries = ({ courierId, showCourier }: DeliveryListProps) => {
@@ -42,50 +13,14 @@ const Deliveries = ({ courierId, showCourier }: DeliveryListProps) => {
   const [modalOpen, setModalOpen] = useState(false);
   const [toggleState, setToggleState] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState('')
-  const [data, setData] = useState('')
-
-
-  /**
-   *  const { 
-    modalOpen, 
-    setModalOpen, 
-    setNombreCli, 
-    setEmpresaCli, 
-    setDireccionCli, 
-    setTelefonoCli, 
-    toggleState, 
-    setToggleState 
-  } = useAdmin();
-   */
- 
-
-  // Fetcher para SWR
- 
-  /** 
-  const fetcher = () => 
-    clienteAxios('/domis/listar-domis', { withCredentials: true })
-      .then(res => res.data);
-
-  const { data, error, isLoading } = useSWR(
-    '/domis/listar-domis', 
-    fetcher, 
-    { refreshInterval: 100 }
-  );*/
+  const [error, setError] = useState('');
+  const [data, setData] = useState('');
 
   const toggleTab = (index: number) => setToggleState(index);
 
   const handleCloseModal = () => {
     console.log('Creando nuevo domi...')
     setModalOpen(false)
-    /**
-     * setModalOpen(false);
-    setNombreCli('');
-    setEmpresaCli('');
-    setDireccionCli('');
-    setTelefonoCli('');
-     */
-    
   };
 
   return (
