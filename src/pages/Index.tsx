@@ -5,6 +5,7 @@ import { LoginFormTest } from '@/components/auth/LoginFormTest';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { AdminDashboard } from '@/components/admin/AdminDashboard';
 import { DeliveryList } from '@/components/delivery/DeliveryList';
+import Deliveries from '@/components/admin/deliveries/Deliveries';
 import { AdminNewDeliveryForm } from '@/components/admin/AdminNewDeliveryForm';
 import { CouriersList } from '@/components/admin/CouriersList';
 import { ClientsManager } from '@/components/admin/ClientsManager';
@@ -49,7 +50,7 @@ function AppContent() {
           return (
             <div className="space-y-4 animate-fade-in">
               <h1 className="text-2xl font-bold">Todas las Entregas</h1>
-              <DeliveryList showCourier />
+              <Deliveries showCourier />
             </div>
           );
         case 'daily-settlements':

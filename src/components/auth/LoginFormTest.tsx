@@ -1,6 +1,6 @@
 import { useState, FormEvent } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { Loader2, Eye, EyeOff } from 'lucide-react';
+import { Loader2, Eye, EyeOff, Truck } from 'lucide-react';
 
 export function LoginFormTest() {
   const { signIn } = useAuth();
@@ -49,6 +49,10 @@ export function LoginFormTest() {
       {/* COLUMNA DERECHA */}
       <div className="flex flex-1 justify-center items-center px-6 sm:px-10 bg-white shadow-2xl lg:rounded-l-[4rem]">
         <div className="w-full max-w-md py-10">
+          <div className="mx-auto w-16 h-16 rounded-2xl bg-blue-600 flex items-center justify-center shadow-lg mb-6">
+            <Truck className="w-8 h-8 text-white" />
+          </div>
+          
           <h2 className="text-2xl sm:text-3xl font-semibold text-gray-800 text-center mb-8">
             Iniciar Sesión{' '}
             <span className="text-blue-600">
@@ -65,7 +69,7 @@ export function LoginFormTest() {
                 type="text"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="Tu usuario"
+                placeholder="Tu Correo"
                 className="w-full p-3 rounded-lg border border-gray-300 bg-gray-50 focus:ring-2 focus:ring-blue-400 outline-none"
                 required
               />

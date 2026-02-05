@@ -11,9 +11,10 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Loader2, Package, UserCheck, Users, DollarSign, CreditCard, ArrowLeftRight } from 'lucide-react';
+import { Building2, Package, UserCheck, Users, DollarSign, CreditCard, ArrowLeftRight } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import BusquedaCliente from './BusquedaCliente';
 
 const paymentMethods = [
   { value: 'cash', label: 'Efectivo', icon: DollarSign, color: 'text-cash' },
@@ -21,11 +22,11 @@ const paymentMethods = [
   { value: 'transfer_to_client', label: 'Transferencia Directa', icon: ArrowLeftRight, color: 'text-transfer-client' },
 ] as const;
 
-interface AdminNewDeliveryFormProps {
+interface ClientInfoProps {
   onSuccess?: () => void;
 }
 
-export function AdminNewDeliveryForm({ onSuccess }: AdminNewDeliveryFormProps) {
+export function ClientInfo({ onSuccess }: ClientInfoProps) {
   const { data: clients, isLoading: loadingClients } = useClients();
   const { data: couriers, isLoading: loadingCouriers } = useCouriers();
   const { user } = useAuth();
@@ -108,40 +109,20 @@ export function AdminNewDeliveryForm({ onSuccess }: AdminNewDeliveryFormProps) {
   };
 
   return (
-    <Card className="glass-card animate-slide-up max-w-xl">
+    <Card className="glass-card animate-slide-up max-w-xl h-full">
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
-          <Package className="w-5 h-5 text-primary" />
-          Datos de Entrega
+          <Building2 className="w-5 h-5 text-primary" />
+          Datos del Cliente
         </CardTitle>
         <CardDescription>
-          Asigna un pedido a un mensajero con todos los valores definidos. El mensajero registrará el valor recibido.
+          Asigna el cliente asociado al pedido, aqui podras crear un nuevo cliente si el cliente no ha sido creado antes.
         </CardDescription>
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Courier selection */}
-          <div className="space-y-2">
-            <Label htmlFor="courier" className="flex items-center gap-2">
-              <UserCheck className="w-4 h-4 text-primary" />
-              Mensajero *
-            </Label>
-            <Select
-              value={formData.courier_id}
-              onValueChange={(value) => setFormData({ ...formData, courier_id: value })}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder={loadingCouriers ? "Cargando..." : "Selecciona un mensajero"} />
-              </SelectTrigger>
-              <SelectContent>
-                {couriers?.map((courier) => (
-                  <SelectItem key={courier.user_id} value={courier.user_id}>
-                    {courier.full_name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+          
+          <BusquedaCliente />
 
           {/* Client selection 
           <div className="space-y-2">
@@ -167,9 +148,45 @@ export function AdminNewDeliveryForm({ onSuccess }: AdminNewDeliveryFormProps) {
           </div>
           */}
 
-          {/* Recipient name */}
+          {/* Client name */}
           <div className="space-y-2">
-            <Label htmlFor="recipient_name">Nombre de quien recibe</Label>
+            <Label htmlFor="recipient_name">Nombre *</Label>
+            <Input
+              id="recipient_name"
+              type="text"
+              placeholder="Nombre del destinatario"
+              value={formData.recipient_name}
+              onChange={(e) => setFormData({ ...formData, recipient_name: e.target.value })}
+            />
+          </div>
+
+          {/* Company name */}
+          <div className="space-y-2">
+            <Label htmlFor="recipient_name">Empresa *</Label>
+            <Input
+              id="recipient_name"
+              type="text"
+              placeholder="Nombre del destinatario"
+              value={formData.recipient_name}
+              onChange={(e) => setFormData({ ...formData, recipient_name: e.target.value })}
+            />
+          </div>
+
+          {/* Phone */}
+          <div className="space-y-2">
+            <Label htmlFor="recipient_name">Telefono *</Label>
+            <Input
+              id="recipient_name"
+              type="text"
+              placeholder="Nombre del destinatario"
+              value={formData.recipient_name}
+              onChange={(e) => setFormData({ ...formData, recipient_name: e.target.value })}
+            />
+          </div>
+
+          {/* PickUp Location */}
+          <div className="space-y-2">
+            <Label htmlFor="recipient_name">Direccion de Recogida *</Label>
             <Input
               id="recipient_name"
               type="text"
@@ -202,72 +219,6 @@ export function AdminNewDeliveryForm({ onSuccess }: AdminNewDeliveryFormProps) {
             <p className="text-xs text-muted-foreground">70% mensajero / 30% empresa</p>
           </div>
 
-          {/* Total to Collect */}
-          <div className="space-y-2">
-            <Label htmlFor="total_to_collect">Valor Total a Cobrar *</Label>
-            <div className="relative">
-              <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <Input
-                id="total_to_collect"
-                type="number"
-                step="0.01"
-                min="0"
-                placeholder="0.00"
-                className="pl-9"
-                value={formData.total_to_collect}
-                onChange={(e) => setFormData({ ...formData, total_to_collect: e.target.value })}
-                required
-              />
-            </div>
-          </div>
-
-          {/* Payment method */}
-          <div className="space-y-3">
-            <Label>Forma de Pago *</Label>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              {paymentMethods.map((method) => (
-                <button
-                  key={method.value}
-                  type="button"
-                  onClick={() => setFormData({ ...formData, payment_method: method.value })}
-                  className={cn(
-                    "p-3 rounded-xl border-2 transition-all duration-200 flex flex-col items-center gap-2",
-                    formData.payment_method === method.value
-                      ? "border-primary bg-primary/5"
-                      : "border-border hover:border-primary/50"
-                  )}
-                >
-                  <method.icon className={cn("w-5 h-5", method.color)} />
-                  <span className="text-xs font-medium text-center">{method.label}</span>
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Notes */}
-          <div className="space-y-2">
-            <Label htmlFor="notes">Instrucciones (opcional)</Label>
-            <Textarea
-              id="notes"
-              placeholder="Instrucciones para el mensajero..."
-              value={formData.notes}
-              onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-              rows={3}
-            />
-          </div>
-
-          {/* Submit button 
-          <Button 
-            type="submit" 
-            className="w-full gradient-primary text-primary-foreground"
-            disabled={createDelivery.isPending || !formData.courier_id || !formData.client_id || !formData.payment_method}
-          >
-            {createDelivery.isPending ? (
-              <Loader2 className="w-4 h-4 animate-spin mr-2" />
-            ) : null}
-            Crear Pedido
-          </Button>
-          */}
         </form>
       </CardContent>
     </Card>
