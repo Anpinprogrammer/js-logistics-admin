@@ -18,8 +18,10 @@ export type Database = {
         Row: {
           address: string | null
           balance: number | null
+          company: string | null
           created_at: string
           id: string
+          identification_number: string | null
           name: string
           notes: string | null
           phone: string | null
@@ -28,8 +30,10 @@ export type Database = {
         Insert: {
           address?: string | null
           balance?: number | null
+          company?: string | null
           created_at?: string
           id?: string
+          identification_number?: string | null
           name: string
           notes?: string | null
           phone?: string | null
@@ -38,8 +42,10 @@ export type Database = {
         Update: {
           address?: string | null
           balance?: number | null
+          company?: string | null
           created_at?: string
           id?: string
+          identification_number?: string | null
           name?: string
           notes?: string | null
           phone?: string | null

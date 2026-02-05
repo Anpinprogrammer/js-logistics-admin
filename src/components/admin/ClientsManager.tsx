@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Users, Plus, Phone, MapPin, Loader2, Edit, AlertTriangle, FileText, DollarSign } from 'lucide-react';
+import { Users, Plus, Phone, MapPin, Loader2, Edit, AlertTriangle, FileText, DollarSign, Building2, IdCard } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 
@@ -24,6 +24,8 @@ export function ClientsManager() {
     phone: '',
     address: '',
     notes: '',
+    company: '',
+    identification_number: '',
   });
 
   const formatCurrency = (value: number) => 
@@ -36,7 +38,7 @@ export function ClientsManager() {
 
   const openCreateDialog = () => {
     setEditingClient(null);
-    setFormData({ name: '', phone: '', address: '', notes: '' });
+    setFormData({ name: '', phone: '', address: '', notes: '', company: '', identification_number: '' });
     setDialogOpen(true);
   };
 
@@ -47,6 +49,8 @@ export function ClientsManager() {
       phone: client.phone || '',
       address: client.address || '',
       notes: client.notes || '',
+      company: client.company || '',
+      identification_number: client.identification_number || '',
     });
     setDialogOpen(true);
   };
@@ -62,6 +66,8 @@ export function ClientsManager() {
           phone: formData.phone || null,
           address: formData.address || null,
           notes: formData.notes || null,
+          company: formData.company || null,
+          identification_number: formData.identification_number || null,
         },
       });
     } else {
@@ -70,6 +76,8 @@ export function ClientsManager() {
         phone: formData.phone || null,
         address: formData.address || null,
         notes: formData.notes || null,
+        company: formData.company || null,
+        identification_number: formData.identification_number || null,
       });
     }
     
@@ -126,6 +134,30 @@ export function ClientsManager() {
                     value={formData.name}
                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                     required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="company" className="flex items-center gap-2">
+                    <Building2 className="w-4 h-4 text-muted-foreground" />
+                    Empresa
+                  </Label>
+                  <Input
+                    id="company"
+                    value={formData.company}
+                    onChange={(e) => setFormData({ ...formData, company: e.target.value })}
+                    placeholder="Nombre de la empresa"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="identification_number" className="flex items-center gap-2">
+                    <IdCard className="w-4 h-4 text-muted-foreground" />
+                    Número de Identificación
+                  </Label>
+                  <Input
+                    id="identification_number"
+                    value={formData.identification_number}
+                    onChange={(e) => setFormData({ ...formData, identification_number: e.target.value })}
+                    placeholder="NIT o cédula"
                   />
                 </div>
                 <div className="space-y-2">
@@ -282,6 +314,20 @@ function ClientCard({ client, onEdit, onViewStatement, formatCurrency }: ClientC
                 </Badge>
               )}
             </div>
+            
+            {client.company && (
+              <p className="text-sm text-muted-foreground flex items-center gap-1">
+                <Building2 className="w-3 h-3" />
+                {client.company}
+              </p>
+            )}
+            
+            {client.identification_number && (
+              <p className="text-sm text-muted-foreground flex items-center gap-1">
+                <IdCard className="w-3 h-3" />
+                {client.identification_number}
+              </p>
+            )}
             
             {client.phone && (
               <p className="text-sm text-muted-foreground flex items-center gap-1">
