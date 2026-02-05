@@ -131,14 +131,20 @@ export function DeliveryInfo({ onSuccess }: DeliveryInfoProps) {
               onValueChange={(value) => setFormData({ ...formData, courier_id: value })}
             >
               <SelectTrigger>
-                <SelectValue placeholder={loadingCouriers ? "Cargando..." : "Selecciona un mensajero"} />
+                <SelectValue placeholder={loadingCouriers ? "Cargando..." : (couriers?.length === 0 ? "No hay mensajeros" : "Selecciona un mensajero")} />
               </SelectTrigger>
-              <SelectContent>
-                {couriers?.map((courier) => (
-                  <SelectItem key={courier.user_id} value={courier.user_id}>
-                    {courier.full_name}
-                  </SelectItem>
-                ))}
+              <SelectContent className="z-[200]">
+                {loadingCouriers ? (
+                  <div className="p-2 text-center text-muted-foreground">Cargando...</div>
+                ) : couriers?.length === 0 ? (
+                  <div className="p-2 text-center text-muted-foreground">No hay mensajeros disponibles</div>
+                ) : (
+                  couriers?.map((courier) => (
+                    <SelectItem key={courier.user_id} value={courier.user_id}>
+                      {courier.full_name}
+                    </SelectItem>
+                  ))
+                )}
               </SelectContent>
             </Select>
           </div>
