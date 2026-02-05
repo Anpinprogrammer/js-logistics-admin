@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useQueryClient, useMutation } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { useClients } from '@/hooks/useClients';
+import { useClients, Client } from '@/hooks/useClients';
 import { useCouriers } from '@/hooks/useCouriers';
 import { getCurrentWeekDates } from '@/hooks/useDeliveries';
 import { useAuth } from '@/contexts/AuthContext';
@@ -31,32 +31,43 @@ export function ClientInfo({ onSuccess }: ClientInfoProps) {
   const { data: couriers, isLoading: loadingCouriers } = useCouriers();
   const { user } = useAuth();
   const queryClient = useQueryClient();
+  const [serviceValue, setServiceValue] = useState<number>(0)
+
   
   const [formData, setFormData] = useState({
-    courier_id: '',
     client_id: '',
-    recipient_name: '',
-    service_value: '',
-    total_to_collect: '',
-    payment_method: '' as 'cash' | 'transfer_to_courier' | 'transfer_to_client' | '',
-    notes: '',
+    client_name: '',
+    client_company: '',
+    client_phone: '',
+    client_address: '',
   });
 
+  const handleSelectedClient = (cliente: Client) => {
+    setFormData({
+      ...formData,
+      client_id: cliente.id,
+      client_name: cliente.name,
+      client_address: cliente.address,
+      client_company: cliente.company,
+      client_phone: cliente.phone
+    })
+  }
+
+  /*
   const createDelivery = useMutation({
     mutationFn: async (data: {
-      courier_id: string;
       client_id: string;
-      recipient_name?: string;
-      service_value: number;
-      total_to_collect: number;
-      payment_method: 'cash' | 'transfer_to_courier' | 'transfer_to_client';
-      notes?: string;
+      client_name: string;
+      client_company: string;
+      client_phone: string;
+      client_address: string;
     }) => {
       if (!user) throw new Error('No user logged in');
       
       const { weekStart, weekEnd } = getCurrentWeekDates();
       
       // Create delivery with pending status - courier will complete it
+     
       const { data: delivery, error } = await supabase
         .from('deliveries')
         .insert({
@@ -88,23 +99,31 @@ export function ClientInfo({ onSuccess }: ClientInfoProps) {
       toast.error('Error al crear pedido: ' + error.message);
     },
   });
+  */
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.courier_id || !formData.client_id || !formData.payment_method) return;
+    if (!formData.client_name || !formData.client_id || !formData.client_phone) return;
     
-    await createDelivery.mutateAsync({
-      courier_id: formData.courier_id,
+    /**
+     * await createDelivery.mutateAsync({
       client_id: formData.client_id,
-      recipient_name: formData.recipient_name || undefined,
-      service_value: parseFloat(formData.service_value) || 0,
-      total_to_collect: parseFloat(formData.total_to_collect) || 0,
-      payment_method: formData.payment_method,
-      notes: formData.notes || undefined,
+      client_name: formData.client_name,
+    client_company: '',
+    client_phone: '',
+    client_address: '',
+      
     });
+     */
+    
     
     // Reset form
-    setFormData({ courier_id: '', client_id: '', recipient_name: '', service_value: '', total_to_collect: '', payment_method: '', notes: '' });
+    setFormData({ client_id: '',
+    client_name: '',
+    client_company: '',
+    client_phone: '',
+    client_address: '',
+  });
     onSuccess?.();
   };
 
@@ -122,7 +141,7 @@ export function ClientInfo({ onSuccess }: ClientInfoProps) {
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-6">
           
-          <BusquedaCliente />
+          <BusquedaCliente onClientSelect={handleSelectedClient} />
 
           {/* Client selection 
           <div className="space-y-2">
@@ -155,8 +174,8 @@ export function ClientInfo({ onSuccess }: ClientInfoProps) {
               id="recipient_name"
               type="text"
               placeholder="Nombre del destinatario"
-              value={formData.recipient_name}
-              onChange={(e) => setFormData({ ...formData, recipient_name: e.target.value })}
+              value={formData.client_name}
+              onChange={(e) => setFormData({ ...formData, client_name: e.target.value })}
             />
           </div>
 
@@ -166,9 +185,9 @@ export function ClientInfo({ onSuccess }: ClientInfoProps) {
             <Input
               id="recipient_name"
               type="text"
-              placeholder="Nombre del destinatario"
-              value={formData.recipient_name}
-              onChange={(e) => setFormData({ ...formData, recipient_name: e.target.value })}
+              placeholder="Empresa del cliente"
+              value={formData.client_company}
+              onChange={(e) => setFormData({ ...formData, client_company: e.target.value })}
             />
           </div>
 
@@ -178,9 +197,9 @@ export function ClientInfo({ onSuccess }: ClientInfoProps) {
             <Input
               id="recipient_name"
               type="text"
-              placeholder="Nombre del destinatario"
-              value={formData.recipient_name}
-              onChange={(e) => setFormData({ ...formData, recipient_name: e.target.value })}
+              placeholder="Telefono del cliente"
+              value={formData.client_phone}
+              onChange={(e) => setFormData({ ...formData, client_phone: e.target.value })}
             />
           </div>
 
@@ -190,9 +209,9 @@ export function ClientInfo({ onSuccess }: ClientInfoProps) {
             <Input
               id="recipient_name"
               type="text"
-              placeholder="Nombre del destinatario"
-              value={formData.recipient_name}
-              onChange={(e) => setFormData({ ...formData, recipient_name: e.target.value })}
+              placeholder="Direccion del cliente"
+              value={formData.client_address}
+              onChange={(e) => setFormData({ ...formData, client_address: e.target.value })}
             />
           </div>
 
@@ -211,8 +230,8 @@ export function ClientInfo({ onSuccess }: ClientInfoProps) {
                 min="0"
                 placeholder="0.00"
                 className="pl-9"
-                value={formData.service_value}
-                onChange={(e) => setFormData({ ...formData, service_value: e.target.value })}
+                value={serviceValue}
+                onChange={(e) => setServiceValue(Number(e.target.value))}
                 required
               />
             </div>

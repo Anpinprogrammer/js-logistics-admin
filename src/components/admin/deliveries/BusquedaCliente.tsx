@@ -21,6 +21,7 @@ const BusquedaCliente = ({ onClientSelect }: BusquedaClienteProps) => {
       );
 
   const handleClientSelect = (client: Client) => {
+    console.log(client)
     onClientSelect?.(client);
     setBusqueda(client.company || client.name);
     setShowResults(false);
