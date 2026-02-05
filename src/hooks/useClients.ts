@@ -10,6 +10,8 @@ export interface Client {
   address: string | null;
   notes: string | null;
   balance: number;
+  company: string | null;
+  identification_number: string | null;
   created_at: string;
   updated_at: string;
 }
