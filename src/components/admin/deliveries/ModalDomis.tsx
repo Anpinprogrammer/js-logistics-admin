@@ -1,11 +1,8 @@
 import { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
-import { AdminNewDeliveryForm } from '../AdminNewDeliveryForm';
 import { DeliveryInfo } from './DeliveryInfo';
 import { ClientInfo } from './ClientInfo';
-//import clienteAxios from '@/lib/axios';
-//import BusquedaCliente from './BusquedaCliente';
-//import { useAdmin } from '@/hooks/useAdmin';
 import { nanoid } from 'nanoid';
 import Swal from 'sweetalert2';
 
@@ -215,7 +212,7 @@ const ModalDomis = ({ isOpen, onClose }: ModalDomisProps) => {
 
   if (!isOpen) return null;
 
-  return (
+  const modalContent = (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[100] p-4">
       <div className="bg-background rounded-2xl shadow-xl w-full max-w-6xl p-6 md:p-8 overflow-y-auto max-h-[90vh] border border-border">
         
@@ -406,6 +403,9 @@ const ModalDomis = ({ isOpen, onClose }: ModalDomisProps) => {
       </div>
     </div>
   );
+
+  // Use portal to render modal at document body level
+  return createPortal(modalContent, document.body);
 };
 
 // Subcomponentes reutilizables
