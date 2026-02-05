@@ -394,7 +394,7 @@ const ModalDomis = ({ isOpen, onClose }: ModalDomisProps) => {
           </button>
           <button
             type="button"
-            className="px-6 py-2.5 bg-primary text-primary-foreground rounded-lg transition shadow-md font-medium hover:bg-primary/90 cursor-pointer"
+            className="px-6 py-2.5 bg-primary gradient-primary text-primary-foreground rounded-lg transition shadow-md font-medium hover:bg-primary/90 cursor-pointer"
             onClick={handleSave}
           >
             {editar ? 'Actualizar Pedido' : 'Crear Pedido'}

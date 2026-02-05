@@ -46,6 +46,8 @@ export function ClientsManager() {
     setEditingClient(client);
     setFormData({
       name: client.name,
+      //company: client.company || '',
+      //identification: client.identification || '',
       phone: client.phone || '',
       address: client.address || '',
       notes: client.notes || '',
