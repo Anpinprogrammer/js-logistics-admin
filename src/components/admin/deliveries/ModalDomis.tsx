@@ -216,16 +216,16 @@ const ModalDomis = ({ isOpen, onClose }: ModalDomisProps) => {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl shadow-xl w-auto max-w-6xl p-6 md:p-8 overflow-y-auto max-h-[90vh] border border-gray-100">
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[100] p-4">
+      <div className="bg-background rounded-2xl shadow-xl w-full max-w-6xl p-6 md:p-8 overflow-y-auto max-h-[90vh] border border-border">
         
         {/* Header */}
-        <div className="flex items-center justify-between border-b pb-4 mb-6">
-          <h2 className="text-2xl font-semibold text-gray-800">
+        <div className="flex items-center justify-between border-b border-border pb-4 mb-6">
+          <h2 className="text-2xl font-semibold text-foreground">
             {editar ? 'Editar Domicilio' : 'Crear Nuevo Domicilio'}
           </h2>
           <button
-            className="text-gray-500 hover:text-gray-800 transition p-2 hover:bg-gray-100 rounded-lg"
+            className="text-muted-foreground hover:text-foreground transition p-2 hover:bg-muted rounded-lg"
             onClick={() => { 
               onClose(); 
               resetForm(); 
@@ -378,8 +378,8 @@ const ModalDomis = ({ isOpen, onClose }: ModalDomisProps) => {
 
         {/* Alerta */}
         {alerta && (
-          <div className="mt-5 p-3 bg-red-50 border border-red-200 rounded-lg">
-            <p className="text-center text-red-600 font-medium">{alerta}</p>
+          <div className="mt-5 p-3 bg-destructive/10 border border-destructive/20 rounded-lg">
+            <p className="text-center text-destructive font-medium">{alerta}</p>
           </div>
         )}
 
@@ -387,7 +387,7 @@ const ModalDomis = ({ isOpen, onClose }: ModalDomisProps) => {
         <div className="flex gap-4 mt-8 justify-center">
           <button
             type="button"
-            className="px-6 py-2.5 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition font-medium"
+            className="px-6 py-2.5 bg-muted text-muted-foreground rounded-lg hover:bg-muted/80 transition font-medium"
             onClick={() => { 
               onClose(); 
               resetForm(); 
@@ -397,7 +397,7 @@ const ModalDomis = ({ isOpen, onClose }: ModalDomisProps) => {
           </button>
           <button
             type="button"
-            className="px-6 py-2.5 text-white rounded-lg transition shadow-md font-medium gradient-primary text-primary-foreground cursor-pointer"
+            className="px-6 py-2.5 bg-primary text-primary-foreground rounded-lg transition shadow-md font-medium hover:bg-primary/90 cursor-pointer"
             onClick={handleSave}
           >
             {editar ? 'Actualizar Pedido' : 'Crear Pedido'}
