@@ -43,11 +43,10 @@ export function ClientsManager() {
   };
 
   const openEditDialog = (client: Client) => {
+    console.log(client)
     setEditingClient(client);
     setFormData({
       name: client.name,
-      //company: client.company || '',
-      //identification: client.identification || '',
       phone: client.phone || '',
       address: client.address || '',
       notes: client.notes || '',
@@ -135,6 +134,7 @@ export function ClientsManager() {
                     id="name"
                     value={formData.name}
                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                    placeholder="Nombre del cliente"
                     required
                   />
                 </div>
@@ -168,6 +168,7 @@ export function ClientsManager() {
                     id="phone"
                     value={formData.phone}
                     onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                    placeholder="Telefono del cliente"
                   />
                 </div>
                 <div className="space-y-2">
@@ -176,6 +177,7 @@ export function ClientsManager() {
                     id="address"
                     value={formData.address}
                     onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                    placeholder="Direccion del cliente"
                   />
                 </div>
                 <div className="space-y-2">
