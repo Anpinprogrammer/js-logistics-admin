@@ -3,53 +3,143 @@ const { pool } = require('../config/database');
 // GET /api/deliveries
 const getAll = async (req, res) => {
   try {
-    const { client_id, courier_id, status, date, week_start, week_end } = req.query;
+    const { client_id, courier_id, status, date, week_start, week_end, page = 1, limit = 10, search } = req.query;
 
     let query = `
-      SELECT d.*, c.name as client_name, p.full_name as courier_name
+      SELECT d.*, c.name as client_name, c.phone as client_phone, 
+             c.company as client_company, c.identification_number as client_identification,
+             p.full_name as courier_name
+      FROM deliveries d
+      LEFT JOIN clients c ON d.client_id = c.id
+      LEFT JOIN profiles p ON d.courier_id = p.user_id
+      WHERE 1=1
+    `;
+    let countQuery = `
+      SELECT COUNT(*) as total
       FROM deliveries d
       LEFT JOIN clients c ON d.client_id = c.id
       LEFT JOIN profiles p ON d.courier_id = p.user_id
       WHERE 1=1
     `;
     const params = [];
+    const countParams = [];
     let paramCount = 0;
+
+    // For non-admin couriers, restrict to own deliveries
+    if (req.user.role === 'courier') {
+      paramCount++;
+      const condition = ` AND d.courier_id = $${paramCount}`;
+      query += condition;
+      countQuery += condition;
+      params.push(req.user.id);
+      countParams.push(req.user.id);
+    }
 
     if (client_id) {
       paramCount++;
-      query += ` AND d.client_id = $${paramCount}`;
+      const condition = ` AND d.client_id = $${paramCount}`;
+      query += condition;
+      countQuery += condition;
       params.push(client_id);
+      countParams.push(client_id);
     }
-    if (courier_id) {
+    if (courier_id && req.user.role === 'admin') {
       paramCount++;
-      query += ` AND d.courier_id = $${paramCount}`;
+      const condition = ` AND d.courier_id = $${paramCount}`;
+      query += condition;
+      countQuery += condition;
       params.push(courier_id);
+      countParams.push(courier_id);
     }
     if (status) {
       paramCount++;
-      query += ` AND d.status = $${paramCount}`;
+      const condition = ` AND d.status = $${paramCount}`;
+      query += condition;
+      countQuery += condition;
       params.push(status);
+      countParams.push(status);
     }
     if (date) {
       paramCount++;
-      query += ` AND d.delivery_date = $${paramCount}`;
+      const condition = ` AND d.delivery_date = $${paramCount}`;
+      query += condition;
+      countQuery += condition;
       params.push(date);
+      countParams.push(date);
     }
     if (week_start) {
       paramCount++;
-      query += ` AND d.week_start >= $${paramCount}`;
+      const condition = ` AND d.week_start >= $${paramCount}`;
+      query += condition;
+      countQuery += condition;
       params.push(week_start);
+      countParams.push(week_start);
     }
     if (week_end) {
       paramCount++;
-      query += ` AND d.week_end <= $${paramCount}`;
+      const condition = ` AND d.week_end <= $${paramCount}`;
+      query += condition;
+      countQuery += condition;
       params.push(week_end);
+      countParams.push(week_end);
+    }
+    if (search) {
+      paramCount++;
+      const condition = ` AND (c.name ILIKE $${paramCount} OR p.full_name ILIKE $${paramCount} OR d.id::text ILIKE $${paramCount} OR d.recipient_name ILIKE $${paramCount} OR d.notes ILIKE $${paramCount})`;
+      query += condition;
+      countQuery += condition;
+      const searchParam = `%${search}%`;
+      params.push(searchParam);
+      countParams.push(searchParam);
     }
 
     query += ' ORDER BY d.created_at DESC';
 
-    const result = await pool.query(query, params);
-    res.json({ data: result.rows, error: null });
+    // Pagination
+    const pageNum = Math.max(1, parseInt(page));
+    const limitNum = Math.max(1, Math.min(100, parseInt(limit)));
+    const offset = (pageNum - 1) * limitNum;
+
+    paramCount++;
+    query += ` LIMIT $${paramCount}`;
+    params.push(limitNum);
+    paramCount++;
+    query += ` OFFSET $${paramCount}`;
+    params.push(offset);
+
+    const [result, countResult] = await Promise.all([
+      pool.query(query, params),
+      pool.query(countQuery, countParams),
+    ]);
+
+    const total = parseInt(countResult.rows[0].total);
+    const totalPages = Math.ceil(total / limitNum);
+
+    // Map results to include nested client/courier objects (matching frontend structure)
+    const deliveries = result.rows.map(row => ({
+      ...row,
+      client: {
+        id: row.client_id,
+        name: row.client_name,
+        phone: row.client_phone,
+        company: row.client_company,
+        identification_number: row.client_identification,
+      },
+      courier: {
+        full_name: row.courier_name || 'Sin nombre',
+      },
+    }));
+
+    res.json({
+      data: deliveries,
+      pagination: {
+        page: pageNum,
+        limit: limitNum,
+        total,
+        totalPages,
+      },
+      error: null,
+    });
   } catch (error) {
     console.error('Error obteniendo entregas:', error);
     res.status(500).json({ error: 'Error al obtener entregas' });
@@ -60,7 +150,9 @@ const getAll = async (req, res) => {
 const getById = async (req, res) => {
   try {
     const result = await pool.query(
-      `SELECT d.*, c.name as client_name, p.full_name as courier_name
+      `SELECT d.*, c.name as client_name, c.phone as client_phone,
+              c.company as client_company, c.identification_number as client_identification,
+              p.full_name as courier_name
        FROM deliveries d
        LEFT JOIN clients c ON d.client_id = c.id
        LEFT JOIN profiles p ON d.courier_id = p.user_id
@@ -72,7 +164,22 @@ const getById = async (req, res) => {
       return res.status(404).json({ error: 'Entrega no encontrada' });
     }
 
-    res.json({ data: result.rows[0], error: null });
+    const row = result.rows[0];
+    const delivery = {
+      ...row,
+      client: {
+        id: row.client_id,
+        name: row.client_name,
+        phone: row.client_phone,
+        company: row.client_company,
+        identification_number: row.client_identification,
+      },
+      courier: {
+        full_name: row.courier_name || 'Sin nombre',
+      },
+    };
+
+    res.json({ data: delivery, error: null });
   } catch (error) {
     console.error('Error obteniendo entrega:', error);
     res.status(500).json({ error: 'Error al obtener entrega' });
