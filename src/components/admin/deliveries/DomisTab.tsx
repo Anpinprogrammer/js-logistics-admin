@@ -2,18 +2,17 @@ import { Delivery } from '@/hooks/useDeliveries';
 import { Badge } from '@/components/ui/badge';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
+import { Eye, Pencil, Trash2, RefreshCw } from 'lucide-react';
 
 interface DomisTabProps {
   data: Delivery[];
   toggleState: number;
   busqueda: string;
+  onViewDetail?: (delivery: Delivery) => void;
+  onEdit?: (delivery: Delivery) => void;
+  onDelete?: (delivery: Delivery) => void;
+  onReassign?: (delivery: Delivery) => void;
 }
-
-const statusMap: Record<number, string[]> = {
-  1: ['pending'],
-  2: ['completed'],
-  3: ['cancelled', 'not_delivered_collected', 'not_delivered_no_collection'],
-};
 
 const statusLabels: Record<string, { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline' }> = {
   pending: { label: 'Pendiente', variant: 'secondary' },
@@ -29,27 +28,11 @@ const paymentLabels: Record<string, string> = {
   transfer_to_client: 'Trans. Directa',
 };
 
-const DomisTab = ({ data, toggleState, busqueda }: DomisTabProps) => {
-  const allowedStatuses = statusMap[toggleState] || [];
-
-  const filtered = data.filter((d) => {
-    const matchesStatus = allowedStatuses.includes(d.status);
-    if (!matchesStatus) return false;
-    if (!busqueda) return true;
-    const search = busqueda.toLowerCase();
-    return (
-      d.client?.name?.toLowerCase().includes(search) ||
-      d.courier?.full_name?.toLowerCase().includes(search) ||
-      d.id.toLowerCase().includes(search) ||
-      d.notes?.toLowerCase().includes(search) ||
-      d.recipient_name?.toLowerCase().includes(search)
-    );
-  });
-
-  if (filtered.length === 0) {
+const DomisTab = ({ data, toggleState, busqueda, onViewDetail, onEdit, onDelete, onReassign }: DomisTabProps) => {
+  if (data.length === 0) {
     return (
       <tr>
-        <td colSpan={6} className="text-center text-muted-foreground py-12 text-sm">
+        <td colSpan={7} className="text-center text-muted-foreground py-12 text-sm">
           No hay domicilios en esta categoría.
         </td>
       </tr>
@@ -58,7 +41,7 @@ const DomisTab = ({ data, toggleState, busqueda }: DomisTabProps) => {
 
   return (
     <>
-      {filtered.map((delivery) => {
+      {data.map((delivery) => {
         const statusInfo = statusLabels[delivery.status] || { label: delivery.status, variant: 'outline' as const };
         return (
           <tr key={delivery.id} className="border-b border-border hover:bg-muted/50 transition-colors">
@@ -85,6 +68,77 @@ const DomisTab = ({ data, toggleState, busqueda }: DomisTabProps) => {
             </td>
             <td className="p-4 text-xs text-muted-foreground">
               {format(new Date(delivery.created_at), 'dd MMM yyyy', { locale: es })}
+            </td>
+            <td className="p-4">
+              <div className="flex items-center gap-1">
+                {/* Tab 1: Pending → View, Edit, Delete */}
+                {toggleState === 1 && (
+                  <>
+                    {onViewDetail && (
+                      <button
+                        onClick={() => onViewDetail(delivery)}
+                        className="p-2 rounded-lg hover:bg-muted text-muted-foreground hover:text-primary transition-colors"
+                        title="Ver detalle"
+                      >
+                        <Eye className="w-4 h-4" />
+                      </button>
+                    )}
+                    {onEdit && (
+                      <button
+                        onClick={() => onEdit(delivery)}
+                        className="p-2 rounded-lg hover:bg-muted text-muted-foreground hover:text-primary transition-colors"
+                        title="Editar pedido"
+                      >
+                        <Pencil className="w-4 h-4" />
+                      </button>
+                    )}
+                    {onDelete && (
+                      <button
+                        onClick={() => onDelete(delivery)}
+                        className="p-2 rounded-lg hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"
+                        title="Eliminar pedido"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    )}
+                  </>
+                )}
+
+                {/* Tab 2: Completed → View detail with proof */}
+                {toggleState === 2 && onViewDetail && (
+                  <button
+                    onClick={() => onViewDetail(delivery)}
+                    className="p-2 rounded-lg hover:bg-muted text-muted-foreground hover:text-primary transition-colors"
+                    title="Ver detalle y prueba"
+                  >
+                    <Eye className="w-4 h-4" />
+                  </button>
+                )}
+
+                {/* Tab 3: Rejected → Reassign */}
+                {toggleState === 3 && (
+                  <>
+                    {onViewDetail && (
+                      <button
+                        onClick={() => onViewDetail(delivery)}
+                        className="p-2 rounded-lg hover:bg-muted text-muted-foreground hover:text-primary transition-colors"
+                        title="Ver detalle"
+                      >
+                        <Eye className="w-4 h-4" />
+                      </button>
+                    )}
+                    {onReassign && (
+                      <button
+                        onClick={() => onReassign(delivery)}
+                        className="p-2 rounded-lg hover:bg-muted text-muted-foreground hover:text-primary transition-colors"
+                        title="Reasignar pedido"
+                      >
+                        <RefreshCw className="w-4 h-4" />
+                      </button>
+                    )}
+                  </>
+                )}
+              </div>
             </td>
           </tr>
         );
