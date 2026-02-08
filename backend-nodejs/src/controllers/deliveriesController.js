@@ -362,6 +362,69 @@ const remove = async (req, res) => {
   }
 };
 
+// PATCH /api/deliveries/:id/reassign
+const reassign = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { courier_id, delivery_date, notes } = req.body;
+
+    if (!courier_id) {
+      return res.status(400).json({ error: 'El mensajero es requerido' });
+    }
+    if (!delivery_date) {
+      return res.status(400).json({ error: 'La fecha de entrega es requerida' });
+    }
+
+    const oldResult = await pool.query('SELECT * FROM deliveries WHERE id = $1', [id]);
+    if (oldResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Entrega no encontrada' });
+    }
+    const oldValues = oldResult.rows[0];
+
+    // Calculate new week dates (Saturday to Friday)
+    const date = new Date(delivery_date);
+    const dayOfWeek = date.getDay();
+    const daysToLastSaturday = dayOfWeek === 6 ? 0 : dayOfWeek + 1;
+    const weekStart = new Date(date);
+    weekStart.setDate(date.getDate() - daysToLastSaturday);
+    const weekEnd = new Date(weekStart);
+    weekEnd.setDate(weekStart.getDate() + 6);
+
+    const result = await pool.query(
+      `UPDATE deliveries SET
+        courier_id = $1,
+        delivery_date = $2,
+        status = 'pending',
+        notes = COALESCE($3, notes),
+        week_start = $4,
+        week_end = $5,
+        updated_at = now()
+       WHERE id = $6
+       RETURNING *`,
+      [
+        courier_id,
+        delivery_date,
+        notes || null,
+        weekStart.toISOString().split('T')[0],
+        weekEnd.toISOString().split('T')[0],
+        id
+      ]
+    );
+
+    // Log de auditoría
+    await pool.query(
+      `INSERT INTO delivery_audit_log (delivery_id, action, changed_by, old_values, new_values, reason)
+       VALUES ($1, 'reassigned', $2, $3, $4, $5)`,
+      [id, req.user.id, JSON.stringify(oldValues), JSON.stringify(result.rows[0]), 'Pedido reasignado desde rechazados']
+    );
+
+    res.json({ data: result.rows[0], error: null });
+  } catch (error) {
+    console.error('Error reasignando entrega:', error);
+    res.status(500).json({ error: 'Error al reasignar entrega' });
+  }
+};
+
 // GET /api/deliveries/audit-log
 const getAuditLog = async (req, res) => {
   try {
@@ -390,4 +453,4 @@ const getAuditLog = async (req, res) => {
   }
 };
 
-module.exports = { getAll, getById, create, update, updateStatus, remove, getAuditLog };
+module.exports = { getAll, getById, create, update, updateStatus, remove, reassign, getAuditLog };

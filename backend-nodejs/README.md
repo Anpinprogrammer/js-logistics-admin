@@ -108,6 +108,7 @@ El servidor estará en: `http://localhost:3001`
 | POST | `/api/deliveries` | Crear | ✅ | Todos |
 | PUT | `/api/deliveries/:id` | Actualizar | ✅ | Todos |
 | PATCH | `/api/deliveries/:id/status` | Cambiar estado | ✅ | Todos |
+| PATCH | `/api/deliveries/:id/reassign` | Reasignar pedido | ✅ | Admin |
 | DELETE | `/api/deliveries/:id` | Eliminar | ✅ | Admin |
 
 **Filtros disponibles en GET /api/deliveries:**
@@ -156,6 +157,16 @@ Los objetos de entrega incluyen datos anidados de cliente y mensajero:
   "courier": {
     "full_name": "Juan Pérez"
   }
+}
+```
+
+**Reasignar pedido (PATCH /api/deliveries/:id/reassign):**
+Permite reasignar un pedido rechazado a un nuevo mensajero y fecha, cambiando el estado a `pending`.
+```json
+{
+  "courier_id": "uuid",
+  "delivery_date": "2025-02-10",
+  "notes": "Instrucciones adicionales (opcional)"
 }
 ```
 
