@@ -331,6 +331,117 @@ export function useCancelDelivery() {
   });
 }
 
+export function useDeleteDelivery() {
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
+
+  return useMutation({
+    mutationFn: async ({ id, reason }: { id: string; reason: string }) => {
+      if (!user) throw new Error('No user logged in');
+
+      // Get old values for audit
+      const { data: oldDelivery, error: fetchError } = await supabase
+        .from('deliveries')
+        .select('*')
+        .eq('id', id)
+        .single();
+
+      if (fetchError) throw fetchError;
+
+      // Create audit log before deleting
+      await supabase.from('delivery_audit_log').insert({
+        delivery_id: id,
+        action: 'deleted',
+        changed_by: user.id,
+        old_values: JSON.parse(JSON.stringify(oldDelivery)),
+        reason,
+      });
+
+      // Delete the delivery
+      const { error: deleteError } = await supabase
+        .from('deliveries')
+        .delete()
+        .eq('id', id);
+
+      if (deleteError) throw deleteError;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['deliveries'] });
+      queryClient.invalidateQueries({ queryKey: ['audit-log'] });
+      toast.success('Pedido eliminado exitosamente');
+    },
+    onError: (error) => {
+      toast.error('Error al eliminar: ' + error.message);
+    },
+  });
+}
+
+export function useReassignDelivery() {
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
+
+  return useMutation({
+    mutationFn: async ({
+      id,
+      courierId,
+      deliveryDate,
+      notes,
+    }: {
+      id: string;
+      courierId: string;
+      deliveryDate: string;
+      notes?: string;
+    }) => {
+      if (!user) throw new Error('No user logged in');
+
+      const { data: oldDelivery, error: fetchError } = await supabase
+        .from('deliveries')
+        .select('*')
+        .eq('id', id)
+        .single();
+
+      if (fetchError) throw fetchError;
+
+      const { weekStart, weekEnd } = getCurrentWeekDates();
+
+      const { data: newDelivery, error: updateError } = await supabase
+        .from('deliveries')
+        .update({
+          courier_id: courierId,
+          delivery_date: deliveryDate,
+          status: 'pending' as const,
+          notes: notes || oldDelivery.notes,
+          week_start: weekStart,
+          week_end: weekEnd,
+        })
+        .eq('id', id)
+        .select()
+        .single();
+
+      if (updateError) throw updateError;
+
+      await supabase.from('delivery_audit_log').insert({
+        delivery_id: id,
+        action: 'reassigned',
+        changed_by: user.id,
+        old_values: JSON.parse(JSON.stringify(oldDelivery)),
+        new_values: JSON.parse(JSON.stringify(newDelivery)),
+        reason: 'Pedido reasignado desde rechazados',
+      });
+
+      return newDelivery;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['deliveries'] });
+      queryClient.invalidateQueries({ queryKey: ['audit-log'] });
+      toast.success('Pedido reasignado exitosamente');
+    },
+    onError: (error) => {
+      toast.error('Error al reasignar: ' + error.message);
+    },
+  });
+}
+
 export function useAuditLog(deliveryId?: string) {
   const { isAdmin } = useAuth();
   

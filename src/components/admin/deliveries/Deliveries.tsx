@@ -2,6 +2,10 @@ import { useState, useMemo } from 'react';
 import { Search, PlusCircle, ChevronLeft, ChevronRight } from 'lucide-react';
 import ModalDomis from './ModalDomis';
 import DomisTab from './DomisTab';
+import DeliveryDetailModal from './DeliveryDetailModal';
+import EditDeliveryModal from './EditDeliveryModal';
+import DeleteDeliveryModal from './DeleteDeliveryModal';
+import ReassignDeliveryModal from './ReassignDeliveryModal';
 import { useDeliveries, Delivery } from '@/hooks/useDeliveries';
 
 interface DeliveryListProps {
@@ -22,6 +26,12 @@ const Deliveries = ({ courierId, showCourier }: DeliveryListProps) => {
   const [modalOpen, setModalOpen] = useState(false);
   const [toggleState, setToggleState] = useState(1);
   const [currentPage, setCurrentPage] = useState(1);
+
+  // Action modals
+  const [detailDelivery, setDetailDelivery] = useState<Delivery | null>(null);
+  const [editDelivery, setEditDelivery] = useState<Delivery | null>(null);
+  const [deleteDelivery, setDeleteDelivery] = useState<Delivery | null>(null);
+  const [reassignDelivery, setReassignDelivery] = useState<Delivery | null>(null);
 
   const { data: deliveries, isLoading, error } = useDeliveries(courierId);
 
@@ -63,7 +73,6 @@ const Deliveries = ({ courierId, showCourier }: DeliveryListProps) => {
     currentPage * ITEMS_PER_PAGE
   );
 
-  // Reset page when changing tabs or search
   const toggleTab = (index: number) => {
     setToggleState(index);
     setCurrentPage(1);
@@ -74,18 +83,10 @@ const Deliveries = ({ courierId, showCourier }: DeliveryListProps) => {
     setCurrentPage(1);
   };
 
-  // Fetch deliveries with courier info
-  const deliveriesWithCourier = useMemo(() => {
-    // Data already includes courier via the join in useDeliveries,
-    // but we need to ensure the query fetches courier profile
-    return paginatedData;
-  }, [paginatedData]);
-
   return (
     <div className="p-6 text-foreground">
       {/* Header */}
       <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4">
-        {/* Search */}
         <div className="flex items-center w-full md:w-1/2 bg-background rounded-xl shadow-sm border border-border focus-within:ring-2 focus-within:ring-primary transition-all">
           <Search className="w-6 h-6 ml-4 text-muted-foreground" />
           <input
@@ -96,8 +97,6 @@ const Deliveries = ({ courierId, showCourier }: DeliveryListProps) => {
             value={busqueda}
           />
         </div>
-
-        {/* Create button */}
         <button
           className="flex items-center justify-center gap-2 bg-primary hover:bg-primary/90 text-primary-foreground font-medium rounded-xl px-5 py-3 shadow-sm transition-all cursor-pointer"
           onClick={() => setModalOpen(true)}
@@ -118,9 +117,7 @@ const Deliveries = ({ courierId, showCourier }: DeliveryListProps) => {
           onClick={() => toggleTab(1)}
         >
           Pendientes
-          <span className={`text-xs px-2 py-0.5 rounded-full ${
-            toggleState === 1 ? 'bg-white/20' : 'bg-foreground/10'
-          }`}>
+          <span className={`text-xs px-2 py-0.5 rounded-full ${toggleState === 1 ? 'bg-white/20' : 'bg-foreground/10'}`}>
             {tabCounts[1]}
           </span>
         </button>
@@ -133,9 +130,7 @@ const Deliveries = ({ courierId, showCourier }: DeliveryListProps) => {
           onClick={() => toggleTab(2)}
         >
           Completados
-          <span className={`text-xs px-2 py-0.5 rounded-full ${
-            toggleState === 2 ? 'bg-white/20' : 'bg-foreground/10'
-          }`}>
+          <span className={`text-xs px-2 py-0.5 rounded-full ${toggleState === 2 ? 'bg-white/20' : 'bg-foreground/10'}`}>
             {tabCounts[2]}
           </span>
         </button>
@@ -148,9 +143,7 @@ const Deliveries = ({ courierId, showCourier }: DeliveryListProps) => {
           onClick={() => toggleTab(3)}
         >
           Rechazados
-          <span className={`text-xs px-2 py-0.5 rounded-full ${
-            toggleState === 3 ? 'bg-white/20' : 'bg-foreground/10'
-          }`}>
+          <span className={`text-xs px-2 py-0.5 rounded-full ${toggleState === 3 ? 'bg-white/20' : 'bg-foreground/10'}`}>
             {tabCounts[3]}
           </span>
         </button>
@@ -180,10 +173,19 @@ const Deliveries = ({ courierId, showCourier }: DeliveryListProps) => {
                   <th className="p-4 font-semibold">Valor</th>
                   <th className="p-4 font-semibold">Estado</th>
                   <th className="p-4 font-semibold">Fecha</th>
+                  <th className="p-4 font-semibold">Acciones</th>
                 </tr>
               </thead>
               <tbody>
-                <DomisTab data={deliveriesWithCourier} toggleState={toggleState} busqueda="" />
+                <DomisTab
+                  data={paginatedData}
+                  toggleState={toggleState}
+                  busqueda=""
+                  onViewDetail={setDetailDelivery}
+                  onEdit={toggleState === 1 ? setEditDelivery : undefined}
+                  onDelete={toggleState === 1 ? setDeleteDelivery : undefined}
+                  onReassign={toggleState === 3 ? setReassignDelivery : undefined}
+                />
               </tbody>
             </table>
 
@@ -202,10 +204,7 @@ const Deliveries = ({ courierId, showCourier }: DeliveryListProps) => {
                     <ChevronLeft className="w-4 h-4" />
                   </button>
                   {Array.from({ length: totalPages }, (_, i) => i + 1)
-                    .filter((page) => {
-                      // Show first, last, current, and neighbors
-                      return page === 1 || page === totalPages || Math.abs(page - currentPage) <= 1;
-                    })
+                    .filter((page) => page === 1 || page === totalPages || Math.abs(page - currentPage) <= 1)
                     .map((page, idx, arr) => {
                       const showEllipsis = idx > 0 && page - arr[idx - 1] > 1;
                       return (
@@ -238,10 +237,35 @@ const Deliveries = ({ courierId, showCourier }: DeliveryListProps) => {
         )}
       </div>
 
-      {/* Modal */}
+      {/* Modals */}
       {typeof window !== 'undefined' && (
         <ModalDomis isOpen={modalOpen} onClose={() => setModalOpen(false)} />
       )}
+
+      <DeliveryDetailModal
+        delivery={detailDelivery}
+        isOpen={!!detailDelivery}
+        onClose={() => setDetailDelivery(null)}
+        showProof={toggleState === 2}
+      />
+
+      <EditDeliveryModal
+        delivery={editDelivery}
+        isOpen={!!editDelivery}
+        onClose={() => setEditDelivery(null)}
+      />
+
+      <DeleteDeliveryModal
+        delivery={deleteDelivery}
+        isOpen={!!deleteDelivery}
+        onClose={() => setDeleteDelivery(null)}
+      />
+
+      <ReassignDeliveryModal
+        delivery={reassignDelivery}
+        isOpen={!!reassignDelivery}
+        onClose={() => setReassignDelivery(null)}
+      />
     </div>
   );
 };
