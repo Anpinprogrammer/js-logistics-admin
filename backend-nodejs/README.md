@@ -112,10 +112,54 @@ El servidor estará en: `http://localhost:3001`
 
 **Filtros disponibles en GET /api/deliveries:**
 - `client_id` - Filtrar por cliente
-- `courier_id` - Filtrar por mensajero
-- `status` - Filtrar por estado
-- `date` - Filtrar por fecha
+- `courier_id` - Filtrar por mensajero (solo admin)
+- `status` - Filtrar por estado (`pending`, `completed`, `cancelled`, `not_delivered_collected`, `not_delivered_no_collection`)
+- `date` - Filtrar por fecha de entrega
 - `week_start` / `week_end` - Filtrar por semana
+- `search` - Búsqueda por nombre de cliente, mensajero, código, destinatario o notas
+- `page` - Página actual (default: 1)
+- `limit` - Resultados por página (default: 10, max: 100)
+
+**Respuesta paginada:**
+```json
+{
+  "data": [...],
+  "pagination": {
+    "page": 1,
+    "limit": 10,
+    "total": 45,
+    "totalPages": 5
+  },
+  "error": null
+}
+```
+
+**Estructura de cada entrega:**
+Los objetos de entrega incluyen datos anidados de cliente y mensajero:
+```json
+{
+  "id": "uuid",
+  "client_id": "uuid",
+  "courier_id": "uuid",
+  "amount": 50000,
+  "total_to_collect": 50000,
+  "service_value": 35000,
+  "status": "pending",
+  "payment_method": "cash",
+  "client": {
+    "id": "uuid",
+    "name": "Cliente Ejemplo",
+    "phone": "3001234567",
+    "company": "Empresa S.A.",
+    "identification_number": "900123456"
+  },
+  "courier": {
+    "full_name": "Juan Pérez"
+  }
+}
+```
+
+> **Nota:** Los mensajeros (role: courier) solo pueden ver sus propias entregas.
 
 ### Mensajeros
 
