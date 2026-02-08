@@ -99,7 +99,22 @@ export function useDeliveries(courierId?: string) {
       const { data, error } = await query;
       
       if (error) throw error;
-      return data as Delivery[];
+
+      // Fetch courier names separately
+      const courierIds = [...new Set((data || []).map(d => d.courier_id))];
+      let courierMap = new Map<string, string>();
+      if (courierIds.length > 0) {
+        const { data: profiles } = await supabase
+          .from('profiles')
+          .select('user_id, full_name')
+          .in('user_id', courierIds);
+        courierMap = new Map(profiles?.map(p => [p.user_id, p.full_name]) || []);
+      }
+
+      return (data || []).map(d => ({
+        ...d,
+        courier: { full_name: courierMap.get(d.courier_id) || 'Sin nombre' },
+      })) as Delivery[];
     },
     enabled: !!user,
   });

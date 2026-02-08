@@ -1,15 +1,27 @@
 import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { X } from 'lucide-react';
-import { DeliveryInfo } from './DeliveryInfo';
-import { ClientInfo } from './ClientInfo';
-import { nanoid } from 'nanoid';
+import { X, Package, Building2, UserCheck, DollarSign, CreditCard, ArrowLeftRight } from 'lucide-react';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
+import { useCouriers } from '@/hooks/useCouriers';
+import { getCurrentWeekDates } from '@/hooks/useDeliveries';
+import { Client } from '@/hooks/useClients';
+import BusquedaCliente from './BusquedaCliente';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Button } from '@/components/ui/button';
+import { toast } from 'sonner';
+import { cn } from '@/lib/utils';
 import Swal from 'sweetalert2';
 
-interface Mensajero {
-  _id: string;
-  nombres: string;
-}
+const paymentMethods = [
+  { value: 'cash', label: 'Efectivo', icon: DollarSign },
+  { value: 'transfer_to_courier', label: 'Transferencia a JS', icon: CreditCard },
+  { value: 'transfer_to_client', label: 'Transferencia Directa', icon: ArrowLeftRight },
+] as const;
 
 interface ModalDomisProps {
   isOpen: boolean;
@@ -17,465 +29,324 @@ interface ModalDomisProps {
 }
 
 const ModalDomis = ({ isOpen, onClose }: ModalDomisProps) => {
+  const { user } = useAuth();
+  const { data: couriers, isLoading: loadingCouriers } = useCouriers();
+  const queryClient = useQueryClient();
 
-    const [clienteId, setClienteId] = useState<string>('')
-    const [nombreCli, setNombreCli] = useState<string>('')
-    const [empresaCli, setEmpresaCli] = useState<string>('')
-    const [direccionCli, setDireccionCli] = useState<string>('')
-    const [telefonoCli, setTelefonoCli] = useState<string>('')
-    const [editar, setEditar] = useState<boolean>(false)
-    const [valorDomi, setValorDomi] = useState<number>(0)
-    const [pagoMen, setPagoMen] = useState<number>(0)
-    const [mensajeroSeleccionado, setMensajeroSeleccionado] = useState<string>('')
-    const [fecha, setFecha] = useState<Date>(new Date())
-    const [nombreEntrega, setNombreEntrega] = useState<string>('')
-    const [direccion, setDireccion] = useState<string>('')
-    const [telefono, setTelefono] = useState<string>('')
-    const [notas, setNotas] = useState<string>('')
-    const [ruta, setRuta] = useState<string>('')
-    const [idDomi, setIdDomi] = useState<string>('')
+  // Client fields
+  const [clientId, setClientId] = useState('');
+  const [clientName, setClientName] = useState('');
+  const [clientCompany, setClientCompany] = useState('');
+  const [clientPhone, setClientPhone] = useState('');
+  const [clientAddress, setClientAddress] = useState('');
 
-    /**
-     * 
-     
-  const {
-    clienteId, setClienteId,
-    nombreCli, setNombreCli,
-    empresaCli, setEmpresaCli,
-    direccionCli, setDireccionCli,
-    telefonoCli, setTelefonoCli,
-    editar, setEditar,
-    valorDomi, setValorDomi,
-    pagoMen, setPagoMen,
-    mensajeroSeleccionado, setMensajeroSeleccionado,
-    fecha, setFecha,
-    nombreEntrega, setNombreEntrega,
-    direccion, setDireccion,
-    telefono, setTelefono,
-    notas, setNotas,
-    ruta, setRuta,
-    idDomi
-  } = useAdmin();
-
-  */
-
-  const [mensajeros, setMensajeros] = useState<Mensajero[]>([]);
+  // Delivery fields
+  const [courierId, setCourierId] = useState('');
+  const [recipientName, setRecipientName] = useState('');
+  const [totalToCollect, setTotalToCollect] = useState('');
+  const [serviceValue, setServiceValue] = useState('');
+  const [paymentMethod, setPaymentMethod] = useState<'cash' | 'transfer_to_courier' | 'transfer_to_client' | ''>('');
+  const [notes, setNotes] = useState('');
   const [alerta, setAlerta] = useState('');
 
-  /**
-   * useEffect(() => {
-    const cargarMensajeros = async () => {
-      if (isOpen) {
-        try {
-          const { data } = await clienteAxios.get('/mensajeros/listar-mensajeros', { 
-            withCredentials: true 
-          });
-          setMensajeros(data);
-        } catch (error) {
-          console.error('Error cargando mensajeros:', error);
-        }
-      }
-    };
-    cargarMensajeros();
-  }, [isOpen]);
-   */
-  
-
+  // Auto-calculate service value (70% of total)
   useEffect(() => {
-    setPagoMen(Number(valorDomi) * 0.7);
-  }, [valorDomi, setPagoMen]);
+    const total = parseFloat(totalToCollect);
+    if (!isNaN(total) && total > 0) {
+      setServiceValue((total * 0.7).toFixed(0));
+    }
+  }, [totalToCollect]);
 
   const resetForm = () => {
-    setClienteId('');
-    setMensajeroSeleccionado('');
-    setValorDomi(0);
-    setPagoMen(0);
-    setRuta('');
-    setFecha(new Date());
-    setNombreEntrega('');
-    setDireccion('');
-    setTelefono('');
-    setNotas('');
+    setClientId('');
+    setClientName('');
+    setClientCompany('');
+    setClientPhone('');
+    setClientAddress('');
+    setCourierId('');
+    setRecipientName('');
+    setTotalToCollect('');
+    setServiceValue('');
+    setPaymentMethod('');
+    setNotes('');
     setAlerta('');
-    setEditar(false);
   };
 
-  const handleSave = async () => {
-    // Validaciones
-    if ([nombreCli, empresaCli, direccionCli, telefonoCli, mensajeroSeleccionado, ruta, fecha, direccion].includes('')) {
-      setAlerta('Por favor, completa todos los campos obligatorios.');
-      return;
-    }
+  const handleClientSelect = (client: Client) => {
+    setClientId(client.id);
+    setClientName(client.name);
+    setClientCompany(client.company || '');
+    setClientPhone(client.phone || '');
+    setClientAddress(client.address || '');
+  };
 
-    if (valorDomi <= 0 || pagoMen <= 0) {
-      setAlerta('Verifica los valores ingresados.');
-      return;
-    }
+  const createDelivery = useMutation({
+    mutationFn: async () => {
+      if (!user) throw new Error('No user logged in');
+      const { weekStart, weekEnd } = getCurrentWeekDates();
 
-    if (Number(pagoMen) > Number(valorDomi)) {
-      setAlerta('El pago al mensajero no puede ser mayor al valor del domicilio.');
-      return;
-    }
+      const totalNum = parseFloat(totalToCollect) || 0;
+      const serviceNum = parseFloat(serviceValue) || 0;
 
-    setAlerta('');
+      const { data: delivery, error } = await supabase
+        .from('deliveries')
+        .insert({
+          client_id: clientId,
+          courier_id: courierId,
+          created_by: user.id,
+          recipient_name: recipientName || null,
+          notes: notes || null,
+          week_start: weekStart,
+          week_end: weekEnd,
+          delivery_date: new Date().toISOString().split('T')[0],
+          status: 'pending' as const,
+          service_value: serviceNum,
+          total_to_collect: totalNum,
+          amount: totalNum,
+          payment_method: paymentMethod as 'cash' | 'transfer_to_courier' | 'transfer_to_client',
+        })
+        .select()
+        .single();
 
-    /**
-     * 
-    
+      if (error) throw error;
 
-    try {
-      if (editar) {
-        // Actualizar domicilio existente
-        const { data } = await clienteAxios.put(`/domis/actualizar-domi/${idDomi}`, {
-          cliente: clienteId, 
-          mensajero: mensajeroSeleccionado, 
-          valorDomi,
-          pagoMensajero: pagoMen, 
-          ruta, 
-          fecha, 
-          nombreEntrega, 
-          direccion, 
-          telefono, 
-          notas
-        }, { withCredentials: true });
-        
-        await Swal.fire({
-          title: 'Éxito',
-          text: data.msg,
-          icon: 'success',
-          confirmButtonColor: '#f97316'
-        });
-      } else {
-        // Crear nuevo domicilio
-        if (clienteId) {
-          // Con cliente existente
-          const { data } = await clienteAxios.post('/domis/ingresar-domi', {
-            noDomi: nanoid(10),
-            cliente: clienteId,
-            mensajero: mensajeroSeleccionado,
-            valorDomi,
-            pagoMensajero: pagoMen,
-            ruta, 
-            fecha, 
-            nombreEntrega, 
-            direccion, 
-            telefono, 
-            notas
-          }, { withCredentials: true });
-          
-          await Swal.fire({
-            title: 'Éxito',
-            text: data.msg,
-            icon: 'success',
-            confirmButtonColor: '#f97316'
-          });
-        } else {
-          // Con cliente nuevo
-          const { data } = await clienteAxios.post('/domis/ingresar-domi', {
-            noDomi: nanoid(10),
-            nombres: nombreCli,
-            empresa: empresaCli,
-            direccionCli,
-            telefonoCli,
-            mensajero: mensajeroSeleccionado,
-            valorDomi,
-            pagoMensajero: pagoMen,
-            ruta, 
-            fecha, 
-            nombreEntrega, 
-            direccion, 
-            telefono, 
-            notas
-          }, { withCredentials: true });
-          
-          await Swal.fire({
-            title: 'Éxito',
-            text: data.msg,
-            icon: 'success',
-            confirmButtonColor: '#f97316'
-          });
-        }
-      } 
-
-      onClose();
-      resetForm();
-    } catch (error: any) {
-      console.error('Error guardando domicilio:', error);
-      await Swal.fire({
-        title: 'Error',
-        text: error.response?.data?.msg || 'Ocurrió un error al guardar el domicilio',
-        icon: 'error',
-        confirmButtonColor: '#f97316'
+      // Audit log
+      await supabase.from('delivery_audit_log').insert({
+        delivery_id: delivery.id,
+        action: 'created',
+        changed_by: user.id,
+        new_values: delivery as any,
       });
-    } */
-  }; 
+
+      return delivery;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['deliveries'] });
+      Swal.fire({
+        title: 'Éxito',
+        text: 'Pedido creado exitosamente',
+        icon: 'success',
+        confirmButtonColor: 'hsl(var(--primary))',
+      });
+      resetForm();
+      onClose();
+    },
+    onError: (error) => {
+      Swal.fire({
+        title: 'Error',
+        text: 'Error al crear pedido: ' + error.message,
+        icon: 'error',
+        confirmButtonColor: 'hsl(var(--primary))',
+      });
+    },
+  });
+
+  const handleSave = () => {
+    if (!clientId) {
+      setAlerta('Selecciona un cliente.');
+      return;
+    }
+    if (!courierId) {
+      setAlerta('Selecciona un mensajero.');
+      return;
+    }
+    if (!totalToCollect || parseFloat(totalToCollect) <= 0) {
+      setAlerta('Ingresa el valor total a cobrar.');
+      return;
+    }
+    if (!paymentMethod) {
+      setAlerta('Selecciona una forma de pago.');
+      return;
+    }
+    setAlerta('');
+    createDelivery.mutate();
+  };
 
   if (!isOpen) return null;
 
   const modalContent = (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[100] p-4">
-      <div className="bg-background rounded-2xl shadow-xl w-full max-w-6xl p-6 md:p-8 overflow-y-auto max-h-[90vh] border border-border">
-        
+      <div className="bg-background rounded-2xl shadow-xl w-full max-w-4xl p-6 md:p-8 overflow-y-auto max-h-[90vh] border border-border">
         {/* Header */}
         <div className="flex items-center justify-between border-b border-border pb-4 mb-6">
-          <h2 className="text-2xl font-semibold text-foreground">
-            {editar ? 'Editar Domicilio' : 'Crear Nuevo Domicilio'}
-          </h2>
+          <h2 className="text-2xl font-semibold text-foreground">Crear Nuevo Pedido</h2>
           <button
             className="text-muted-foreground hover:text-foreground transition p-2 hover:bg-muted rounded-lg"
-            onClick={() => { 
-              onClose(); 
-              resetForm(); 
-            }}
+            onClick={() => { onClose(); resetForm(); }}
             type="button"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
-        {/* Contenido */}
-
-        
-         
-
-       <div className="grid md:grid-cols-2 gap-4 items-stretch">
-        {/* Columna Cliente */}
-        <div className="h-full">
-            <ClientInfo />
-        </div>
-
-        {/* Columna Entrega */}
-        <div className="h-full">
-            <DeliveryInfo />
-        </div>
-        </div>
-
-          
-          
-          {/**
-           * <div className="bg-gray-50 rounded-xl p-5 border border-gray-100">
-            <h3 className="text-lg font-semibold text-gray-700 mb-3 flex items-center gap-2">
-              🧍 Datos del Cliente
+        <div className="grid md:grid-cols-2 gap-6">
+          {/* Client Column */}
+          <div className="space-y-4">
+            <h3 className="text-lg font-semibold flex items-center gap-2 text-foreground">
+              <Building2 className="w-5 h-5 text-primary" />
+              Datos del Cliente
             </h3>
-           */}
-          
-            {/** <BusquedaCliente />*/}
-            
-            {/** 
-            <div className="space-y-3 mt-4">
-              <Input 
-                label="Nombre *" 
-                value={nombreCli} 
-                setValue={setNombreCli} 
-                placeholder="Nombre del cliente" 
-              />
-              <Input 
-                label="Empresa *" 
-                value={empresaCli} 
-                setValue={setEmpresaCli} 
-                placeholder="Empresa del cliente" 
-              />
-              <Input 
-                label="Teléfono *" 
-                value={telefonoCli} 
-                setValue={setTelefonoCli} 
-                placeholder="Teléfono del cliente" 
-              />
-              <Input 
-                label="Dirección de Recogida *" 
-                value={direccionCli} 
-                setValue={setDireccionCli} 
-                placeholder="Dirección completa" 
-              />
-              <div className="grid grid-cols-2 gap-4">
-                <Input 
-                  label="Valor Domi *" 
-                  value={valorDomi} 
-                  setValue={setValorDomi} 
-                  type="number" 
-                  placeholder="0"
-                />
-                <div className='flex flex-col'>
-                  <label className='block text-sm font-medium text-gray-700 mb-1'>
-                    Pago Mensajero
-                  </label>
-                  <div className="w-full border border-gray-300 rounded-lg p-2 bg-gray-100 text-gray-700 font-medium">
-                    ${pagoMen.toLocaleString('es-CO')}
-                  </div>
-                </div>
+
+            <BusquedaCliente onClientSelect={handleClientSelect} />
+
+            <div className="space-y-3">
+              <div>
+                <Label>Nombre</Label>
+                <Input value={clientName} onChange={(e) => setClientName(e.target.value)} placeholder="Nombre del cliente" readOnly className="bg-muted/50" />
+              </div>
+              <div>
+                <Label>Empresa</Label>
+                <Input value={clientCompany} onChange={(e) => setClientCompany(e.target.value)} placeholder="Empresa" readOnly className="bg-muted/50" />
+              </div>
+              <div>
+                <Label>Teléfono</Label>
+                <Input value={clientPhone} onChange={(e) => setClientPhone(e.target.value)} placeholder="Teléfono" readOnly className="bg-muted/50" />
+              </div>
+              <div>
+                <Label>Dirección de Recogida</Label>
+                <Input value={clientAddress} onChange={(e) => setClientAddress(e.target.value)} placeholder="Dirección" readOnly className="bg-muted/50" />
               </div>
             </div>
           </div>
-          */}
 
-          {/* Columna Entrega */}
-          {/** 
-          <div className="bg-gray-50 rounded-xl p-5 border border-gray-100">
-            <h3 className="text-lg font-semibold text-gray-700 mb-3 flex items-center gap-2">
-              📦 Datos de Entrega
+          {/* Delivery Column */}
+          <div className="space-y-4">
+            <h3 className="text-lg font-semibold flex items-center gap-2 text-foreground">
+              <Package className="w-5 h-5 text-primary" />
+              Datos de Entrega
             </h3>
 
-            <div className="space-y-3">
-              <Select
-                label="Mensajero *"
-                value={mensajeroSeleccionado}
-                onChange={setMensajeroSeleccionado}
-                options={mensajeros.map(m => ({ value: m._id, label: m.nombres }))}
-                placeholder="Seleccione un mensajero"
-              />
+            {/* Courier */}
+            <div className="space-y-2">
+              <Label className="flex items-center gap-2">
+                <UserCheck className="w-4 h-4 text-primary" />
+                Mensajero *
+              </Label>
+              <Select value={courierId} onValueChange={setCourierId}>
+                <SelectTrigger>
+                  <SelectValue placeholder={loadingCouriers ? "Cargando..." : "Selecciona un mensajero"} />
+                </SelectTrigger>
+                <SelectContent className="z-[200]">
+                  {loadingCouriers ? (
+                    <div className="p-2 text-center text-muted-foreground">Cargando...</div>
+                  ) : couriers?.length === 0 ? (
+                    <div className="p-2 text-center text-muted-foreground">No hay mensajeros</div>
+                  ) : (
+                    couriers?.map((c) => (
+                      <SelectItem key={c.user_id} value={c.user_id}>{c.full_name}</SelectItem>
+                    ))
+                  )}
+                </SelectContent>
+              </Select>
+            </div>
 
-              <Select
-                label="Ruta *"
-                value={ruta}
-                onChange={setRuta}
-                options={[
-                  { value: '1', label: 'Mañana' },
-                  { value: '2', label: 'Tarde' },
-                  { value: '3', label: 'Noche' },
-                ]}
-                placeholder="Seleccione una ruta"
+            {/* Recipient */}
+            <div className="space-y-2">
+              <Label>Nombre de quien recibe</Label>
+              <Input
+                value={recipientName}
+                onChange={(e) => setRecipientName(e.target.value)}
+                placeholder="Nombre del destinatario"
               />
+            </div>
 
-              <Input 
-                label="Fecha de entrega *" 
-                value={fecha.toISOString()} 
-                setValue={setFecha} 
-                type="date" 
-              />
-              <Input 
-                label="Quién recibe" 
-                value={nombreEntrega} 
-                setValue={setNombreEntrega} 
-                placeholder="Nombre del receptor" 
-              />
-              <Input 
-                label="Dirección de entrega *" 
-                value={direccion} 
-                setValue={setDireccion} 
-                placeholder="Dirección completa" 
-              />
-              <Input 
-                label="Teléfono" 
-                value={telefono} 
-                setValue={setTelefono} 
-                placeholder="Teléfono del receptor" 
-              /> 
-              
-              <TextArea 
-                label="Anotaciones" 
-                value={notas} 
-                setValue={setNotas} 
-                placeholder="Notas especiales o comentarios" 
+            {/* Total to collect */}
+            <div className="space-y-2">
+              <Label>Valor Total a Cobrar *</Label>
+              <div className="relative">
+                <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Input
+                  type="number"
+                  min="0"
+                  placeholder="0"
+                  className="pl-9"
+                  value={totalToCollect}
+                  onChange={(e) => setTotalToCollect(e.target.value)}
+                />
+              </div>
+            </div>
+
+            {/* Service Value (auto-calculated) */}
+            <div className="space-y-2">
+              <Label>Valor del Servicio (70%)</Label>
+              <div className="relative">
+                <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Input
+                  type="number"
+                  min="0"
+                  placeholder="0"
+                  className="pl-9 bg-muted/50"
+                  value={serviceValue}
+                  onChange={(e) => setServiceValue(e.target.value)}
+                />
+              </div>
+              <p className="text-xs text-muted-foreground">70% mensajero / 30% empresa</p>
+            </div>
+
+            {/* Payment method */}
+            <div className="space-y-2">
+              <Label>Forma de Pago *</Label>
+              <div className="grid grid-cols-3 gap-2">
+                {paymentMethods.map((m) => (
+                  <button
+                    key={m.value}
+                    type="button"
+                    onClick={() => setPaymentMethod(m.value)}
+                    className={cn(
+                      "p-2 rounded-xl border-2 transition-all flex flex-col items-center gap-1",
+                      paymentMethod === m.value
+                        ? "border-primary bg-primary/5"
+                        : "border-border hover:border-primary/50"
+                    )}
+                  >
+                    <m.icon className="w-4 h-4 text-primary" />
+                    <span className="text-[10px] font-medium text-center leading-tight">{m.label}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Notes */}
+            <div className="space-y-2">
+              <Label>Instrucciones (opcional)</Label>
+              <Textarea
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                placeholder="Instrucciones para el mensajero..."
+                rows={2}
               />
             </div>
           </div>
         </div>
-        */}
-        
 
-        {/* Alerta */}
+        {/* Alert */}
         {alerta && (
-          <div className="mt-5 p-3 bg-destructive/10 border border-destructive/20 rounded-lg">
-            <p className="text-center text-destructive font-medium">{alerta}</p>
+          <div className="mt-4 p-3 bg-destructive/10 border border-destructive/20 rounded-lg">
+            <p className="text-center text-destructive font-medium text-sm">{alerta}</p>
           </div>
         )}
 
         {/* Footer */}
-        <div className="flex gap-4 mt-8 justify-center">
-          <button
-            type="button"
-            className="px-6 py-2.5 bg-muted text-muted-foreground rounded-lg hover:bg-muted/80 transition font-medium"
-            onClick={() => { 
-              onClose(); 
-              resetForm(); 
-            }}
+        <div className="flex gap-4 mt-6 justify-end">
+          <Button
+            variant="outline"
+            onClick={() => { onClose(); resetForm(); }}
+            disabled={createDelivery.isPending}
           >
             Cancelar
-          </button>
-          <button
-            type="button"
-            className="px-6 py-2.5 bg-primary gradient-primary text-primary-foreground rounded-lg transition shadow-md font-medium hover:bg-primary/90 cursor-pointer"
+          </Button>
+          <Button
             onClick={handleSave}
+            disabled={createDelivery.isPending}
           >
-            {editar ? 'Actualizar Pedido' : 'Crear Pedido'}
-          </button>
+            {createDelivery.isPending ? 'Creando...' : 'Crear Pedido'}
+          </Button>
         </div>
       </div>
     </div>
   );
 
-  // Use portal to render modal at document body level
   return createPortal(modalContent, document.body);
 };
-
-// Subcomponentes reutilizables
-interface InputProps {
-  label: string;
-  value: string | number;
-  setValue: (value: any) => void;
-  placeholder?: string;
-  type?: string;
-}
-
-const Input = ({ label, value, setValue, placeholder, type = 'text' }: InputProps) => (
-  <div>
-    <label className="block text-sm font-medium text-gray-700 mb-1">{label}</label>
-    <input
-      type={type}
-      value={value}
-      onChange={(e) => setValue(type === 'number' ? Number(e.target.value) : e.target.value)}
-      placeholder={placeholder}
-      className="w-full border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-orange-400 outline-none"
-    />
-  </div>
-);
-
-interface SelectOption {
-  value: string;
-  label: string;
-}
-
-interface SelectProps {
-  label: string;
-  value: string;
-  onChange: (value: string) => void;
-  options: SelectOption[];
-  placeholder: string;
-}
-
-const Select = ({ label, value, onChange, options, placeholder }: SelectProps) => (
-  <div>
-    <label className="block text-sm font-medium text-gray-700 mb-1">{label}</label>
-    <select
-      value={value}
-      onChange={(e) => onChange(e.target.value)}
-      className="w-full border border-gray-300 rounded-lg p-2 bg-white focus:ring-2 focus:ring-orange-400 outline-none cursor-pointer"
-    >
-      <option value="">{placeholder}</option>
-      {options.map((opt) => (
-        <option key={opt.value} value={opt.value}>{opt.label}</option>
-      ))}
-    </select>
-  </div>
-);
-
-interface TextAreaProps {
-  label: string;
-  value: string;
-  setValue: (value: string) => void;
-  placeholder?: string;
-}
-
-const TextArea = ({ label, value, setValue, placeholder }: TextAreaProps) => (
-  <div>
-    <label className="block text-sm font-medium text-gray-700 mb-1">{label}</label>
-    <textarea
-      value={value}
-      onChange={(e) => setValue(e.target.value)}
-      placeholder={placeholder}
-      className="w-full border border-gray-300 rounded-lg p-2 h-20 resize-none focus:ring-2 focus:ring-orange-400 outline-none"
-    />
-  </div>
-);
 
 export default ModalDomis;
