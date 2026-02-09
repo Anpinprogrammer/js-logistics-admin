@@ -1,327 +1,369 @@
-# Cargo Guardian - Sistema de Gestión de Entregas
+# JS Logistics - Sistema de Gestión de Entregas y Mensajería
 
-## Arquitectura Frontend-Backend
+Sistema completo de logística para administrar entregas, mensajeros, clientes, cuadres diarios y nómina semanal. Incluye panel de administrador y vista de mensajero.
 
-### Comunicación con el Backend
+---
 
-El frontend se comunica con **Lovable Cloud** (backend integrado) usando el cliente oficial de Supabase JS:
+## 📋 Tabla de Contenidos
 
-```typescript
-import { supabase } from "@/integrations/supabase/client";
+- [Tecnologías](#-tecnologías)
+- [Estructura del Proyecto](#-estructura-del-proyecto)
+- [Frontend (React)](#-frontend-react)
+  - [Páginas](#páginas)
+  - [Contextos](#contextos)
+  - [Hooks](#hooks)
+  - [Componentes de Administrador](#componentes-de-administrador)
+  - [Componentes de Mensajero](#componentes-de-mensajero)
+  - [Componentes de Entregas](#componentes-de-entregas)
+  - [Componentes de Autenticación](#componentes-de-autenticación)
+  - [Layout](#layout)
+  - [Componentes UI](#componentes-ui)
+- [Backend Node.js (Réplica)](#-backend-nodejs-réplica)
+- [Base de Datos](#-base-de-datos)
+- [Roles y Permisos](#-roles-y-permisos)
+- [Flujos Principales](#-flujos-principales)
+- [Instalación](#-instalación)
 
-// Ejemplo de consulta
-const { data, error } = await supabase
-  .from('deliveries')
-  .select('*')
-  .eq('status', 'pending');
-```
+---
 
-### ¿Por qué NO usar Axios?
+## 🛠 Tecnologías
 
-**No se recomienda usar Axios** para consultas al backend de Lovable Cloud porque:
+| Tecnología | Uso |
+|---|---|
+| **React 18** | Framework de UI |
+| **TypeScript** | Tipado estático |
+| **Vite** | Bundler y dev server |
+| **Tailwind CSS** | Estilos utilitarios |
+| **shadcn/ui** | Librería de componentes UI (Radix + Tailwind) |
+| **TanStack React Query** | Manejo de estado del servidor, caché y refetch |
+| **Supabase (Lovable Cloud)** | Base de datos PostgreSQL, autenticación JWT, RLS y storage |
+| **React Router DOM** | Navegación SPA con persistencia de pestaña vía query params |
+| **Recharts** | Gráficos y visualización de datos |
+| **date-fns** | Formateo y manejo de fechas |
+| **Sonner** | Notificaciones toast |
+| **Lucide React** | Iconografía |
+| **SweetAlert2** | Diálogos de confirmación |
 
-1. **Autenticación automática**: El cliente Supabase maneja tokens JWT automáticamente
-2. **Tipado TypeScript**: Los tipos se generan automáticamente desde el esquema de la base de datos
-3. **Realtime incluido**: Soporte nativo para suscripciones en tiempo real
-4. **RLS (Row Level Security)**: Las políticas de seguridad se aplican automáticamente
+---
 
-**Cuándo SÍ usar Axios:**
-- Para conectar con APIs externas (ej: pasarelas de pago, servicios de terceros)
-- Para webhooks o integraciones con sistemas externos
-
-### Estructura de Comunicación
-
-```
-Frontend (React)
-    │
-    ├── @/integrations/supabase/client.ts  → Cliente Supabase configurado
-    │
-    ├── @/hooks/useDeliveries.ts           → React Query + Supabase
-    ├── @/hooks/useClients.ts              → React Query + Supabase
-    ├── @/hooks/useCouriers.ts             → React Query + Supabase
-    │
-    └── Lovable Cloud (Supabase)
-        ├── Base de datos PostgreSQL
-        ├── Autenticación
-        ├── Row Level Security (RLS)
-        └── Edge Functions (si se necesitan)
-```
-
-## Integrar un Backend Externo (API Propia)
-
-Si deseas conectar este proyecto a tu propio backend (Node.js, Python, etc.), aquí está la estructura recomendada:
-
-### Estructura del Backend
+## 📁 Estructura del Proyecto
 
 ```
-mi-backend/
 ├── src/
-│   ├── controllers/
-│   │   ├── deliveriesController.js
-│   │   ├── clientsController.js
-│   │   └── couriersController.js
-│   ├── routes/
-│   │   ├── deliveries.js
-│   │   ├── clients.js
-│   │   └── couriers.js
-│   ├── middleware/
-│   │   ├── auth.js          # Validar JWT tokens
-│   │   └── cors.js          # Configuración CORS
-│   ├── services/
-│   │   └── database.js      # Conexión a BD
-│   └── app.js
-├── .env
-└── package.json
+│   ├── components/
+│   │   ├── admin/              # Componentes del panel de administrador
+│   │   │   └── deliveries/     # Sub-módulo de gestión de entregas
+│   │   ├── auth/               # Formularios de login
+│   │   ├── courier/            # Vista del mensajero
+│   │   ├── delivery/           # Componentes compartidos de entregas
+│   │   ├── layout/             # Layout principal (sidebar + contenido)
+│   │   └── ui/                 # Componentes base de shadcn/ui
+│   ├── contexts/               # Contextos de React (autenticación)
+│   ├── hooks/                  # Custom hooks (lógica de negocio + datos)
+│   ├── integrations/supabase/  # Cliente y tipos auto-generados de Supabase
+│   ├── pages/                  # Páginas de la aplicación
+│   ├── lib/                    # Utilidades generales
+│   └── main.tsx                # Punto de entrada
+├── backend-nodejs/             # Réplica del backend en Node.js/Express
+│   └── src/
+│       ├── controllers/        # Lógica de cada módulo
+│       ├── routes/             # Definición de endpoints REST
+│       ├── middleware/         # Auth JWT y CORS
+│       ├── config/             # Conexión a base de datos
+│       └── db/                 # Esquema SQL e inicialización
+├── supabase/                   # Configuración y migraciones de Supabase
+└── public/                     # Archivos estáticos
 ```
 
-### Endpoints Requeridos
+---
 
-Tu API debe exponer estos endpoints para ser compatible:
+## 🖥 Frontend (React)
 
-```
-# Clientes
-GET    /api/clients              # Listar clientes
-POST   /api/clients              # Crear cliente
-PUT    /api/clients/:id          # Actualizar cliente
-DELETE /api/clients/:id          # Eliminar cliente
+### Páginas
 
-# Entregas
-GET    /api/deliveries           # Listar entregas (con filtros)
-POST   /api/deliveries           # Crear entrega
-PUT    /api/deliveries/:id       # Actualizar entrega
-PATCH  /api/deliveries/:id/status # Cambiar estado
+| Archivo | Descripción |
+|---|---|
+| `src/pages/Index.tsx` | Página principal. Gestiona la autenticación, detecta el rol del usuario (admin/mensajero) y renderiza la vista correspondiente. Persiste la pestaña activa en la URL (`?page=`) para sobrevivir al refresh. |
+| `src/pages/NotFound.tsx` | Página 404 para rutas no encontradas. |
 
-# Mensajeros
-GET    /api/couriers             # Listar mensajeros
-GET    /api/couriers/:id/stats   # Estadísticas del mensajero
+### Contextos
 
-# Autenticación
-POST   /api/auth/login           # Iniciar sesión
-POST   /api/auth/register        # Registrar usuario
-GET    /api/auth/me              # Obtener usuario actual
-```
+| Archivo | Descripción |
+|---|---|
+| `src/contexts/AuthContext.tsx` | Proveedor de autenticación. Gestiona el estado del usuario, login/logout con Supabase Auth, y expone los flags `isAdmin` e `isCourier` consultando la tabla `user_roles`. |
 
-### Headers CORS Requeridos
+### Hooks
 
-```javascript
-// Tu backend debe permitir estos headers
-const corsOptions = {
-  origin: ['https://tu-dominio.lovable.app', 'http://localhost:5173'],
-  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
-  credentials: true
-};
-```
+Todos los hooks usan **React Query** para caché, refetch automático e invalidación.
 
-### Ejemplo de Respuesta
+| Archivo | Descripción |
+|---|---|
+| `useDeliveries.ts` | CRUD completo de entregas. Incluye filtros por semana, creación con reapertura automática de cuadres cerrados, actualización de estado, eliminación y reasignación de mensajero. Exporta `getCurrentWeekDates()` para calcular la semana actual (lunes a domingo). |
+| `useClients.ts` | CRUD de clientes. Crear, editar, eliminar y listar clientes con búsqueda. |
+| `useCouriers.ts` | Obtiene la lista de mensajeros con sus perfiles desde `profiles` + `user_roles`. |
+| `useClientStatement.ts` | Genera el estado de cuenta de un cliente: entregas filtradas por rango de fechas con totales por método de pago. |
+| `useCourierSummary.ts` | Resumen financiero del mensajero logueado: entregas completadas, efectivo recaudado, transferencias. |
+| `useDailyOperations.ts` | Lógica de cuadres diarios: base de caja, entregas parciales, cálculo de balance esperado, liquidación y reapertura automática de cuadres. También gestiona cobros operacionales. |
+| `useRegisterDelivery.ts` | Registra la finalización de una entrega por parte del mensajero: cambia estado, guarda monto recibido, nombre del receptor y foto del comprobante. |
+| `useAdminCompleteDelivery.ts` | Permite al admin completar entregas directamente sin foto de comprobante. |
+| `use-mobile.tsx` | Detecta si el viewport es móvil (< 768px). |
+| `use-toast.ts` | Hook para el sistema de notificaciones toast. |
 
-```json
-// GET /api/clients
-{
-  "data": [
-    {
-      "id": "uuid",
-      "name": "Cliente Ejemplo",
-      "phone": "3001234567",
-      "address": "Calle 123",
-      "balance": 0,
-      "created_at": "2024-01-01T00:00:00Z"
-    }
-  ],
-  "error": null
-}
-```
+### Componentes de Administrador
 
-### Conectar desde el Frontend
+| Archivo | Descripción |
+|---|---|
+| `AdminDashboard.tsx` | Dashboard principal con métricas: total de entregas, efectivo pendiente, entregas por estado, gráficos con Recharts. |
+| `AdminNewDeliveryForm.tsx` | Formulario para crear nuevas entregas desde el panel admin (versión standalone). |
+| `CouriersList.tsx` | Lista de mensajeros con estadísticas semanales (entregas, efectivo, transferencias). Incluye diálogo para **agregar nuevos mensajeros** (crea usuario + perfil). |
+| `ClientsManager.tsx` | Gestión completa de clientes: lista, búsqueda, crear, editar, eliminar. Incluye acceso al estado de cuenta por cliente. |
+| `ClientStatementView.tsx` | Vista detallada del estado de cuenta de un cliente con filtro por fechas y desglose por método de pago. |
+| `ClientReportPDF.tsx` | Generación de reporte PDF del estado de cuenta de un cliente. |
+| `DailySettlements.tsx` | Cuadres diarios por mensajero. Muestra base de caja, cobrado, entregas parciales, balance esperado vs real. **Responsivo**: tabla en escritorio, tarjetas en móvil. |
+| `WeeklyPayroll.tsx` | Nómina semanal: resumen por mensajero con entregas, efectivo, transferencias, anticipos descontados y balance final. **Responsivo**: tabla en escritorio, tarjetas en móvil. |
+| `ConsolidatedCash.tsx` | Caja consolidada: visión global del efectivo y transferencias de todos los mensajeros. |
+| `AuditLog.tsx` | Registro de auditoría: historial de cambios en entregas (creación, edición, eliminación, reasignación) con detalle de valores anteriores y nuevos. |
+| `SettingsPage.tsx` | Configuración del sistema: valor del servicio por defecto y otros ajustes. |
 
-```typescript
-// src/services/api.ts
-import axios from 'axios';
+#### Sub-módulo de Entregas (`admin/deliveries/`)
 
-const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL, // Tu backend
-  headers: {
-    'Content-Type': 'application/json',
-  },
-});
+| Archivo | Descripción |
+|---|---|
+| `Deliveries.tsx` | Componente principal de la pestaña "Entregas". Integra pestañas, filtros, búsqueda y la tabla/lista de entregas. |
+| `DomisTab.tsx` | Pestaña individual que muestra las entregas filtradas por estado con acciones contextuales. |
+| `ModalDomis.tsx` | Modal para crear nuevas entregas: selección de cliente, mensajero, monto, método de pago. Al crear, reabre automáticamente el cuadre diario si ya estaba cerrado. |
+| `ModalDomisEjemplo.tsx` | Versión de ejemplo/referencia del modal de entregas. |
+| `BusquedaCliente.tsx` | Componente de búsqueda y selección de cliente dentro del modal de creación. |
+| `ClientInfo.tsx` | Muestra información resumida del cliente seleccionado en el formulario de entrega. |
+| `DeliveryInfo.tsx` | Campos del formulario de entrega: monto, método de pago, notas. |
+| `DeliveryDetailModal.tsx` | Modal de detalle completo de una entrega: datos del cliente, mensajero, montos, estado, foto del comprobante. |
+| `EditDeliveryModal.tsx` | Modal para editar una entrega existente: modificar monto, método de pago, cliente o notas. |
+| `DeleteDeliveryModal.tsx` | Diálogo de confirmación para eliminar una entrega con registro en auditoría. |
+| `ReassignDeliveryModal.tsx` | Modal para reasignar una entrega a otro mensajero. |
 
-// Interceptor para agregar token
-api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('auth_token');
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
-  }
-  return config;
-});
+### Componentes de Mensajero
 
-export default api;
-```
+| Archivo | Descripción |
+|---|---|
+| `CourierSummary.tsx` | Resumen del día para el mensajero: entregas realizadas, efectivo recaudado, balance. |
+| `CourierTodayDeliveries.tsx` | Lista de entregas asignadas al mensajero para el día actual con acciones (completar, reportar no entrega). |
+| `NewDeliveryForm.tsx` | Formulario para que el mensajero registre una nueva entrega desde su vista. |
+| `RegisterDeliveryDialog.tsx` | Diálogo para que el mensajero registre la finalización de una entrega: monto recibido, nombre del receptor y foto del comprobante. |
 
-### Variables de Entorno
+### Componentes de Entregas (compartidos)
 
-Agrega en tu `.env` local:
-```
-VITE_API_URL=https://tu-backend.com/api
-```
+| Archivo | Descripción |
+|---|---|
+| `DeliveryList.tsx` | Lista de entregas pendientes para el mensajero con tarjetas interactivas. |
+| `DeliveryCard.tsx` | Tarjeta individual de entrega: muestra cliente, monto, método de pago, estado y acciones disponibles según el rol. |
+| `EditDeliveryDialog.tsx` | Diálogo de edición de entrega (usado por mensajeros). |
+| `CancelDeliveryDialog.tsx` | Diálogo para cancelar/reportar no-entrega con selección de motivo. |
 
-## Archivos a Modificar para Backend Propio
+### Componentes de Autenticación
 
-Si deseas migrar de Lovable Cloud a tu propio backend, estos son los archivos que debes modificar:
+| Archivo | Descripción |
+|---|---|
+| `LoginForm.tsx` | Formulario de login base. |
+| `LoginFormTest.tsx` | Formulario de login activo con validación y manejo de errores. |
 
-### 1. Crear Servicio API (Nuevo archivo)
+### Layout
 
-```
-src/services/api.ts  ← Crear este archivo con la configuración de Axios
-```
+| Archivo | Descripción |
+|---|---|
+| `AppLayout.tsx` | Layout principal de la aplicación. Incluye **sidebar** con navegación contextual según el rol (admin vs mensajero), sección de usuario, botón de logout. Responsivo: sidebar colapsable en móvil con overlay. |
 
-### 2. Contexto de Autenticación
+### Componentes UI
 
-```
-src/contexts/AuthContext.tsx
-```
-**Cambios necesarios:**
-- Reemplazar `supabase.auth.signIn()` por llamadas a tu endpoint `/api/auth/login`
-- Reemplazar `supabase.auth.signUp()` por `/api/auth/register`
-- Guardar el token JWT en localStorage
-- Validar sesión con `/api/auth/me`
+La carpeta `src/components/ui/` contiene **componentes base de shadcn/ui** (Button, Card, Dialog, Input, Select, Table, Tabs, Badge, etc.). No contienen lógica de negocio, solo presentación y estilos.
 
-### 3. Hooks de Datos (React Query)
+---
 
-| Archivo | Función | Endpoint a conectar |
-|---------|---------|---------------------|
-| `src/hooks/useClients.ts` | CRUD clientes | `/api/clients` |
-| `src/hooks/useCouriers.ts` | Listar mensajeros | `/api/couriers` |
-| `src/hooks/useDeliveries.ts` | CRUD entregas | `/api/deliveries` |
-| `src/hooks/useClientStatement.ts` | Estado de cuenta | `/api/clients/:id/statement` |
-| `src/hooks/useCourierSummary.ts` | Resumen mensajero | `/api/couriers/:id/summary` |
-| `src/hooks/useDailyOperations.ts` | Operaciones diarias | `/api/operations/daily` |
-| `src/hooks/useRegisterDelivery.ts` | Registrar entrega | `/api/deliveries/:id/register` |
+## 🔧 Backend Node.js (Réplica)
 
-### 4. Ejemplo de Migración de Hook
-
-**Antes (Supabase):**
-```typescript
-// src/hooks/useClients.ts
-import { supabase } from '@/integrations/supabase/client';
-
-export function useClients() {
-  return useQuery({
-    queryKey: ['clients'],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('clients')
-        .select('*')
-        .order('name');
-      if (error) throw error;
-      return data;
-    },
-  });
-}
-```
-
-**Después (Backend propio):**
-```typescript
-// src/hooks/useClients.ts
-import api from '@/services/api';
-
-export function useClients() {
-  return useQuery({
-    queryKey: ['clients'],
-    queryFn: async () => {
-      const { data } = await api.get('/clients');
-      return data.data; // Ajustar según tu respuesta
-    },
-  });
-}
-```
-
-### 5. Archivos que NO necesitan cambios
+Réplica completa del backend en **Node.js/Express** con PostgreSQL, sincronizada con la lógica del frontend.
 
 ```
-src/components/ui/*          # Componentes UI (shadcn)
-src/components/admin/*       # Solo usan los hooks
-src/components/courier/*     # Solo usan los hooks
-src/components/delivery/*    # Solo usan los hooks
-src/pages/*                  # Páginas (usan hooks y componentes)
+backend-nodejs/src/
+├── app.js                          # Servidor Express, registro de rutas
+├── config/
+│   └── database.js                 # Pool de conexión PostgreSQL
+├── middleware/
+│   ├── auth.js                     # Validación de JWT y extracción de usuario
+│   └── cors.js                     # Configuración CORS
+├── db/
+│   ├── schema.sql                  # Esquema completo de la base de datos
+│   └── init.js                     # Script de inicialización de tablas
+├── controllers/
+│   ├── authController.js           # Login, registro, perfil del usuario
+│   ├── clientsController.js        # CRUD de clientes
+│   ├── couriersController.js       # Listado y creación de mensajeros
+│   ├── deliveriesController.js     # CRUD de entregas + reasignación + reapertura de cuadres
+│   ├── dailySettlementsController.js  # Cuadres diarios: cálculo, liquidación y reapertura
+│   ├── weeklySettlementsController.js # Nómina semanal: cálculo y liquidación
+│   ├── salaryAdvancesController.js    # Anticipos de salario
+│   └── operationalChargesController.js # Cobros operacionales
+└── routes/
+    ├── auth.js                     # POST /login, /register, GET /me
+    ├── clients.js                  # GET, POST, PUT, DELETE /api/clients
+    ├── couriers.js                 # GET, POST /api/couriers
+    ├── deliveries.js               # GET, POST, PUT, PATCH, DELETE /api/deliveries
+    ├── dailySettlements.js         # GET, POST, PATCH /api/daily-settlements
+    ├── weeklySettlements.js        # GET, POST /api/weekly-settlements
+    ├── salaryAdvances.js           # GET, POST /api/salary-advances
+    └── operationalCharges.js       # GET, POST /api/operational-charges
 ```
 
-### 6. Resumen de Pasos
+### Endpoints principales
 
-1. ✅ Crear `src/services/api.ts` con Axios configurado
-2. ✅ Agregar `VITE_API_URL` en `.env`
-3. ✅ Modificar `src/contexts/AuthContext.tsx` para tu auth
-4. ✅ Migrar cada hook en `src/hooks/` a usar `api` en lugar de `supabase`
-5. ✅ Ajustar tipos en cada hook según tu respuesta de API
-6. ❌ Eliminar dependencia de `@supabase/supabase-js` (opcional)
+```
+POST   /api/auth/login              # Iniciar sesión
+POST   /api/auth/register           # Registrar usuario
+GET    /api/auth/me                 # Obtener usuario autenticado
 
-## Project info
+GET    /api/clients                 # Listar clientes
+POST   /api/clients                 # Crear cliente
+PUT    /api/clients/:id             # Actualizar cliente
+DELETE /api/clients/:id             # Eliminar cliente
 
-**URL**: https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID
+GET    /api/deliveries              # Listar entregas (filtros por semana, estado, mensajero)
+POST   /api/deliveries              # Crear entrega (+ reapertura de cuadre si aplica)
+PUT    /api/deliveries/:id          # Editar entrega
+PATCH  /api/deliveries/:id/status   # Cambiar estado de entrega
+DELETE /api/deliveries/:id          # Eliminar entrega
+PATCH  /api/deliveries/:id/reassign # Reasignar a otro mensajero
 
-## How can I edit this code?
+GET    /api/couriers                # Listar mensajeros
+POST   /api/couriers                # Crear mensajero (usuario + perfil + rol)
 
-There are several ways of editing your application.
+GET    /api/daily-settlements       # Obtener cuadres del día
+POST   /api/daily-settlements/settle # Liquidar cuadre
+PATCH  /api/daily-settlements/reopen # Reabrir cuadre cerrado
 
-**Use Lovable**
+GET    /api/weekly-settlements      # Obtener nómina semanal
+POST   /api/weekly-settlements/settle # Liquidar nómina
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and start prompting.
+GET    /api/salary-advances         # Listar anticipos
+POST   /api/salary-advances         # Crear anticipo
 
-Changes made via Lovable will be committed automatically to this repo.
+GET    /api/operational-charges     # Listar cobros operacionales
+POST   /api/operational-charges     # Crear cobro operacional
+```
 
-**Use your preferred IDE**
+---
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+## 🗄 Base de Datos
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+### Tablas principales
 
-Follow these steps:
+| Tabla | Descripción |
+|---|---|
+| `profiles` | Perfil de usuario: nombre completo, teléfono. Vinculado a `auth.users` por `user_id`. |
+| `user_roles` | Rol del usuario: `admin` o `courier`. |
+| `clients` | Clientes: nombre, teléfono, dirección, empresa, cédula/NIT, balance, notas. |
+| `deliveries` | Entregas: cliente, mensajero, monto, valor del servicio, total a cobrar, método de pago, estado, semana, foto de comprobante, nombre del receptor. |
+| `daily_base_money` | Base de caja asignada al mensajero por día. |
+| `daily_settlements` | Cuadre diario: base, cobrado, entregas parciales, balance esperado, balance real, diferencia, estado de liquidación. |
+| `partial_deliveries` | Entregas parciales de efectivo durante el día. |
+| `weekly_settlements` | Nómina semanal: totales por mensajero, anticipos, balance final. |
+| `salary_advances` | Anticipos de salario por mensajero por semana. |
+| `operational_charges` | Gastos operacionales diarios. |
+| `delivery_audit_log` | Log de auditoría: cada cambio en entregas con valores anteriores y nuevos. |
+| `system_settings` | Configuración del sistema (ej: valor del servicio por defecto). |
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+### Enums
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+| Enum | Valores |
+|---|---|
+| `app_role` | `admin`, `courier` |
+| `delivery_status` | `pending`, `completed`, `cancelled`, `not_delivered_collected`, `not_delivered_no_collection` |
+| `payment_method` | `cash`, `transfer_to_courier`, `transfer_to_client` |
 
-# Step 3: Install the necessary dependencies.
-npm i
+---
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
+## 👥 Roles y Permisos
+
+### Administrador (`admin`)
+- Ver dashboard con métricas globales
+- Crear, editar, eliminar y reasignar entregas
+- Gestionar clientes (CRUD completo)
+- Crear mensajeros
+- Liquidar cuadres diarios y nómina semanal
+- Ver caja consolidada
+- Ver auditoría completa
+- Configurar ajustes del sistema
+
+### Mensajero (`courier`)
+- Ver resumen personal del día
+- Ver entregas asignadas
+- Registrar finalización de entregas (con foto de comprobante)
+- Reportar no-entregas
+- Crear entregas desde su vista
+
+---
+
+## 🔄 Flujos Principales
+
+### Flujo de una entrega
+1. Admin o mensajero crea la entrega asignándola a un cliente y mensajero
+2. Si el cuadre del mensajero para ese día ya estaba cerrado, se reabre automáticamente
+3. El mensajero ve la entrega en su lista de pendientes
+4. El mensajero la completa: ingresa monto recibido, nombre del receptor y sube foto del comprobante
+5. La entrega cambia a estado `completed` y se refleja en el cuadre diario
+
+### Flujo de cuadre diario
+1. Admin asigna base de caja al mensajero
+2. Durante el día se registran entregas y entregas parciales de efectivo
+3. Al final del día, el admin liquida el cuadre comparando balance esperado vs real
+4. Si hay diferencia negativa, se registra automáticamente como anticipo de salario
+
+### Flujo de nómina semanal
+1. Se calculan automáticamente los totales por mensajero (entregas, efectivo, transferencias)
+2. Se descuentan los anticipos de la semana
+3. El admin liquida la nómina semanal
+
+---
+
+## 🚀 Instalación
+
+### Frontend
+
+```bash
+# Clonar el repositorio
+git clone <URL_DEL_REPO>
+cd <NOMBRE_DEL_PROYECTO>
+
+# Instalar dependencias
+npm install
+
+# Iniciar servidor de desarrollo
 npm run dev
 ```
 
-**Edit a file directly in GitHub**
+### Backend Node.js (opcional)
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+```bash
+cd backend-nodejs
 
-**Use GitHub Codespaces**
+# Instalar dependencias
+npm install
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+# Configurar variables de entorno
+cp .env.example .env
+# Editar .env con tus credenciales de PostgreSQL y JWT_SECRET
 
-## What technologies are used for this project?
+# Iniciar servidor
+npm start
+```
 
-This project is built with:
+### Variables de entorno del frontend
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+Las siguientes variables son auto-configuradas por Lovable Cloud:
+- `VITE_SUPABASE_URL` — URL del proyecto
+- `VITE_SUPABASE_PUBLISHABLE_KEY` — Clave pública (anon key)
+- `VITE_SUPABASE_PROJECT_ID` — ID del proyecto
 
-## How can I deploy this project?
+---
 
-Simply open [Lovable](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and click on Share -> Publish.
+## 📄 Licencia
 
-## Can I connect a custom domain to my Lovable project?
-
-Yes, you can!
-
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
-
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+Proyecto privado. Todos los derechos reservados.
