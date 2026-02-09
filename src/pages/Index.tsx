@@ -10,6 +10,7 @@ import { AdminNewDeliveryForm } from '@/components/admin/AdminNewDeliveryForm';
 import { CouriersList } from '@/components/admin/CouriersList';
 import { ClientsManager } from '@/components/admin/ClientsManager';
 import { AuditLog } from '@/components/admin/AuditLog';
+import { SettingsPage } from '@/components/admin/SettingsPage';
 import { ConsolidatedCash } from '@/components/admin/ConsolidatedCash';
 import { DailySettlements } from '@/components/admin/DailySettlements';
 import { WeeklyPayroll } from '@/components/admin/WeeklyPayroll';
@@ -66,22 +67,7 @@ function AppContent() {
         case 'audit':
           return <AuditLog />;
         case 'settings':
-          return (
-            <div className="space-y-4 animate-fade-in">
-              <h1 className="text-2xl font-bold flex items-center gap-2">
-                <Settings className="w-6 h-6 text-primary" />
-                Configuración
-              </h1>
-              <Card>
-                <CardHeader>
-                  <CardTitle>Próximamente</CardTitle>
-                  <CardDescription>
-                    Configuración de la aplicación, períodos de pago, y más opciones estarán disponibles aquí.
-                  </CardDescription>
-                </CardHeader>
-              </Card>
-            </div>
-          );
+          return <SettingsPage />;
         default:
           return <AdminDashboard />;
       }
