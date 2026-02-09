@@ -130,6 +130,9 @@ const Deliveries = ({ courierId, showCourier }: DeliveryListProps) => {
           onClick={() => toggleTab(2)}
         >
           Entregados
+          <span className={`text-xs px-2 py-0.5 rounded-full ${toggleState === 2 ? 'bg-white/20' : 'bg-foreground/10'}`}>
+            {tabCounts[2]}
+          </span>
         </button>
         <button
           className={`flex-1 text-center py-3 rounded-t-xl transition-all cursor-pointer flex items-center justify-center gap-2 ${
