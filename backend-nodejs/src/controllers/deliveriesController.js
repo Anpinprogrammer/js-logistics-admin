@@ -1,5 +1,22 @@
 const { pool } = require('../config/database');
 
+// Helper: reopen daily settlement if closed
+async function reopenDailySettlement(courierId, date) {
+  const targetDate = date || new Date().toISOString().split('T')[0];
+  const existing = await pool.query(
+    'SELECT id FROM daily_settlements WHERE courier_id = $1 AND date = $2 AND is_settled = true',
+    [courierId, targetDate]
+  );
+  if (existing.rows.length > 0) {
+    await pool.query(
+      `UPDATE daily_settlements 
+       SET is_settled = false, settled_by = NULL, settled_at = NULL, actual_balance = NULL, difference = NULL
+       WHERE id = $1`,
+      [existing.rows[0].id]
+    );
+  }
+}
+
 // GET /api/deliveries
 const getAll = async (req, res) => {
   try {
@@ -199,6 +216,9 @@ const create = async (req, res) => {
       return res.status(400).json({ error: 'Faltan campos requeridos' });
     }
 
+    const effectiveCourierId = courier_id || req.user.id;
+    const effectiveDate = delivery_date || new Date().toISOString().split('T')[0];
+
     const result = await pool.query(
       `INSERT INTO deliveries 
         (client_id, courier_id, created_by, amount, service_value, total_to_collect, 
@@ -207,13 +227,16 @@ const create = async (req, res) => {
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
        RETURNING *`,
       [
-        client_id, courier_id, req.user.id, amount,
+        client_id, effectiveCourierId, req.user.id, amount,
         service_value || 0, total_to_collect || 0,
         payment_method, recipient_name || null, notes || null,
-        week_start, week_end, delivery_date || new Date().toISOString().split('T')[0],
+        week_start, week_end, effectiveDate,
         received_amount || null, receipt_photo_url || null
       ]
     );
+
+    // Reopen daily settlement if it was already closed for this courier/date
+    await reopenDailySettlement(effectiveCourierId, effectiveDate);
 
     // Log de auditoría
     await pool.query(
@@ -410,6 +433,9 @@ const reassign = async (req, res) => {
         id
       ]
     );
+
+    // Reopen daily settlement for the new courier if closed
+    await reopenDailySettlement(courier_id, delivery_date);
 
     // Log de auditoría
     await pool.query(

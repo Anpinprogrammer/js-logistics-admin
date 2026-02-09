@@ -1,3 +1,4 @@
+const bcrypt = require('bcryptjs');
 const { pool } = require('../config/database');
 
 // GET /api/couriers
@@ -18,6 +19,61 @@ const getAll = async (req, res) => {
   }
 };
 
+// POST /api/couriers - Admin creates a new courier
+const create = async (req, res) => {
+  try {
+    const { email, password, full_name, phone } = req.body;
+
+    if (!email || !password || !full_name) {
+      return res.status(400).json({ error: 'Email, contraseña y nombre son requeridos' });
+    }
+    if (password.length < 6) {
+      return res.status(400).json({ error: 'La contraseña debe tener al menos 6 caracteres' });
+    }
+
+    // Check if email already exists
+    const existing = await pool.query('SELECT id FROM users WHERE email = $1', [email]);
+    if (existing.rows.length > 0) {
+      return res.status(409).json({ error: 'El email ya está registrado' });
+    }
+
+    const passwordHash = await bcrypt.hash(password, 10);
+
+    // Create user
+    const userResult = await pool.query(
+      `INSERT INTO users (email, password_hash, full_name, phone) VALUES ($1, $2, $3, $4) RETURNING id, email, full_name`,
+      [email, passwordHash, full_name, phone || null]
+    );
+    const user = userResult.rows[0];
+
+    // Assign courier role
+    await pool.query(
+      `INSERT INTO user_roles (user_id, role) VALUES ($1, 'courier')`,
+      [user.id]
+    );
+
+    // Create profile
+    await pool.query(
+      `INSERT INTO profiles (user_id, full_name, phone) VALUES ($1, $2, $3)`,
+      [user.id, full_name, phone || null]
+    );
+
+    res.status(201).json({
+      data: {
+        id: user.id,
+        user_id: user.id,
+        full_name: user.full_name,
+        phone: phone || null,
+        role: 'courier',
+      },
+      error: null,
+    });
+  } catch (error) {
+    console.error('Error creando mensajero:', error);
+    res.status(500).json({ error: 'Error al crear mensajero' });
+  }
+};
+
 // GET /api/couriers/:id/stats
 const getStats = async (req, res) => {
   try {
@@ -30,7 +86,7 @@ const getStats = async (req, res) => {
 
     const result = await pool.query(
       `SELECT * FROM deliveries 
-       WHERE courier_id = $1 AND status = 'completed' 
+       WHERE courier_id = $1 AND (status = 'completed' OR status = 'not_delivered_collected')
        AND week_start >= $2 AND week_end <= $3`,
       [id, week_start, week_end]
     );
@@ -139,4 +195,4 @@ const getSummary = async (req, res) => {
   }
 };
 
-module.exports = { getAll, getStats, getSummary };
+module.exports = { getAll, create, getStats, getSummary };
