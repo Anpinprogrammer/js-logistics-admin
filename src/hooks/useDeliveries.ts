@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
+import { reopenDailySettlement } from '@/hooks/useDailyOperations';
 
 export interface Delivery {
   id: string;
@@ -152,10 +153,15 @@ export function useCreateDelivery() {
         .single();
       
       if (error) throw error;
+
+      // Reopen daily settlement if it was already closed
+      await reopenDailySettlement(user.id);
+
       return delivery;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['deliveries'] });
+      queryClient.invalidateQueries({ queryKey: ['daily-settlements'] });
       toast.success('Entrega registrada exitosamente');
     },
     onError: (error) => {
