@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { X, Package, Building2, UserCheck, DollarSign, CreditCard, ArrowLeftRight } from 'lucide-react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
@@ -49,13 +49,7 @@ const ModalDomis = ({ isOpen, onClose }: ModalDomisProps) => {
   const [notes, setNotes] = useState('');
   const [alerta, setAlerta] = useState('');
 
-  // Auto-calculate service value (70% of total)
-  useEffect(() => {
-    const total = parseFloat(totalToCollect);
-    if (!isNaN(total) && total > 0) {
-      setServiceValue((total * 0.7).toFixed(0));
-    }
-  }, [totalToCollect]);
+  // No auto-calculation: service value is entered manually by admin
 
   const resetForm = () => {
     setClientId('');
@@ -266,21 +260,22 @@ const ModalDomis = ({ isOpen, onClose }: ModalDomisProps) => {
               </div>
             </div>
 
-            {/* Service Value (auto-calculated) */}
+            {/* Service Value (manual) */}
             <div className="space-y-2">
-              <Label>Valor del Servicio (70%)</Label>
+              <Label>Valor del Servicio *</Label>
               <div className="relative">
                 <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                 <Input
                   type="number"
                   min="0"
                   placeholder="0"
-                  className="pl-9 bg-muted/50"
+                  className="pl-9"
                   value={serviceValue}
                   onChange={(e) => setServiceValue(e.target.value)}
+                  required
                 />
               </div>
-              <p className="text-xs text-muted-foreground">70% mensajero / 30% empresa</p>
+              <p className="text-xs text-muted-foreground">Valor neto que cobra la empresa por el domicilio. El 70% se paga al mensajero.</p>
             </div>
 
             {/* Payment method */}
