@@ -180,7 +180,8 @@ export function WeeklyPayroll() {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="overflow-x-auto">
+          {/* Desktop table */}
+          <div className="hidden md:block overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -196,51 +197,76 @@ export function WeeklyPayroll() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {payrollData.map(({ 
-                  courier, 
-                  daysWorked, 
-                  completedCount, 
-                  lostTripsCount,
-                  totalServiceValue,
-                  salary70,
-                  dailyDiscounts,
-                  totalAdvances,
-                  netPayable,
-                  allSettled,
-                }) => (
+                {payrollData.map(({ courier, daysWorked, completedCount, lostTripsCount, totalServiceValue, salary70, dailyDiscounts, totalAdvances, netPayable, allSettled }) => (
                   <TableRow key={courier.user_id}>
                     <TableCell className="font-medium">{courier.full_name}</TableCell>
                     <TableCell className="text-center">{daysWorked}</TableCell>
                     <TableCell className="text-center">
                       <span className="text-success">{completedCount}</span>
-                      {lostTripsCount > 0 && (
-                        <span className="text-warning"> + {lostTripsCount}</span>
-                      )}
+                      {lostTripsCount > 0 && <span className="text-warning"> + {lostTripsCount}</span>}
                     </TableCell>
                     <TableCell className="text-right">{formatCurrency(totalServiceValue)}</TableCell>
                     <TableCell className="text-right text-success">{formatCurrency(salary70)}</TableCell>
                     <TableCell className="text-right text-destructive">-{formatCurrency(dailyDiscounts)}</TableCell>
-                    <TableCell className="text-right text-destructive">
-                      {totalAdvances > 0 ? `-${formatCurrency(totalAdvances)}` : '-'}
-                    </TableCell>
+                    <TableCell className="text-right text-destructive">{totalAdvances > 0 ? `-${formatCurrency(totalAdvances)}` : '-'}</TableCell>
                     <TableCell className="text-right font-bold">{formatCurrency(netPayable)}</TableCell>
                     <TableCell className="text-center">
                       {allSettled ? (
-                        <Badge variant="default" className="bg-success">
-                          <CheckCircle2 className="w-3 h-3 mr-1" />
-                          Cuadrado
-                        </Badge>
+                        <Badge variant="default" className="bg-success"><CheckCircle2 className="w-3 h-3 mr-1" />Cuadrado</Badge>
                       ) : (
-                        <Badge variant="outline" className="text-warning border-warning">
-                          <AlertCircle className="w-3 h-3 mr-1" />
-                          Pendiente
-                        </Badge>
+                        <Badge variant="outline" className="text-warning border-warning"><AlertCircle className="w-3 h-3 mr-1" />Pendiente</Badge>
                       )}
                     </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
             </Table>
+          </div>
+
+          {/* Mobile cards */}
+          <div className="md:hidden space-y-3">
+            {payrollData.map(({ courier, daysWorked, completedCount, lostTripsCount, totalServiceValue, salary70, dailyDiscounts, totalAdvances, netPayable, allSettled }) => (
+              <div key={courier.user_id} className="border rounded-lg p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="font-semibold">{courier.full_name}</span>
+                  {allSettled ? (
+                    <Badge variant="default" className="bg-success"><CheckCircle2 className="w-3 h-3 mr-1" />Cuadrado</Badge>
+                  ) : (
+                    <Badge variant="outline" className="text-warning border-warning"><AlertCircle className="w-3 h-3 mr-1" />Pendiente</Badge>
+                  )}
+                </div>
+                <div className="grid grid-cols-2 gap-2 text-sm">
+                  <div className="flex justify-between p-2 bg-muted/50 rounded">
+                    <span className="text-muted-foreground">Días</span>
+                    <span>{daysWorked}</span>
+                  </div>
+                  <div className="flex justify-between p-2 bg-muted/50 rounded">
+                    <span className="text-muted-foreground">Entregas</span>
+                    <span><span className="text-success">{completedCount}</span>{lostTripsCount > 0 && <span className="text-warning"> +{lostTripsCount}</span>}</span>
+                  </div>
+                  <div className="flex justify-between p-2 bg-muted/50 rounded">
+                    <span className="text-muted-foreground">Servicios</span>
+                    <span>{formatCurrency(totalServiceValue)}</span>
+                  </div>
+                  <div className="flex justify-between p-2 bg-muted/50 rounded">
+                    <span className="text-muted-foreground">70%</span>
+                    <span className="text-success">{formatCurrency(salary70)}</span>
+                  </div>
+                  <div className="flex justify-between p-2 bg-muted/50 rounded">
+                    <span className="text-muted-foreground">Descuentos</span>
+                    <span className="text-destructive">-{formatCurrency(dailyDiscounts)}</span>
+                  </div>
+                  <div className="flex justify-between p-2 bg-muted/50 rounded">
+                    <span className="text-muted-foreground">Adelantos</span>
+                    <span className="text-destructive">{totalAdvances > 0 ? `-${formatCurrency(totalAdvances)}` : '-'}</span>
+                  </div>
+                </div>
+                <div className="flex justify-between p-2 bg-primary/5 rounded font-semibold">
+                  <span>Neto a pagar</span>
+                  <span>{formatCurrency(netPayable)}</span>
+                </div>
+              </div>
+            ))}
           </div>
         </CardContent>
       </Card>
