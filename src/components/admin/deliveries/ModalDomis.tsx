@@ -6,6 +6,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCouriers } from '@/hooks/useCouriers';
 import { getCurrentWeekDates } from '@/hooks/useDeliveries';
+import { reopenDailySettlement } from '@/hooks/useDailyOperations';
 import { Client } from '@/hooks/useClients';
 import BusquedaCliente from './BusquedaCliente';
 import { Input } from '@/components/ui/input';
@@ -104,6 +105,9 @@ const ModalDomis = ({ isOpen, onClose }: ModalDomisProps) => {
 
       if (error) throw error;
 
+      // Reopen daily settlement if it was already closed
+      await reopenDailySettlement(courierId);
+
       // Audit log
       await supabase.from('delivery_audit_log').insert({
         delivery_id: delivery.id,
@@ -116,6 +120,7 @@ const ModalDomis = ({ isOpen, onClose }: ModalDomisProps) => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['deliveries'] });
+      queryClient.invalidateQueries({ queryKey: ['daily-settlements'] });
       Swal.fire({
         title: 'Éxito',
         text: 'Pedido creado exitosamente',

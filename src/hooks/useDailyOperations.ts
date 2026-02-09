@@ -58,6 +58,25 @@ export interface SystemSetting {
   updated_by: string | null;
 }
 
+// Reopen a settled daily settlement for a courier (e.g. when a new delivery is assigned)
+export async function reopenDailySettlement(courierId: string, date?: string) {
+  const targetDate = date || getTodayDate();
+  const { data } = await supabase
+    .from('daily_settlements')
+    .select('id, is_settled')
+    .eq('courier_id', courierId)
+    .eq('date', targetDate)
+    .eq('is_settled', true)
+    .maybeSingle();
+
+  if (data) {
+    await supabase
+      .from('daily_settlements')
+      .update({ is_settled: false, settled_by: null, settled_at: null, actual_balance: null, difference: null })
+      .eq('id', data.id);
+  }
+}
+
 // Get today's date in YYYY-MM-DD format
 export function getTodayDate(): string {
   return new Date().toISOString().split('T')[0];
