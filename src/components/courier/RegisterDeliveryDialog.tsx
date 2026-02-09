@@ -101,8 +101,8 @@ export function RegisterDeliveryDialog({
     }
   };
 
-  // Determine if payment fields are needed based on status
-  const needsPaymentInfo = formData.final_status === 'completed' || formData.final_status === 'not_delivered_collected';
+  // Only "completed" needs payment info - "not_delivered_collected" means no money was collected
+  const needsPaymentInfo = formData.final_status === 'completed';
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
