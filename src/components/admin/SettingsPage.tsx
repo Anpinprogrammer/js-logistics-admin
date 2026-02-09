@@ -24,13 +24,21 @@ export function SettingsPage() {
   const handleReset = async () => {
     setResetting(true);
     try {
-      // Delete audit log first (FK reference to deliveries)
-      await supabase.from('delivery_audit_log').delete().neq('id', '00000000-0000-0000-0000-000000000000');
-      // Delete all deliveries
-      const { error } = await supabase.from('deliveries').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+      const dummy = '00000000-0000-0000-0000-000000000000';
+      // Delete in order: audit log, deliveries, then financial records
+      await supabase.from('delivery_audit_log').delete().neq('id', dummy);
+      await supabase.from('deliveries').delete().neq('id', dummy);
+      await supabase.from('daily_settlements').delete().neq('id', dummy);
+      await supabase.from('daily_base_money').delete().neq('id', dummy);
+      await supabase.from('partial_deliveries').delete().neq('id', dummy);
+      await supabase.from('weekly_settlements').delete().neq('id', dummy);
+      await supabase.from('salary_advances').delete().neq('id', dummy);
+
+      // Reset client balances to 0
+      const { error } = await supabase.from('clients').update({ balance: 0 }).neq('id', dummy);
       if (error) throw error;
 
-      toast({ title: 'Sistema reiniciado correctamente', description: 'Todas las entregas han sido eliminadas.' });
+      toast({ title: 'Sistema reiniciado correctamente', description: 'Todas las entregas y saldos han sido eliminados.' });
     } catch (err: any) {
       toast({ title: 'Error', description: err.message || 'No se pudo reiniciar el sistema', variant: 'destructive' });
     } finally {
