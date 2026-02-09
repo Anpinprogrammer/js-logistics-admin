@@ -1,15 +1,73 @@
+import { useState } from 'react';
 import { useCouriers } from '@/hooks/useCouriers';
 import { useDeliveries, getCurrentWeekDates } from '@/hooks/useDeliveries';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Truck, Phone, Package, DollarSign, Loader2 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Truck, Phone, Package, DollarSign, Loader2, UserPlus } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
+import { supabase } from '@/integrations/supabase/client';
+import { useQueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
 
 export function CouriersList() {
   const { data: couriers, isLoading } = useCouriers();
   const { data: deliveries } = useDeliveries();
   const { weekStart, weekEnd } = getCurrentWeekDates();
+  const queryClient = useQueryClient();
+
+  const [addDialog, setAddDialog] = useState(false);
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [fullName, setFullName] = useState('');
+  const [phone, setPhone] = useState('');
+  const [creating, setCreating] = useState(false);
+
+  const handleCreateCourier = async () => {
+    if (!email || !password || !fullName) {
+      toast.error('Email, contraseña y nombre son obligatorios');
+      return;
+    }
+    if (password.length < 6) {
+      toast.error('La contraseña debe tener al menos 6 caracteres');
+      return;
+    }
+    setCreating(true);
+    try {
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: { full_name: fullName },
+        },
+      });
+      if (error) throw error;
+
+      // Update phone if provided
+      if (phone && data.user) {
+        await supabase
+          .from('profiles')
+          .update({ phone })
+          .eq('user_id', data.user.id);
+      }
+
+      queryClient.invalidateQueries({ queryKey: ['couriers'] });
+      toast.success(`Mensajero "${fullName}" creado exitosamente`);
+      setAddDialog(false);
+      setEmail('');
+      setPassword('');
+      setFullName('');
+      setPhone('');
+    } catch (error: any) {
+      toast.error(error.message || 'Error al crear mensajero');
+    } finally {
+      setCreating(false);
+    }
+  };
 
   if (isLoading) {
     return (
@@ -21,26 +79,64 @@ export function CouriersList() {
 
   return (
     <div className="space-y-6 animate-fade-in">
-      <div>
-        <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
-          <Truck className="w-6 h-6 text-primary" />
-          Mensajeros
-        </h1>
-        <p className="text-muted-foreground">
-          Cuadre semanal: {format(new Date(weekStart), 'd MMM', { locale: es })} - {format(new Date(weekEnd), 'd MMM yyyy', { locale: es })}
-        </p>
+      <div className="flex items-center justify-between flex-wrap gap-2">
+        <div>
+          <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
+            <Truck className="w-6 h-6 text-primary" />
+            Mensajeros
+          </h1>
+          <p className="text-muted-foreground">
+            Cuadre semanal: {format(new Date(weekStart), 'd MMM', { locale: es })} - {format(new Date(weekEnd), 'd MMM yyyy', { locale: es })}
+          </p>
+        </div>
+
+        <Dialog open={addDialog} onOpenChange={setAddDialog}>
+          <DialogTrigger asChild>
+            <Button size="sm">
+              <UserPlus className="w-4 h-4 mr-1" />
+              Agregar Mensajero
+            </Button>
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Agregar Mensajero</DialogTitle>
+              <DialogDescription>Crea una cuenta de mensajero nueva</DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label>Nombre completo *</Label>
+                <Input value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="Nombre del mensajero" />
+              </div>
+              <div className="space-y-2">
+                <Label>Email *</Label>
+                <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="correo@ejemplo.com" />
+              </div>
+              <div className="space-y-2">
+                <Label>Contraseña *</Label>
+                <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Mínimo 6 caracteres" />
+              </div>
+              <div className="space-y-2">
+                <Label>Teléfono (opcional)</Label>
+                <Input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="3001234567" />
+              </div>
+              <Button className="w-full" onClick={handleCreateCourier} disabled={creating}>
+                {creating && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                Crear Mensajero
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
 
       {couriers?.length === 0 ? (
         <Card>
           <CardContent className="py-12 text-center text-muted-foreground">
-            No hay mensajeros registrados. Los nuevos usuarios se registran como mensajeros automáticamente.
+            No hay mensajeros registrados. Usa el botón "Agregar Mensajero" para crear uno.
           </CardContent>
         </Card>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {couriers?.map((courier) => {
-            // Include both 'completed' and 'not_delivered_collected' as valid services for payment
             const courierDeliveries = deliveries?.filter(
               d => d.courier_id === courier.user_id && 
                    (d.status === 'completed' || d.status === 'not_delivered_collected') && 
@@ -79,7 +175,6 @@ export function CouriersList() {
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-3">
-                  {/* Deliveries count */}
                   <div className="flex items-center justify-between p-2 rounded bg-muted/50">
                     <span className="flex items-center gap-2 text-sm text-muted-foreground">
                       <Package className="w-4 h-4" />
@@ -87,8 +182,6 @@ export function CouriersList() {
                     </span>
                     <span className="font-semibold">{stats.total}</span>
                   </div>
-
-                  {/* Cash to collect */}
                   <div className="flex items-center justify-between p-2 rounded bg-cash/5 border border-cash/20">
                     <span className="flex items-center gap-2 text-sm">
                       <DollarSign className="w-4 h-4 text-cash" />
@@ -96,14 +189,10 @@ export function CouriersList() {
                     </span>
                     <span className="font-bold text-cash">${stats.cash.toFixed(2)}</span>
                   </div>
-
-                  {/* Transfers to courier */}
                   <div className="flex items-center justify-between p-2 rounded bg-transfer-courier/5">
                     <span className="text-sm text-muted-foreground">Trans. JS</span>
                     <span className="font-medium">${stats.transferCourier.toFixed(2)}</span>
                   </div>
-
-                  {/* Transfers to client */}
                   <div className="flex items-center justify-between p-2 rounded bg-transfer-client/5">
                     <span className="text-sm text-muted-foreground">Trans. Cliente</span>
                     <span className="font-medium">${stats.transferClient.toFixed(2)}</span>

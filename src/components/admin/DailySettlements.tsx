@@ -185,12 +185,12 @@ export function DailySettlements() {
           </p>
         </div>
         
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <Dialog open={baseMoneyDialog} onOpenChange={setBaseMoneyDialog}>
             <DialogTrigger asChild>
               <Button variant="outline" size="sm">
                 <DollarSign className="w-4 h-4 mr-1" />
-                Dinero Base
+                <span className="hidden sm:inline">Dinero</span> Base
               </Button>
             </DialogTrigger>
             <DialogContent>
@@ -342,66 +342,128 @@ export function DailySettlements() {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Mensajero</TableHead>
-                <TableHead className="text-right">Base</TableHead>
-                <TableHead className="text-right">Cobrado</TableHead>
-                <TableHead className="text-right">Entregado</TableHead>
-                <TableHead className="text-right">Saldo</TableHead>
-                <TableHead className="text-center">Estado</TableHead>
-                <TableHead className="text-center">Acción</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {courierSummaries.map(({ courier, baseAmount, totalCollected, partialsSum, expectedBalance, isSettled }) => (
-                <TableRow key={courier.user_id}>
-                  <TableCell className="font-medium">{courier.full_name}</TableCell>
-                  <TableCell className="text-right">{formatCurrency(baseAmount)}</TableCell>
-                  <TableCell className="text-right text-success">{formatCurrency(totalCollected)}</TableCell>
-                  <TableCell className="text-right text-primary">{formatCurrency(partialsSum)}</TableCell>
-                  <TableCell className={cn(
-                    "text-right font-semibold",
-                    expectedBalance >= 0 ? "text-success" : "text-destructive"
-                  )}>
-                    {formatCurrency(expectedBalance)}
-                  </TableCell>
-                  <TableCell className="text-center">
-                    {isSettled ? (
-                      <Badge variant="default" className="bg-success">
-                        <CheckCircle2 className="w-3 h-3 mr-1" />
-                        Cuadrado
-                      </Badge>
-                    ) : (
-                      <Badge variant="outline">
-                        <AlertCircle className="w-3 h-3 mr-1" />
-                        Pendiente
-                      </Badge>
-                    )}
-                  </TableCell>
-                  <TableCell className="text-center">
-                    {!isSettled && (
-                      <Button
-                        size="sm"
-                        variant="default"
-                        onClick={() => {
-                          const summary = courierSummaries.find(s => s.courier.user_id === courier.user_id);
-                          setSettleCourier(summary);
-                          setActualBalance('');
-                          setSettleNotes('');
-                          setSettleDialog(true);
-                        }}
-                      >
-                        <CheckCircle2 className="w-4 h-4 mr-1" />
-                        Cerrar Cuadre
-                      </Button>
-                    )}
-                  </TableCell>
+          {/* Desktop table */}
+          <div className="hidden md:block">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Mensajero</TableHead>
+                  <TableHead className="text-right">Base</TableHead>
+                  <TableHead className="text-right">Cobrado</TableHead>
+                  <TableHead className="text-right">Entregado</TableHead>
+                  <TableHead className="text-right">Saldo</TableHead>
+                  <TableHead className="text-center">Estado</TableHead>
+                  <TableHead className="text-center">Acción</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {courierSummaries.map(({ courier, baseAmount, totalCollected, partialsSum, expectedBalance, isSettled }) => (
+                  <TableRow key={courier.user_id}>
+                    <TableCell className="font-medium">{courier.full_name}</TableCell>
+                    <TableCell className="text-right">{formatCurrency(baseAmount)}</TableCell>
+                    <TableCell className="text-right text-success">{formatCurrency(totalCollected)}</TableCell>
+                    <TableCell className="text-right text-primary">{formatCurrency(partialsSum)}</TableCell>
+                    <TableCell className={cn(
+                      "text-right font-semibold",
+                      expectedBalance >= 0 ? "text-success" : "text-destructive"
+                    )}>
+                      {formatCurrency(expectedBalance)}
+                    </TableCell>
+                    <TableCell className="text-center">
+                      {isSettled ? (
+                        <Badge variant="default" className="bg-success">
+                          <CheckCircle2 className="w-3 h-3 mr-1" />
+                          Cuadrado
+                        </Badge>
+                      ) : (
+                        <Badge variant="outline">
+                          <AlertCircle className="w-3 h-3 mr-1" />
+                          Pendiente
+                        </Badge>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-center">
+                      {!isSettled && (
+                        <Button
+                          size="sm"
+                          variant="default"
+                          onClick={() => {
+                            const summary = courierSummaries.find(s => s.courier.user_id === courier.user_id);
+                            setSettleCourier(summary);
+                            setActualBalance('');
+                            setSettleNotes('');
+                            setSettleDialog(true);
+                          }}
+                        >
+                          <CheckCircle2 className="w-4 h-4 mr-1" />
+                          Cerrar Cuadre
+                        </Button>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+
+          {/* Mobile cards */}
+          <div className="md:hidden space-y-3">
+            {courierSummaries.map(({ courier, baseAmount, totalCollected, partialsSum, expectedBalance, isSettled }) => (
+              <div key={courier.user_id} className="border rounded-lg p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="font-semibold">{courier.full_name}</span>
+                  {isSettled ? (
+                    <Badge variant="default" className="bg-success">
+                      <CheckCircle2 className="w-3 h-3 mr-1" />
+                      Cuadrado
+                    </Badge>
+                  ) : (
+                    <Badge variant="outline">
+                      <AlertCircle className="w-3 h-3 mr-1" />
+                      Pendiente
+                    </Badge>
+                  )}
+                </div>
+                <div className="grid grid-cols-2 gap-2 text-sm">
+                  <div className="flex justify-between p-2 bg-muted/50 rounded">
+                    <span className="text-muted-foreground">Base</span>
+                    <span>{formatCurrency(baseAmount)}</span>
+                  </div>
+                  <div className="flex justify-between p-2 bg-muted/50 rounded">
+                    <span className="text-muted-foreground">Cobrado</span>
+                    <span className="text-success">{formatCurrency(totalCollected)}</span>
+                  </div>
+                  <div className="flex justify-between p-2 bg-muted/50 rounded">
+                    <span className="text-muted-foreground">Entregado</span>
+                    <span className="text-primary">{formatCurrency(partialsSum)}</span>
+                  </div>
+                  <div className="flex justify-between p-2 bg-muted/50 rounded">
+                    <span className="text-muted-foreground">Saldo</span>
+                    <span className={cn("font-semibold", expectedBalance >= 0 ? "text-success" : "text-destructive")}>
+                      {formatCurrency(expectedBalance)}
+                    </span>
+                  </div>
+                </div>
+                {!isSettled && (
+                  <Button
+                    size="sm"
+                    variant="default"
+                    className="w-full"
+                    onClick={() => {
+                      const summary = courierSummaries.find(s => s.courier.user_id === courier.user_id);
+                      setSettleCourier(summary);
+                      setActualBalance('');
+                      setSettleNotes('');
+                      setSettleDialog(true);
+                    }}
+                  >
+                    <CheckCircle2 className="w-4 h-4 mr-1" />
+                    Cerrar Cuadre
+                  </Button>
+                )}
+              </div>
+            ))}
+          </div>
         </CardContent>
       </Card>
       
