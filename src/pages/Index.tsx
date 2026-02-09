@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { AuthProvider, useAuth } from '@/contexts/AuthContext';
 import { LoginForm } from '@/components/auth/LoginForm';
 import { LoginFormTest } from '@/components/auth/LoginFormTest';
@@ -21,7 +22,16 @@ import { Settings, Loader2 } from 'lucide-react';
 
 function AppContent() {
   const { user, loading, isAdmin, isCourier } = useAuth();
-  const [currentPage, setCurrentPage] = useState(isAdmin ? 'dashboard' : 'summary');
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  const defaultPage = isAdmin ? 'dashboard' : 'summary';
+  const initialPage = searchParams.get('page') || defaultPage;
+  const [currentPage, setCurrentPage] = useState(initialPage);
+
+  const handleNavigate = useCallback((page: string) => {
+    setCurrentPage(page);
+    setSearchParams({ page }, { replace: true });
+  }, [setSearchParams]);
 
   if (loading) {
     return (
@@ -35,10 +45,7 @@ function AppContent() {
     return <LoginFormTest />;
   }
 
-  // Set default page based on role
-  const defaultPage = isAdmin ? 'dashboard' : 'summary';
   const page = currentPage || defaultPage;
-
   const renderPage = () => {
     // Admin pages
     if (isAdmin) {
@@ -100,7 +107,7 @@ function AppContent() {
   };
 
   return (
-    <AppLayout currentPage={page} onNavigate={setCurrentPage}>
+    <AppLayout currentPage={page} onNavigate={handleNavigate}>
       {renderPage()}
     </AppLayout>
   );
