@@ -16,7 +16,7 @@ interface DeliveryListProps {
   showCourier?: boolean;
 }
 
-const ITEMS_PER_PAGE = 10;
+const ITEMS_PER_PAGE = 5;
 
 const statusMap: Record<number, string[]> = {
   1: ['pending'],
