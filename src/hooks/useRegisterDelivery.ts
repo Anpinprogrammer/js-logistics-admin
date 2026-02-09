@@ -45,8 +45,8 @@ export function useRegisterDelivery() {
       const totalToCollect = oldDelivery.total_to_collect || 0;
       const serviceValue = oldDelivery.service_value || 0;
 
-      // Determine if this status involves collection/service
-      const hasCollection = data.final_status === 'completed' || data.final_status === 'not_delivered_collected';
+      // Only "completed" involves actual collection by the courier
+      const hasCollection = data.final_status === 'completed';
 
       // For IDA PERDIDA: NO advance is created - the CLIENT is charged instead
       // Only create advance for COMPLETED deliveries where received < total
@@ -93,9 +93,8 @@ export function useRegisterDelivery() {
         }
       }
       
-      // For "transfer_to_client" payment method, client owes the SERVICE VALUE (not total_to_collect)
-      if (data.payment_method === 'transfer_to_client' && 
-          (data.final_status === 'completed' || data.final_status === 'not_delivered_collected')) {
+      // For "transfer_to_client" payment method on completed deliveries, client owes the SERVICE VALUE
+      if (data.payment_method === 'transfer_to_client' && data.final_status === 'completed') {
         const { data: currentClient } = await supabase
           .from('clients')
           .select('balance')
