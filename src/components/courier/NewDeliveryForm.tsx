@@ -1,12 +1,12 @@
 import { useState, useRef } from 'react';
 import { useCreateDelivery } from '@/hooks/useDeliveries';
-import { useClients } from '@/hooks/useClients';
+import { Client } from '@/hooks/useClients';
+import BusquedaCliente from '@/components/admin/deliveries/BusquedaCliente';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Camera, Loader2, DollarSign, CreditCard, ArrowLeftRight, CheckCircle, AlertTriangle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
@@ -22,7 +22,6 @@ interface NewDeliveryFormProps {
 }
 
 export function NewDeliveryForm({ onSuccess }: NewDeliveryFormProps) {
-  const { data: clients, isLoading: loadingClients } = useClients();
   const createDelivery = useCreateDelivery();
   
   const [formData, setFormData] = useState({
@@ -103,22 +102,8 @@ export function NewDeliveryForm({ onSuccess }: NewDeliveryFormProps) {
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* Client selection */}
           <div className="space-y-2">
-            <Label htmlFor="client">Cliente *</Label>
-            <Select
-              value={formData.client_id}
-              onValueChange={(value) => setFormData({ ...formData, client_id: value })}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder={loadingClients ? "Cargando..." : "Selecciona un cliente"} />
-              </SelectTrigger>
-              <SelectContent>
-                {clients?.map((client) => (
-                  <SelectItem key={client.id} value={client.id}>
-                    {client.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <Label>Cliente *</Label>
+            <BusquedaCliente onClientSelect={(client: Client) => setFormData({ ...formData, client_id: client.id })} />
           </div>
 
           {/* Recipient name */}
