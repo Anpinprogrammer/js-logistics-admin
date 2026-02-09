@@ -341,11 +341,54 @@ export function useSettleDaily() {
         .single();
       
       if (error) throw error;
-      return data;
+
+      // If there's a shortfall (difference < 0), create a salary advance
+      let advanceCreated = 0;
+      if (difference < 0) {
+        const shortfall = Math.abs(difference);
+        // Get current week dates for the advance
+        const now = new Date();
+        const dayOfWeek = now.getDay();
+        // Week: Saturday to Friday
+        const satOffset = dayOfWeek === 6 ? 0 : -(dayOfWeek + 1);
+        const weekStart = new Date(now);
+        weekStart.setDate(now.getDate() + satOffset);
+        const weekEnd = new Date(weekStart);
+        weekEnd.setDate(weekStart.getDate() + 6);
+        
+        const formatDate = (d: Date) => d.toISOString().split('T')[0];
+
+        const { error: advanceError } = await supabase
+          .from('salary_advances')
+          .insert({
+            courier_id: courierId,
+            amount: shortfall,
+            reason: `Faltante cuadre diario ${targetDate}`,
+            created_by: user.id,
+            week_start: formatDate(weekStart),
+            week_end: formatDate(weekEnd),
+          });
+
+        if (advanceError) {
+          console.error('Error creating advance from settlement:', advanceError);
+        } else {
+          advanceCreated = shortfall;
+        }
+      }
+
+      return { settlement: data, advanceCreated, difference };
     },
-    onSuccess: () => {
+    onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey: ['daily-settlements'] });
-      toast.success('Cuadre diario guardado');
+      queryClient.invalidateQueries({ queryKey: ['salary-advances'] });
+      
+      if (result.advanceCreated > 0) {
+        toast.success(`Cuadre cerrado. Faltante de $${result.advanceCreated.toLocaleString()} registrado como adelanto.`);
+      } else if (result.difference > 0) {
+        toast.success(`Cuadre cerrado. Sobrante de $${result.difference.toLocaleString()}.`);
+      } else {
+        toast.success('Cuadre cerrado correctamente.');
+      }
     },
     onError: (error) => {
       toast.error('Error: ' + error.message);

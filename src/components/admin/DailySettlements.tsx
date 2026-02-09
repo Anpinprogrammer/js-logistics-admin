@@ -32,6 +32,7 @@ import {
   AlertCircle
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { Textarea } from '@/components/ui/textarea';
 
 export function DailySettlements() {
   const today = getTodayDate();
@@ -57,6 +58,10 @@ export function DailySettlements() {
   const [baseMoneyDialog, setBaseMoneyDialog] = useState(false);
   const [partialDialog, setPartialDialog] = useState(false);
   const [chargeDialog, setChargeDialog] = useState(false);
+  const [settleDialog, setSettleDialog] = useState(false);
+  const [settleCourier, setSettleCourier] = useState<any>(null);
+  const [actualBalance, setActualBalance] = useState('');
+  const [settleNotes, setSettleNotes] = useState('');
   
   const formatCurrency = (value: number) => 
     new Intl.NumberFormat('es-CO', { 
@@ -144,6 +149,22 @@ export function DailySettlements() {
     setChargeDialog(false);
     setChargeDesc('');
     setChargeAmount('70000');
+  };
+
+  const handleSettleCourier = async () => {
+    if (!settleCourier || actualBalance === '') return;
+    await settleDaily.mutateAsync({
+      courierId: settleCourier.courier.user_id,
+      baseMoney: settleCourier.baseAmount,
+      totalCollected: settleCourier.totalCollected,
+      partialDeliveriesSum: settleCourier.partialsSum,
+      actualBalance: parseFloat(actualBalance),
+      notes: settleNotes || undefined,
+    });
+    setSettleDialog(false);
+    setSettleCourier(null);
+    setActualBalance('');
+    setSettleNotes('');
   };
 
   return (
@@ -330,6 +351,7 @@ export function DailySettlements() {
                 <TableHead className="text-right">Entregado</TableHead>
                 <TableHead className="text-right">Saldo</TableHead>
                 <TableHead className="text-center">Estado</TableHead>
+                <TableHead className="text-center">Acción</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -358,6 +380,24 @@ export function DailySettlements() {
                       </Badge>
                     )}
                   </TableCell>
+                  <TableCell className="text-center">
+                    {!isSettled && (
+                      <Button
+                        size="sm"
+                        variant="default"
+                        onClick={() => {
+                          const summary = courierSummaries.find(s => s.courier.user_id === courier.user_id);
+                          setSettleCourier(summary);
+                          setActualBalance('');
+                          setSettleNotes('');
+                          setSettleDialog(true);
+                        }}
+                      >
+                        <CheckCircle2 className="w-4 h-4 mr-1" />
+                        Cerrar Cuadre
+                      </Button>
+                    )}
+                  </TableCell>
                 </TableRow>
               ))}
             </TableBody>
@@ -384,6 +424,106 @@ export function DailySettlements() {
           </CardContent>
         </Card>
       )}
+
+      {/* Settle Dialog */}
+      <Dialog open={settleDialog} onOpenChange={setSettleDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Cerrar Cuadre</DialogTitle>
+            <DialogDescription>
+              {settleCourier && `Cuadre de ${settleCourier.courier.full_name}`}
+            </DialogDescription>
+          </DialogHeader>
+          {settleCourier && (
+            <div className="space-y-4 py-2">
+              <div className="space-y-2 p-3 rounded-lg bg-muted/50 border border-border text-sm">
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Base:</span>
+                  <span>{formatCurrency(settleCourier.baseAmount)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Cobrado:</span>
+                  <span className="text-success">{formatCurrency(settleCourier.totalCollected)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Entregado:</span>
+                  <span className="text-primary">{formatCurrency(settleCourier.partialsSum)}</span>
+                </div>
+                <Separator />
+                <div className="flex justify-between font-semibold">
+                  <span>Saldo esperado:</span>
+                  <span>{formatCurrency(settleCourier.expectedBalance)}</span>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Monto entregado por el mensajero *</Label>
+                <div className="relative">
+                  <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                  <Input
+                    type="number"
+                    min="0"
+                    placeholder="0"
+                    className="pl-9"
+                    value={actualBalance}
+                    onChange={(e) => setActualBalance(e.target.value)}
+                  />
+                </div>
+              </div>
+
+              {actualBalance !== '' && (() => {
+                const actual = parseFloat(actualBalance) || 0;
+                const diff = actual - settleCourier.expectedBalance;
+                if (diff < 0) {
+                  return (
+                    <div className="flex items-center gap-2 p-3 rounded-lg bg-destructive/10 border border-destructive/30">
+                      <AlertCircle className="w-5 h-5 text-destructive shrink-0" />
+                      <div className="text-sm">
+                        <p className="font-medium text-destructive">Faltante: {formatCurrency(Math.abs(diff))}</p>
+                        <p className="text-muted-foreground">Se registrará como adelanto de sueldo</p>
+                      </div>
+                    </div>
+                  );
+                } else if (diff > 0) {
+                  return (
+                    <div className="flex items-center gap-2 p-3 rounded-lg bg-success/10 border border-success/30">
+                      <CheckCircle2 className="w-5 h-5 text-success shrink-0" />
+                      <div className="text-sm">
+                        <p className="font-medium text-success">Sobrante: {formatCurrency(diff)}</p>
+                      </div>
+                    </div>
+                  );
+                }
+                return (
+                  <div className="flex items-center gap-2 p-3 rounded-lg bg-success/10 border border-success/30">
+                    <CheckCircle2 className="w-5 h-5 text-success shrink-0" />
+                    <p className="text-sm font-medium text-success">Cuadre exacto ✓</p>
+                  </div>
+                );
+              })()}
+
+              <div className="space-y-2">
+                <Label>Notas (opcional)</Label>
+                <Textarea
+                  placeholder="Observaciones..."
+                  value={settleNotes}
+                  onChange={(e) => setSettleNotes(e.target.value)}
+                  rows={2}
+                />
+              </div>
+
+              <Button
+                className="w-full"
+                onClick={handleSettleCourier}
+                disabled={settleDaily.isPending || actualBalance === ''}
+              >
+                {settleDaily.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                Cerrar Cuadre
+              </Button>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
