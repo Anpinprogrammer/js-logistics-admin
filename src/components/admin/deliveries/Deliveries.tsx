@@ -1,45 +1,29 @@
-import { useState, useMemo } from 'react';
-import { Search, PlusCircle, ChevronLeft, ChevronRight } from 'lucide-react';
-import ModalDomis from './ModalDomis';
-import DomisTab from './DomisTab';
-import DeliveryDetailModal from './DeliveryDetailModal';
-import EditDeliveryModal from './EditDeliveryModal';
-import DeleteDeliveryModal from './DeleteDeliveryModal';
-import ReassignDeliveryModal from './ReassignDeliveryModal';
-import { RegisterDeliveryDialog } from '@/components/courier/RegisterDeliveryDialog';
-import { useDeliveries, Delivery } from '@/hooks/useDeliveries';
-import { useAdminCompleteDelivery } from '@/hooks/useAdminCompleteDelivery';
-import { useIsMobile } from '@/hooks/use-mobile';
+import { useState, useMemo } from "react";
+import { Search, PlusCircle, ChevronLeft, ChevronRight } from "lucide-react";
+import ModalDomis from "./ModalDomis";
+import DomisTab from "./DomisTab";
+import { useDeliveries, Delivery } from "@/hooks/useDeliveries";
 
 interface DeliveryListProps {
   courierId?: string;
   showCourier?: boolean;
 }
 
-const ITEMS_PER_PAGE = 10;
+const ITEMS_PER_PAGE = 6;
 
 const statusMap: Record<number, string[]> = {
-  1: ['pending'],
-  2: ['completed'],
-  3: ['cancelled', 'not_delivered_collected', 'not_delivered_no_collection'],
+  1: ["pending"],
+  2: ["completed"],
+  3: ["cancelled", "not_delivered_collected", "not_delivered_no_collection"],
 };
 
 const Deliveries = ({ courierId, showCourier }: DeliveryListProps) => {
-  const [busqueda, setBusqueda] = useState('');
+  const [busqueda, setBusqueda] = useState("");
   const [modalOpen, setModalOpen] = useState(false);
   const [toggleState, setToggleState] = useState(1);
   const [currentPage, setCurrentPage] = useState(1);
-  const isMobile = useIsMobile();
-
-  // Action modals
-  const [detailDelivery, setDetailDelivery] = useState<Delivery | null>(null);
-  const [editDelivery, setEditDelivery] = useState<Delivery | null>(null);
-  const [deleteDelivery, setDeleteDelivery] = useState<Delivery | null>(null);
-  const [reassignDelivery, setReassignDelivery] = useState<Delivery | null>(null);
-  const [completeDelivery, setCompleteDelivery] = useState<Delivery | null>(null);
 
   const { data: deliveries, isLoading, error } = useDeliveries(courierId);
-  const adminComplete = useAdminCompleteDelivery();
 
   // Compute filtered count per tab for badges
   const tabCounts = useMemo(() => {
@@ -74,11 +58,9 @@ const Deliveries = ({ courierId, showCourier }: DeliveryListProps) => {
   }, [deliveries, toggleState, busqueda]);
 
   const totalPages = Math.max(1, Math.ceil(filteredData.length / ITEMS_PER_PAGE));
-  const paginatedData = filteredData.slice(
-    (currentPage - 1) * ITEMS_PER_PAGE,
-    currentPage * ITEMS_PER_PAGE
-  );
+  const paginatedData = filteredData.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
 
+  // Reset page when changing tabs or search
   const toggleTab = (index: number) => {
     setToggleState(index);
     setCurrentPage(1);
@@ -89,90 +71,86 @@ const Deliveries = ({ courierId, showCourier }: DeliveryListProps) => {
     setCurrentPage(1);
   };
 
-  const handleAdminComplete = async (data: {
-    final_status: 'completed' | 'not_delivered_collected' | 'not_delivered_no_collection';
-    received_amount: number;
-    payment_method: 'cash' | 'transfer_to_courier' | 'transfer_to_client';
-    notes?: string;
-    receipt_photo_url?: string;
-  }) => {
-    if (!completeDelivery) return;
-    await adminComplete.mutateAsync({
-      deliveryId: completeDelivery.id,
-      courierId: completeDelivery.courier_id,
-      ...data,
-    });
-    setCompleteDelivery(null);
-  };
+  // Fetch deliveries with courier info
+  const deliveriesWithCourier = useMemo(() => {
+    // Data already includes courier via the join in useDeliveries,
+    // but we need to ensure the query fetches courier profile
+    return paginatedData;
+  }, [paginatedData]);
 
   return (
-    <div className="p-4 md:p-6 text-foreground">
+    <div className="p-6 text-foreground">
       {/* Header */}
-      <div className="flex flex-col gap-3 md:flex-row md:justify-between md:items-center md:gap-4">
+      <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4">
+        {/* Search */}
         <div className="flex items-center w-full md:w-1/2 bg-background rounded-xl shadow-sm border border-border focus-within:ring-2 focus-within:ring-primary transition-all">
-          <Search className="w-5 h-5 md:w-6 md:h-6 ml-3 md:ml-4 text-muted-foreground shrink-0" />
+          <Search className="w-6 h-6 ml-4 text-muted-foreground" />
           <input
             type="text"
             placeholder="Buscar por cliente, mensajero o código..."
-            className="w-full py-2.5 md:py-3 px-3 md:px-4 bg-transparent outline-none text-sm md:text-base text-foreground placeholder-muted-foreground"
+            className="w-full py-3 px-4 bg-transparent outline-none text-foreground placeholder-muted-foreground"
             onChange={(e) => handleSearchChange(e.target.value)}
             value={busqueda}
           />
         </div>
+
+        {/* Create button */}
         <button
-          className="flex items-center justify-center gap-2 bg-primary hover:bg-primary/90 text-primary-foreground font-medium rounded-xl px-4 md:px-5 py-2.5 md:py-3 shadow-sm transition-all cursor-pointer text-sm md:text-base"
+          className="flex items-center justify-center gap-2 bg-primary hover:bg-primary/90 text-primary-foreground font-medium rounded-xl px-5 py-3 shadow-sm transition-all cursor-pointer"
           onClick={() => setModalOpen(true)}
         >
-          <PlusCircle className="w-5 h-5 md:w-6 md:h-6" />
-          {isMobile ? 'Nuevo Pedido' : 'Registrar Nuevo Pedido'}
+          <PlusCircle className="w-6 h-6" />
+          Registrar Nuevo Pedido
         </button>
       </div>
 
       {/* Tabs */}
-      <div className="mt-4 md:mt-6 flex gap-1 md:gap-2 text-xs md:text-sm font-semibold uppercase">
+      <div className="mt-6 flex gap-2 text-sm font-semibold uppercase">
         <button
-          className={`flex-1 text-center py-2.5 md:py-3 rounded-t-xl transition-all cursor-pointer flex items-center justify-center gap-1 md:gap-2 ${
+          className={`flex-1 text-center py-3 rounded-t-xl transition-all cursor-pointer flex items-center justify-center gap-2 ${
             toggleState === 1
-              ? 'bg-orange-500 text-white shadow-md'
-              : 'bg-muted text-muted-foreground hover:bg-muted/80'
+              ? "bg-orange-500 text-white shadow-md"
+              : "bg-muted text-muted-foreground hover:bg-muted/80"
           }`}
           onClick={() => toggleTab(1)}
         >
-          {isMobile ? 'Pend.' : 'Pendientes'}
-          <span className={`text-[10px] md:text-xs px-1.5 md:px-2 py-0.5 rounded-full ${toggleState === 1 ? 'bg-white/20' : 'bg-foreground/10'}`}>
+          Pendientes
+          <span
+            className={`text-xs px-2 py-0.5 rounded-full ${toggleState === 1 ? "bg-white/20" : "bg-foreground/10"}`}
+          >
             {tabCounts[1]}
           </span>
         </button>
         <button
-          className={`flex-1 text-center py-2.5 md:py-3 rounded-t-xl transition-all cursor-pointer flex items-center justify-center gap-1 md:gap-2 ${
-            toggleState === 2
-              ? 'bg-green-600 text-white shadow-md'
-              : 'bg-muted text-muted-foreground hover:bg-muted/80'
+          className={`flex-1 text-center py-3 rounded-t-xl transition-all cursor-pointer flex items-center justify-center gap-2 ${
+            toggleState === 2 ? "bg-green-600 text-white shadow-md" : "bg-muted text-muted-foreground hover:bg-muted/80"
           }`}
           onClick={() => toggleTab(2)}
         >
-          {isMobile ? 'Compl.' : 'Completados'}
-          <span className={`text-[10px] md:text-xs px-1.5 md:px-2 py-0.5 rounded-full ${toggleState === 2 ? 'bg-white/20' : 'bg-foreground/10'}`}>
+          Completados
+          <span
+            className={`text-xs px-2 py-0.5 rounded-full ${toggleState === 2 ? "bg-white/20" : "bg-foreground/10"}`}
+          >
             {tabCounts[2]}
           </span>
         </button>
         <button
-          className={`flex-1 text-center py-2.5 md:py-3 rounded-t-xl transition-all cursor-pointer flex items-center justify-center gap-1 md:gap-2 ${
-            toggleState === 3
-              ? 'bg-red-600 text-white shadow-md'
-              : 'bg-muted text-muted-foreground hover:bg-muted/80'
+          className={`flex-1 text-center py-3 rounded-t-xl transition-all cursor-pointer flex items-center justify-center gap-2 ${
+            toggleState === 3 ? "bg-red-600 text-white shadow-md" : "bg-muted text-muted-foreground hover:bg-muted/80"
           }`}
           onClick={() => toggleTab(3)}
         >
-          {isMobile ? 'Rech.' : 'Rechazados'}
-          <span className={`text-[10px] md:text-xs px-1.5 md:px-2 py-0.5 rounded-full ${toggleState === 3 ? 'bg-white/20' : 'bg-foreground/10'}`}>
+          Rechazados
+          <span
+            className={`text-xs px-2 py-0.5 rounded-full ${toggleState === 3 ? "bg-white/20" : "bg-foreground/10"}`}
+          >
             {tabCounts[3]}
           </span>
         </button>
       </div>
 
-      {/* Content */}
-      <div className="bg-background shadow-md rounded-b-xl mt-0 border border-border">
+      {/* Table */}
+      <div className="overflow-x-auto bg-background shadow-md rounded-b-xl mt-0 border border-border">
         {isLoading ? (
           <div className="flex justify-center py-16">
             <div className="relative w-10 h-10">
@@ -184,84 +162,30 @@ const Deliveries = ({ courierId, showCourier }: DeliveryListProps) => {
           <div className="text-center text-destructive py-12 text-sm">
             Error al cargar los domicilios. Por favor, intenta de nuevo.
           </div>
-        ) : isMobile ? (
-          /* Mobile: card-based layout via DomisTab */
-          <>
-            <DomisTab
-              data={paginatedData}
-              toggleState={toggleState}
-              busqueda=""
-              onViewDetail={setDetailDelivery}
-              onEdit={toggleState === 1 ? setEditDelivery : undefined}
-              onDelete={toggleState === 1 ? setDeleteDelivery : undefined}
-              onReassign={toggleState === 3 ? setReassignDelivery : undefined}
-              onComplete={toggleState === 1 ? setCompleteDelivery : undefined}
-            />
-
-            {/* Pagination */}
-            {filteredData.length > ITEMS_PER_PAGE && (
-              <div className="flex items-center justify-between px-4 py-3 border-t border-border">
-                <p className="text-xs text-muted-foreground">
-                  {(currentPage - 1) * ITEMS_PER_PAGE + 1}–{Math.min(currentPage * ITEMS_PER_PAGE, filteredData.length)} de {filteredData.length}
-                </p>
-                <div className="flex items-center gap-1">
-                  <button
-                    onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                    disabled={currentPage === 1}
-                    className="p-1.5 rounded-lg hover:bg-muted disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-                  >
-                    <ChevronLeft className="w-4 h-4" />
-                  </button>
-                  <span className="text-xs font-medium text-foreground px-2">
-                    {currentPage} / {totalPages}
-                  </span>
-                  <button
-                    onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-                    disabled={currentPage === totalPages}
-                    className="p-1.5 rounded-lg hover:bg-muted disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-                  >
-                    <ChevronRight className="w-4 h-4" />
-                  </button>
-                </div>
-              </div>
-            )}
-          </>
         ) : (
-          /* Desktop: table layout */
           <>
-            <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse">
-                <thead className="bg-muted border-b border-border text-muted-foreground uppercase text-xs">
-                  <tr>
-                    <th className="p-4 font-semibold">Código</th>
-                    <th className="p-4 font-semibold">Cliente</th>
-                    <th className="p-4 font-semibold">Mensajero</th>
-                    <th className="p-4 font-semibold">Valor</th>
-                    <th className="p-4 font-semibold">Estado</th>
-                    <th className="p-4 font-semibold">Fecha</th>
-                    <th className="p-4 font-semibold">Acciones</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <DomisTab
-                    data={paginatedData}
-                    toggleState={toggleState}
-                    busqueda=""
-                    onViewDetail={setDetailDelivery}
-                    onEdit={toggleState === 1 ? setEditDelivery : undefined}
-                    onDelete={toggleState === 1 ? setDeleteDelivery : undefined}
-                    onReassign={toggleState === 3 ? setReassignDelivery : undefined}
-                    onComplete={toggleState === 1 ? setCompleteDelivery : undefined}
-                  />
-                </tbody>
-              </table>
-            </div>
+            <table className="w-full text-left border-collapse">
+              <thead className="bg-muted border-b border-border text-muted-foreground uppercase text-xs">
+                <tr>
+                  <th className="p-4 font-semibold">Código</th>
+                  <th className="p-4 font-semibold">Cliente</th>
+                  <th className="p-4 font-semibold">Mensajero</th>
+                  <th className="p-4 font-semibold">Valor</th>
+                  <th className="p-4 font-semibold">Estado</th>
+                  <th className="p-4 font-semibold">Fecha</th>
+                </tr>
+              </thead>
+              <tbody>
+                <DomisTab data={deliveriesWithCourier} toggleState={toggleState} busqueda="" />
+              </tbody>
+            </table>
 
             {/* Pagination */}
             {filteredData.length > ITEMS_PER_PAGE && (
               <div className="flex items-center justify-between px-4 py-3 border-t border-border">
                 <p className="text-sm text-muted-foreground">
-                  Mostrando {(currentPage - 1) * ITEMS_PER_PAGE + 1}–{Math.min(currentPage * ITEMS_PER_PAGE, filteredData.length)} de {filteredData.length}
+                  Mostrando {(currentPage - 1) * ITEMS_PER_PAGE + 1}–
+                  {Math.min(currentPage * ITEMS_PER_PAGE, filteredData.length)} de {filteredData.length}
                 </p>
                 <div className="flex items-center gap-1">
                   <button
@@ -272,7 +196,10 @@ const Deliveries = ({ courierId, showCourier }: DeliveryListProps) => {
                     <ChevronLeft className="w-4 h-4" />
                   </button>
                   {Array.from({ length: totalPages }, (_, i) => i + 1)
-                    .filter((page) => page === 1 || page === totalPages || Math.abs(page - currentPage) <= 1)
+                    .filter((page) => {
+                      // Show first, last, current, and neighbors
+                      return page === 1 || page === totalPages || Math.abs(page - currentPage) <= 1;
+                    })
                     .map((page, idx, arr) => {
                       const showEllipsis = idx > 0 && page - arr[idx - 1] > 1;
                       return (
@@ -282,8 +209,8 @@ const Deliveries = ({ courierId, showCourier }: DeliveryListProps) => {
                             onClick={() => setCurrentPage(page)}
                             className={`w-8 h-8 rounded-lg text-sm font-medium transition-colors ${
                               currentPage === page
-                                ? 'bg-primary text-primary-foreground'
-                                : 'hover:bg-muted text-foreground'
+                                ? "bg-primary text-primary-foreground"
+                                : "hover:bg-muted text-foreground"
                             }`}
                           >
                             {page}
@@ -305,43 +232,8 @@ const Deliveries = ({ courierId, showCourier }: DeliveryListProps) => {
         )}
       </div>
 
-      {/* Modals */}
-      {typeof window !== 'undefined' && (
-        <ModalDomis isOpen={modalOpen} onClose={() => setModalOpen(false)} />
-      )}
-
-      <DeliveryDetailModal
-        delivery={detailDelivery}
-        isOpen={!!detailDelivery}
-        onClose={() => setDetailDelivery(null)}
-        showProof={toggleState === 2}
-      />
-
-      <EditDeliveryModal
-        delivery={editDelivery}
-        isOpen={!!editDelivery}
-        onClose={() => setEditDelivery(null)}
-      />
-
-      <DeleteDeliveryModal
-        delivery={deleteDelivery}
-        isOpen={!!deleteDelivery}
-        onClose={() => setDeleteDelivery(null)}
-      />
-
-      <ReassignDeliveryModal
-        delivery={reassignDelivery}
-        isOpen={!!reassignDelivery}
-        onClose={() => setReassignDelivery(null)}
-      />
-
-      <RegisterDeliveryDialog
-        delivery={completeDelivery}
-        open={!!completeDelivery}
-        onOpenChange={(open) => { if (!open) setCompleteDelivery(null); }}
-        onRegister={handleAdminComplete}
-        loading={adminComplete.isPending}
-      />
+      {/* Modal */}
+      {typeof window !== "undefined" && <ModalDomis isOpen={modalOpen} onClose={() => setModalOpen(false)} />}
     </div>
   );
 };
