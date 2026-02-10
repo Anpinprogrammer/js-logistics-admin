@@ -1,6 +1,6 @@
 import { useState, FormEvent } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { Loader2, Eye, EyeOff, Truck } from 'lucide-react';
+import { Loader2, Eye, EyeOff, Truck, User } from 'lucide-react';
 
 export function LoginFormTest() {
   const { signIn } = useAuth();
@@ -50,7 +50,12 @@ export function LoginFormTest() {
       <div className="flex flex-1 justify-center items-center px-6 sm:px-10 bg-white shadow-2xl lg:rounded-l-[4rem]">
         <div className="w-full max-w-md py-10">
           <div className="mx-auto w-16 h-16 rounded-2xl bg-blue-600 flex items-center justify-center shadow-lg mb-6">
-            <Truck className="w-8 h-8 text-white" />
+            {state === 'Admin' ? (
+              <Truck className="w-8 h-8 text-white" />
+            ) : (
+              <User className="w-8 h-8 text-white" />
+            )}
+            
           </div>
           
           <h2 className="text-2xl sm:text-3xl font-semibold text-gray-800 text-center mb-8">
