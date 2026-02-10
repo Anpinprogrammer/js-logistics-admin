@@ -4,15 +4,26 @@ const { pool } = require('../config/database');
 // GET /api/couriers
 const getAll = async (req, res) => {
   try {
+    const page = parseInt(req.query.page) || 0;
+    const limit = parseInt(req.query.limit) || 100;
+    const offset = page * limit;
+
+    const countResult = await pool.query(
+      `SELECT COUNT(*) FROM profiles p INNER JOIN user_roles ur ON p.user_id = ur.user_id WHERE ur.role = 'courier'`
+    );
+    const total = parseInt(countResult.rows[0].count);
+
     const result = await pool.query(
       `SELECT p.id, p.user_id, p.full_name, p.phone
        FROM profiles p
        INNER JOIN user_roles ur ON p.user_id = ur.user_id
        WHERE ur.role = 'courier'
-       ORDER BY p.full_name`
+       ORDER BY p.full_name
+       LIMIT $1 OFFSET $2`,
+      [limit, offset]
     );
 
-    res.json({ data: result.rows, error: null });
+    res.json({ data: result.rows, total, page, limit, error: null });
   } catch (error) {
     console.error('Error obteniendo mensajeros:', error);
     res.status(500).json({ error: 'Error al obtener mensajeros' });
@@ -31,7 +42,6 @@ const create = async (req, res) => {
       return res.status(400).json({ error: 'La contraseña debe tener al menos 6 caracteres' });
     }
 
-    // Check if email already exists
     const existing = await pool.query('SELECT id FROM users WHERE email = $1', [email]);
     if (existing.rows.length > 0) {
       return res.status(409).json({ error: 'El email ya está registrado' });
@@ -39,20 +49,17 @@ const create = async (req, res) => {
 
     const passwordHash = await bcrypt.hash(password, 10);
 
-    // Create user
     const userResult = await pool.query(
       `INSERT INTO users (email, password_hash, full_name, phone) VALUES ($1, $2, $3, $4) RETURNING id, email, full_name`,
       [email, passwordHash, full_name, phone || null]
     );
     const user = userResult.rows[0];
 
-    // Assign courier role
     await pool.query(
       `INSERT INTO user_roles (user_id, role) VALUES ($1, 'courier')`,
       [user.id]
     );
 
-    // Create profile
     await pool.query(
       `INSERT INTO profiles (user_id, full_name, phone) VALUES ($1, $2, $3)`,
       [user.id, full_name, phone || null]
@@ -128,7 +135,6 @@ const getSummary = async (req, res) => {
     const { date } = req.query;
     const targetDate = date || new Date().toISOString().split('T')[0];
 
-    // Entregas del día
     const deliveriesResult = await pool.query(
       `SELECT d.*, c.name as client_name
        FROM deliveries d
@@ -138,13 +144,11 @@ const getSummary = async (req, res) => {
       [id, targetDate]
     );
 
-    // Base del día
     const baseResult = await pool.query(
       'SELECT * FROM daily_base_money WHERE courier_id = $1 AND date = $2',
       [id, targetDate]
     );
 
-    // Entregas parciales del día
     const partialsResult = await pool.query(
       'SELECT * FROM partial_deliveries WHERE courier_id = $1 AND date = $2',
       [id, targetDate]
@@ -154,7 +158,6 @@ const getSummary = async (req, res) => {
     const baseMoney = baseResult.rows.length > 0 ? parseFloat(baseResult.rows[0].amount) : 0;
     const partialSum = partialsResult.rows.reduce((sum, p) => sum + parseFloat(p.amount), 0);
 
-    // Calcular totales
     let totalCash = 0;
     let totalTransfers = 0;
     let pendingCount = 0;
@@ -205,7 +208,6 @@ const update = async (req, res) => {
       return res.status(400).json({ error: 'El nombre es requerido' });
     }
 
-    // Update profile
     const result = await pool.query(
       `UPDATE profiles SET full_name = $1, phone = $2, updated_at = NOW() WHERE user_id = $3 RETURNING *`,
       [full_name, phone || null, id]
@@ -215,7 +217,6 @@ const update = async (req, res) => {
       return res.status(404).json({ error: 'Mensajero no encontrado' });
     }
 
-    // Update password if provided
     if (password) {
       if (password.length < 6) {
         return res.status(400).json({ error: 'La contraseña debe tener al menos 6 caracteres' });
@@ -234,17 +235,15 @@ const update = async (req, res) => {
   }
 };
 
-// DELETE /api/couriers/:id - Delete courier
+// DELETE /api/couriers/:id - Delete courier and all dependent records
 const remove = async (req, res) => {
   try {
     const { id } = req.params;
 
-    // Prevent self-deletion
     if (id === req.user.id) {
       return res.status(400).json({ error: 'No puedes eliminarte a ti mismo' });
     }
 
-    // Check courier exists
     const existing = await pool.query(
       `SELECT p.user_id FROM profiles p INNER JOIN user_roles ur ON p.user_id = ur.user_id WHERE p.user_id = $1 AND ur.role = 'courier'`,
       [id]
@@ -253,7 +252,13 @@ const remove = async (req, res) => {
       return res.status(404).json({ error: 'Mensajero no encontrado' });
     }
 
-    // Delete in order: user_roles, profiles, users (cascade)
+    // Delete all dependent records first
+    await pool.query('DELETE FROM daily_settlements WHERE courier_id = $1', [id]);
+    await pool.query('DELETE FROM daily_base_money WHERE courier_id = $1', [id]);
+    await pool.query('DELETE FROM partial_deliveries WHERE courier_id = $1', [id]);
+    await pool.query('DELETE FROM salary_advances WHERE courier_id = $1', [id]);
+    await pool.query('DELETE FROM weekly_settlements WHERE courier_id = $1', [id]);
+    await pool.query('DELETE FROM deliveries WHERE courier_id = $1', [id]);
     await pool.query('DELETE FROM user_roles WHERE user_id = $1', [id]);
     await pool.query('DELETE FROM profiles WHERE user_id = $1', [id]);
     await pool.query('DELETE FROM users WHERE id = $1', [id]);

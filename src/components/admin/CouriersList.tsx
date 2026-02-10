@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useCouriers } from '@/hooks/useCouriers';
 import { useDeliveries, getCurrentWeekDates } from '@/hooks/useDeliveries';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
-import { Truck, Phone, Package, DollarSign, Loader2, UserPlus, Pencil, Trash2 } from 'lucide-react';
+import { Truck, Phone, Package, DollarSign, Loader2, UserPlus, Pencil, Trash2, ChevronLeft, ChevronRight } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { supabase } from '@/integrations/supabase/client';
@@ -20,6 +20,8 @@ interface CourierData {
   full_name: string;
   phone?: string | null;
 }
+
+const PAGE_SIZE = 5;
 
 function CourierFormDialog({
   open,
@@ -35,24 +37,22 @@ function CourierFormDialog({
   const queryClient = useQueryClient();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [fullName, setFullName] = useState(courier?.full_name || '');
-  const [phone, setPhone] = useState(courier?.phone || '');
+  const [fullName, setFullName] = useState('');
+  const [phone, setPhone] = useState('');
   const [saving, setSaving] = useState(false);
 
-  const resetForm = () => {
-    setEmail('');
-    setPassword('');
-    setFullName('');
-    setPhone('');
-  };
-
-  // Sync state when courier prop changes
-  useState(() => {
-    if (courier) {
+  useEffect(() => {
+    if (courier && mode === 'edit') {
       setFullName(courier.full_name);
       setPhone(courier.phone || '');
     }
-  });
+    if (!open) {
+      setEmail('');
+      setPassword('');
+      setFullName('');
+      setPhone('');
+    }
+  }, [courier, mode, open]);
 
   const handleSave = async () => {
     if (mode === 'create' && (!email || !password || !fullName)) {
@@ -92,7 +92,6 @@ function CourierFormDialog({
 
       queryClient.invalidateQueries({ queryKey: ['couriers'] });
       onOpenChange(false);
-      resetForm();
     } catch (error: any) {
       toast.error(error.message || `Error al ${mode === 'create' ? 'crear' : 'actualizar'} mensajero`);
     } finally {
@@ -101,7 +100,7 @@ function CourierFormDialog({
   };
 
   return (
-    <Dialog open={open} onOpenChange={(v) => { onOpenChange(v); if (!v) resetForm(); }}>
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
           <DialogTitle>{mode === 'create' ? 'Agregar Mensajero' : 'Editar Mensajero'}</DialogTitle>
@@ -148,6 +147,16 @@ export function CouriersList() {
   const [editCourier, setEditCourier] = useState<CourierData | null>(null);
   const [deleteCourier, setDeleteCourier] = useState<CourierData | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [page, setPage] = useState(0);
+
+  const totalItems = couriers?.length || 0;
+  const totalPages = Math.max(1, Math.ceil(totalItems / PAGE_SIZE));
+  const paginatedCouriers = couriers?.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE) || [];
+
+  // Reset page when data changes
+  useEffect(() => {
+    if (page >= totalPages) setPage(Math.max(0, totalPages - 1));
+  }, [totalPages, page]);
 
   const handleDelete = async () => {
     if (!deleteCourier) return;
@@ -208,7 +217,7 @@ export function CouriersList() {
           <AlertDialogHeader>
             <AlertDialogTitle>¿Eliminar mensajero?</AlertDialogTitle>
             <AlertDialogDescription>
-              Esta acción eliminará permanentemente a <strong>{deleteCourier?.full_name}</strong> y su cuenta de acceso. Esta acción no se puede deshacer.
+              Esta acción eliminará permanentemente a <strong>{deleteCourier?.full_name}</strong>, su cuenta de acceso y todos sus registros asociados (entregas, liquidaciones, adelantos). Esta acción no se puede deshacer.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -228,103 +237,120 @@ export function CouriersList() {
         </AlertDialogContent>
       </AlertDialog>
 
-      {couriers?.length === 0 ? (
+      {totalItems === 0 ? (
         <Card>
           <CardContent className="py-12 text-center text-muted-foreground">
             No hay mensajeros registrados. Usa el botón "Agregar Mensajero" para crear uno.
           </CardContent>
         </Card>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {couriers?.map((courier) => {
-            const courierDeliveries = deliveries?.filter(
-              d => d.courier_id === courier.user_id &&
-                   (d.status === 'completed' || d.status === 'not_delivered_collected') &&
-                   d.week_start === weekStart
-            ) || [];
+        <>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {paginatedCouriers.map((courier) => {
+              const courierDeliveries = deliveries?.filter(
+                d => d.courier_id === courier.user_id &&
+                     (d.status === 'completed' || d.status === 'not_delivered_collected') &&
+                     d.week_start === weekStart
+              ) || [];
 
-            const stats = {
-              total: courierDeliveries.length,
-              cash: courierDeliveries
-                .filter(d => d.payment_method === 'cash')
-                .reduce((sum, d) => sum + Number(d.amount), 0),
-              transferCourier: courierDeliveries
-                .filter(d => d.payment_method === 'transfer_to_courier')
-                .reduce((sum, d) => sum + Number(d.amount), 0),
-              transferClient: courierDeliveries
-                .filter(d => d.payment_method === 'transfer_to_client')
-                .reduce((sum, d) => sum + Number(d.amount), 0),
-            };
+              const stats = {
+                total: courierDeliveries.length,
+                cash: courierDeliveries
+                  .filter(d => d.payment_method === 'cash')
+                  .reduce((sum, d) => sum + Number(d.amount), 0),
+                transferCourier: courierDeliveries
+                  .filter(d => d.payment_method === 'transfer_to_courier')
+                  .reduce((sum, d) => sum + Number(d.amount), 0),
+                transferClient: courierDeliveries
+                  .filter(d => d.payment_method === 'transfer_to_client')
+                  .reduce((sum, d) => sum + Number(d.amount), 0),
+              };
 
-            return (
-              <Card key={courier.user_id} className="hover:shadow-md transition-shadow">
-                <CardHeader className="pb-3">
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <CardTitle className="text-lg">{courier.full_name}</CardTitle>
-                      {courier.phone && (
-                        <CardDescription className="flex items-center gap-1 mt-1">
-                          <Phone className="w-3 h-3" />
-                          {courier.phone}
-                        </CardDescription>
-                      )}
+              return (
+                <Card key={courier.user_id} className="hover:shadow-md transition-shadow">
+                  <CardHeader className="pb-3">
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <CardTitle className="text-lg">{courier.full_name}</CardTitle>
+                        {courier.phone && (
+                          <CardDescription className="flex items-center gap-1 mt-1">
+                            <Phone className="w-3 h-3" />
+                            {courier.phone}
+                          </CardDescription>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8"
+                          onClick={() => setEditCourier({
+                            user_id: courier.user_id,
+                            full_name: courier.full_name,
+                            phone: courier.phone,
+                          })}
+                        >
+                          <Pencil className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-destructive hover:text-destructive"
+                          onClick={() => setDeleteCourier({
+                            user_id: courier.user_id,
+                            full_name: courier.full_name,
+                            phone: courier.phone,
+                          })}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
                     </div>
-                    <div className="flex items-center gap-1">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8"
-                        onClick={() => setEditCourier({
-                          user_id: courier.user_id,
-                          full_name: courier.full_name,
-                          phone: courier.phone,
-                        })}
-                      >
-                        <Pencil className="w-4 h-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8 text-destructive hover:text-destructive"
-                        onClick={() => setDeleteCourier({
-                          user_id: courier.user_id,
-                          full_name: courier.full_name,
-                          phone: courier.phone,
-                        })}
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    <div className="flex items-center justify-between p-2 rounded bg-muted/50">
+                      <span className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <Package className="w-4 h-4" />
+                        Entregas
+                      </span>
+                      <span className="font-semibold">{stats.total}</span>
                     </div>
-                  </div>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  <div className="flex items-center justify-between p-2 rounded bg-muted/50">
-                    <span className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <Package className="w-4 h-4" />
-                      Entregas
-                    </span>
-                    <span className="font-semibold">{stats.total}</span>
-                  </div>
-                  <div className="flex items-center justify-between p-2 rounded bg-cash/5 border border-cash/20">
-                    <span className="flex items-center gap-2 text-sm">
-                      <DollarSign className="w-4 h-4 text-cash" />
-                      Efectivo a entregar
-                    </span>
-                    <span className="font-bold text-cash">${stats.cash.toFixed(2)}</span>
-                  </div>
-                  <div className="flex items-center justify-between p-2 rounded bg-transfer-courier/5">
-                    <span className="text-sm text-muted-foreground">Trans. JS</span>
-                    <span className="font-medium">${stats.transferCourier.toFixed(2)}</span>
-                  </div>
-                  <div className="flex items-center justify-between p-2 rounded bg-transfer-client/5">
-                    <span className="text-sm text-muted-foreground">Trans. Cliente</span>
-                    <span className="font-medium">${stats.transferClient.toFixed(2)}</span>
-                  </div>
-                </CardContent>
-              </Card>
-            );
-          })}
-        </div>
+                    <div className="flex items-center justify-between p-2 rounded bg-cash/5 border border-cash/20">
+                      <span className="flex items-center gap-2 text-sm">
+                        <DollarSign className="w-4 h-4 text-cash" />
+                        Efectivo a entregar
+                      </span>
+                      <span className="font-bold text-cash">${stats.cash.toFixed(2)}</span>
+                    </div>
+                    <div className="flex items-center justify-between p-2 rounded bg-transfer-courier/5">
+                      <span className="text-sm text-muted-foreground">Trans. JS</span>
+                      <span className="font-medium">${stats.transferCourier.toFixed(2)}</span>
+                    </div>
+                    <div className="flex items-center justify-between p-2 rounded bg-transfer-client/5">
+                      <span className="text-sm text-muted-foreground">Trans. Cliente</span>
+                      <span className="font-medium">${stats.transferClient.toFixed(2)}</span>
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
+
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-center gap-2 pt-2">
+              <Button variant="outline" size="sm" disabled={page === 0} onClick={() => setPage(p => p - 1)}>
+                <ChevronLeft className="w-4 h-4" />
+              </Button>
+              <span className="text-sm text-muted-foreground">
+                Página {page + 1} de {totalPages}
+              </span>
+              <Button variant="outline" size="sm" disabled={page >= totalPages - 1} onClick={() => setPage(p => p + 1)}>
+                <ChevronRight className="w-4 h-4" />
+              </Button>
+            </div>
+          )}
+        </>
       )}
     </div>
   );
