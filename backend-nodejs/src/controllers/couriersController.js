@@ -195,16 +195,17 @@ const getSummary = async (req, res) => {
   }
 };
 
-// PUT /api/couriers/:id - Update courier profile
+// PUT /api/couriers/:id - Update courier profile and optionally password
 const update = async (req, res) => {
   try {
     const { id } = req.params;
-    const { full_name, phone } = req.body;
+    const { full_name, phone, password } = req.body;
 
     if (!full_name) {
       return res.status(400).json({ error: 'El nombre es requerido' });
     }
 
+    // Update profile
     const result = await pool.query(
       `UPDATE profiles SET full_name = $1, phone = $2, updated_at = NOW() WHERE user_id = $3 RETURNING *`,
       [full_name, phone || null, id]
@@ -214,6 +215,18 @@ const update = async (req, res) => {
       return res.status(404).json({ error: 'Mensajero no encontrado' });
     }
 
+    // Update password if provided
+    if (password) {
+      if (password.length < 6) {
+        return res.status(400).json({ error: 'La contraseña debe tener al menos 6 caracteres' });
+      }
+      const passwordHash = await bcrypt.hash(password, 10);
+      await pool.query(
+        `UPDATE users SET password_hash = $1 WHERE id = $2`,
+        [passwordHash, id]
+      );
+    }
+
     res.json({ data: result.rows[0], error: null });
   } catch (error) {
     console.error('Error actualizando mensajero:', error);
@@ -221,4 +234,35 @@ const update = async (req, res) => {
   }
 };
 
-module.exports = { getAll, create, update, getStats, getSummary };
+// DELETE /api/couriers/:id - Delete courier
+const remove = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // Prevent self-deletion
+    if (id === req.user.id) {
+      return res.status(400).json({ error: 'No puedes eliminarte a ti mismo' });
+    }
+
+    // Check courier exists
+    const existing = await pool.query(
+      `SELECT p.user_id FROM profiles p INNER JOIN user_roles ur ON p.user_id = ur.user_id WHERE p.user_id = $1 AND ur.role = 'courier'`,
+      [id]
+    );
+    if (existing.rows.length === 0) {
+      return res.status(404).json({ error: 'Mensajero no encontrado' });
+    }
+
+    // Delete in order: user_roles, profiles, users (cascade)
+    await pool.query('DELETE FROM user_roles WHERE user_id = $1', [id]);
+    await pool.query('DELETE FROM profiles WHERE user_id = $1', [id]);
+    await pool.query('DELETE FROM users WHERE id = $1', [id]);
+
+    res.json({ data: { deleted: true }, error: null });
+  } catch (error) {
+    console.error('Error eliminando mensajero:', error);
+    res.status(500).json({ error: 'Error al eliminar mensajero' });
+  }
+};
+
+module.exports = { getAll, create, update, remove, getStats, getSummary };
