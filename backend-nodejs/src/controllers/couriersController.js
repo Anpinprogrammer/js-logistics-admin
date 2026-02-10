@@ -195,4 +195,30 @@ const getSummary = async (req, res) => {
   }
 };
 
-module.exports = { getAll, create, getStats, getSummary };
+// PUT /api/couriers/:id - Update courier profile
+const update = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { full_name, phone } = req.body;
+
+    if (!full_name) {
+      return res.status(400).json({ error: 'El nombre es requerido' });
+    }
+
+    const result = await pool.query(
+      `UPDATE profiles SET full_name = $1, phone = $2, updated_at = NOW() WHERE user_id = $3 RETURNING *`,
+      [full_name, phone || null, id]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Mensajero no encontrado' });
+    }
+
+    res.json({ data: result.rows[0], error: null });
+  } catch (error) {
+    console.error('Error actualizando mensajero:', error);
+    res.status(500).json({ error: 'Error al actualizar mensajero' });
+  }
+};
+
+module.exports = { getAll, create, update, getStats, getSummary };
