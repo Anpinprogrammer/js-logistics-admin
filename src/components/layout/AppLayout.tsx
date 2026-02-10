@@ -170,7 +170,7 @@ export function AppLayout({ children, currentPage, onNavigate }: AppLayoutProps)
             </Button>
             <div className="flex items-center gap-2">
               <Truck className="w-5 h-5 text-primary" />
-              <span className="font-bold">LogísticaPro</span>
+              <span className="font-bold">JS Logistics</span>
             </div>
             <div className="w-10" /> {/* Spacer */}
           </div>
