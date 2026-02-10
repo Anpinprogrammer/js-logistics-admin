@@ -203,7 +203,7 @@ export function CouriersList() {
         courier={editCourier}
       />
 
-      <AlertDialog open={!!deleteCourier} onOpenChange={(v) => { if (!v) setDeleteCourier(null); }}>
+      <AlertDialog open={!!deleteCourier} onOpenChange={(v) => { if (!v && !deleting) setDeleteCourier(null); }}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>¿Eliminar mensajero?</AlertDialogTitle>
@@ -213,7 +213,14 @@ export function CouriersList() {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={deleting}>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDelete} disabled={deleting} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+            <AlertDialogAction
+              onClick={(e) => {
+                e.preventDefault();
+                handleDelete();
+              }}
+              disabled={deleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
               {deleting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
               Eliminar
             </AlertDialogAction>
