@@ -6,8 +6,9 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Truck, Phone, Package, DollarSign, Loader2, UserPlus, Pencil } from 'lucide-react';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import { Truck, Phone, Package, DollarSign, Loader2, UserPlus, Pencil, Trash2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { supabase } from '@/integrations/supabase/client';
@@ -45,6 +46,14 @@ function CourierFormDialog({
     setPhone('');
   };
 
+  // Sync state when courier prop changes
+  useState(() => {
+    if (courier) {
+      setFullName(courier.full_name);
+      setPhone(courier.phone || '');
+    }
+  });
+
   const handleSave = async () => {
     if (mode === 'create' && (!email || !password || !fullName)) {
       toast.error('Email, contraseña y nombre son obligatorios');
@@ -58,12 +67,13 @@ function CourierFormDialog({
       toast.error('El nombre es obligatorio');
       return;
     }
+    if (password && password.length > 0 && password.length < 6) {
+      toast.error('La contraseña debe tener al menos 6 caracteres');
+      return;
+    }
 
     setSaving(true);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) throw new Error('No hay sesión activa');
-
       if (mode === 'create') {
         const { data, error } = await supabase.functions.invoke('create-courier', {
           body: { email, password, full_name: fullName, phone },
@@ -72,9 +82,9 @@ function CourierFormDialog({
         if (data?.error) throw new Error(data.error);
         toast.success(`Mensajero "${fullName}" creado exitosamente`);
       } else {
-        const { data, error } = await supabase.functions.invoke('update-courier', {
-          body: { user_id: courier!.user_id, full_name: fullName, phone },
-        });
+        const body: any = { user_id: courier!.user_id, full_name: fullName, phone };
+        if (password) body.password = password;
+        const { data, error } = await supabase.functions.invoke('update-courier', { body });
         if (error) throw error;
         if (data?.error) throw new Error(data.error);
         toast.success(`Mensajero "${fullName}" actualizado`);
@@ -105,17 +115,15 @@ function CourierFormDialog({
             <Input value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="Nombre del mensajero" />
           </div>
           {mode === 'create' && (
-            <>
-              <div className="space-y-2">
-                <Label>Email *</Label>
-                <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="correo@ejemplo.com" />
-              </div>
-              <div className="space-y-2">
-                <Label>Contraseña *</Label>
-                <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Mínimo 6 caracteres" />
-              </div>
-            </>
+            <div className="space-y-2">
+              <Label>Email *</Label>
+              <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="correo@ejemplo.com" />
+            </div>
           )}
+          <div className="space-y-2">
+            <Label>{mode === 'create' ? 'Contraseña *' : 'Nueva contraseña (dejar vacío para no cambiar)'}</Label>
+            <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder={mode === 'create' ? 'Mínimo 6 caracteres' : '••••••••'} />
+          </div>
           <div className="space-y-2">
             <Label>Teléfono (opcional)</Label>
             <Input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="3001234567" />
@@ -134,9 +142,31 @@ export function CouriersList() {
   const { data: couriers, isLoading } = useCouriers();
   const { data: deliveries } = useDeliveries();
   const { weekStart, weekEnd } = getCurrentWeekDates();
+  const queryClient = useQueryClient();
 
   const [addDialog, setAddDialog] = useState(false);
   const [editCourier, setEditCourier] = useState<CourierData | null>(null);
+  const [deleteCourier, setDeleteCourier] = useState<CourierData | null>(null);
+  const [deleting, setDeleting] = useState(false);
+
+  const handleDelete = async () => {
+    if (!deleteCourier) return;
+    setDeleting(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('delete-courier', {
+        body: { user_id: deleteCourier.user_id },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      toast.success(`Mensajero "${deleteCourier.full_name}" eliminado`);
+      queryClient.invalidateQueries({ queryKey: ['couriers'] });
+      setDeleteCourier(null);
+    } catch (error: any) {
+      toast.error(error.message || 'Error al eliminar mensajero');
+    } finally {
+      setDeleting(false);
+    }
+  };
 
   if (isLoading) {
     return (
@@ -172,6 +202,24 @@ export function CouriersList() {
         mode="edit"
         courier={editCourier}
       />
+
+      <AlertDialog open={!!deleteCourier} onOpenChange={(v) => { if (!v) setDeleteCourier(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Eliminar mensajero?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta acción eliminará permanentemente a <strong>{deleteCourier?.full_name}</strong> y su cuenta de acceso. Esta acción no se puede deshacer.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDelete} disabled={deleting} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              {deleting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+              Eliminar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {couriers?.length === 0 ? (
         <Card>
@@ -214,7 +262,7 @@ export function CouriersList() {
                         </CardDescription>
                       )}
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1">
                       <Button
                         variant="ghost"
                         size="icon"
@@ -227,9 +275,18 @@ export function CouriersList() {
                       >
                         <Pencil className="w-4 h-4" />
                       </Button>
-                      <Badge variant="secondary" className="bg-courier-badge/10 text-courier-badge">
-                        Mensajero
-                      </Badge>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-destructive hover:text-destructive"
+                        onClick={() => setDeleteCourier({
+                          user_id: courier.user_id,
+                          full_name: courier.full_name,
+                          phone: courier.phone,
+                        })}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
                     </div>
                   </div>
                 </CardHeader>

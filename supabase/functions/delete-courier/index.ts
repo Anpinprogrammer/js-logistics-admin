@@ -40,16 +40,24 @@ Deno.serve(async (req) => {
       .single();
 
     if (roleData?.role !== "admin") {
-      return new Response(JSON.stringify({ error: "Solo administradores pueden editar mensajeros" }), {
+      return new Response(JSON.stringify({ error: "Solo administradores pueden eliminar mensajeros" }), {
         status: 403,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    const { user_id, full_name, phone, password } = await req.json();
+    const { user_id } = await req.json();
 
-    if (!user_id || !full_name) {
-      return new Response(JSON.stringify({ error: "user_id y nombre son requeridos" }), {
+    if (!user_id) {
+      return new Response(JSON.stringify({ error: "user_id es requerido" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // Prevent deleting yourself
+    if (user_id === callerUser.id) {
+      return new Response(JSON.stringify({ error: "No puedes eliminarte a ti mismo" }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -60,34 +68,18 @@ Deno.serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
-    // Update profile
-    const { error: updateError } = await supabaseAdmin
-      .from("profiles")
-      .update({ full_name, phone: phone || null })
-      .eq("user_id", user_id);
+    // Delete the auth user (cascade will clean up profiles, user_roles, etc.)
+    const { error: deleteError } = await supabaseAdmin.auth.admin.deleteUser(user_id);
 
-    if (updateError) {
-      return new Response(JSON.stringify({ error: updateError.message }), {
+    if (deleteError) {
+      return new Response(JSON.stringify({ error: deleteError.message }), {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    // Update password if provided
-    if (password && password.length >= 6) {
-      const { error: pwError } = await supabaseAdmin.auth.admin.updateUserById(user_id, {
-        password,
-      });
-      if (pwError) {
-        return new Response(JSON.stringify({ error: "Perfil actualizado pero error al cambiar contraseña: " + pwError.message }), {
-          status: 500,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-    }
-
     return new Response(
-      JSON.stringify({ data: { user_id, full_name, phone: phone || null } }),
+      JSON.stringify({ data: { deleted: true } }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error) {
