@@ -60,6 +60,7 @@ const BusquedaCliente = ({ onClientSelect }: BusquedaClienteProps) => {
         company: null,
         identification_number: null,
         notes: null,
+        email: null,
       });
       // Auto-select the new client
       handleClientSelect(created as Client);

@@ -1,13 +1,14 @@
-import { useState, useEffect } from 'react';
-import { useClients, useCreateClient, useUpdateClient, Client } from '@/hooks/useClients';
+import { useState } from 'react';
+import { useClients, useCreateClient, useUpdateClient, useDeleteClient, Client } from '@/hooks/useClients';
 import { ClientStatementView } from './ClientStatementView';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { AlertDialog, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogCancel, AlertDialogAction } from '@/components/ui/alert-dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Users, Plus, Phone, MapPin, Loader2, Edit, AlertTriangle, FileText, DollarSign, Building2, IdCard, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Users, Plus, Phone, MapPin, Loader2, Edit, AlertTriangle, FileText, DollarSign, Building2, IdCard, ChevronLeft, ChevronRight, Trash2, Mail } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 
@@ -17,10 +18,13 @@ export function ClientsManager() {
   const { data: clients, isLoading } = useClients();
   const createClient = useCreateClient();
   const updateClient = useUpdateClient();
+  const deleteClient = useDeleteClient();
   
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingClient, setEditingClient] = useState<Client | null>(null);
   const [statementClientId, setStatementClientId] = useState<string | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<Client | null>(null);
+  const [deleting, setDeleting] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
     phone: '',
@@ -28,6 +32,7 @@ export function ClientsManager() {
     notes: '',
     company: '',
     identification_number: '',
+    email: '',
   });
 
   const [allPage, setAllPage] = useState(0);
@@ -43,7 +48,7 @@ export function ClientsManager() {
 
   const openCreateDialog = () => {
     setEditingClient(null);
-    setFormData({ name: '', phone: '', address: '', notes: '', company: '', identification_number: '' });
+    setFormData({ name: '', phone: '', address: '', notes: '', company: '', identification_number: '', email: '' });
     setDialogOpen(true);
   };
 
@@ -56,6 +61,7 @@ export function ClientsManager() {
       notes: client.notes || '',
       company: client.company || '',
       identification_number: client.identification_number || '',
+      email: client.email || '',
     });
     setDialogOpen(true);
   };
@@ -73,6 +79,7 @@ export function ClientsManager() {
           notes: formData.notes || null,
           company: formData.company || null,
           identification_number: formData.identification_number || null,
+          email: formData.email || null,
         },
       });
     } else {
@@ -83,10 +90,23 @@ export function ClientsManager() {
         notes: formData.notes || null,
         company: formData.company || null,
         identification_number: formData.identification_number || null,
+        email: formData.email || null,
       });
     }
     
     setDialogOpen(false);
+  };
+
+  const handleDelete = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    if (!deleteTarget) return;
+    setDeleting(true);
+    try {
+      await deleteClient.mutateAsync(deleteTarget.id);
+      setDeleteTarget(null);
+    } finally {
+      setDeleting(false);
+    }
   };
 
   if (isLoading) {
@@ -156,6 +176,14 @@ export function ClientsManager() {
                   <Input id="identification_number" value={formData.identification_number} onChange={(e) => setFormData({ ...formData, identification_number: e.target.value })} placeholder="NIT o cédula" />
                 </div>
                 <div className="space-y-2">
+                  <Label htmlFor="email" className="flex items-center gap-2">
+                    <Mail className="w-4 h-4 text-muted-foreground" />
+                    Correo Electrónico
+                  </Label>
+                  <Input id="email" type="email" value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} placeholder="correo@ejemplo.com (opcional)" />
+                  <p className="text-xs text-muted-foreground">Si se asigna un correo, el cliente podrá acceder a su portal</p>
+                </div>
+                <div className="space-y-2">
                   <Label htmlFor="phone" className="flex items-center gap-2">
                     <Phone className="w-4 h-4 text-muted-foreground" />
                     Teléfono
@@ -220,6 +248,7 @@ export function ClientsManager() {
                     key={client.id} 
                     client={client} 
                     onEdit={openEditDialog}
+                    onDelete={setDeleteTarget}
                     onViewStatement={() => setStatementClientId(client.id)}
                     formatCurrency={formatCurrency}
                   />
@@ -271,6 +300,7 @@ export function ClientsManager() {
                     key={client.id} 
                     client={client} 
                     onEdit={openEditDialog}
+                    onDelete={setDeleteTarget}
                     onViewStatement={() => setStatementClientId(client.id)}
                     formatCurrency={formatCurrency}
                   />
@@ -299,6 +329,29 @@ export function ClientsManager() {
         open={!!statementClientId}
         onOpenChange={(open) => !open && setStatementClientId(null)}
       />
+
+      {/* Delete confirmation dialog */}
+      <AlertDialog open={!!deleteTarget} onOpenChange={(open) => !deleting && !open && setDeleteTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Eliminar cliente?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta acción eliminará permanentemente a <strong>{deleteTarget?.name}</strong> y todos sus datos asociados. Esta acción no se puede deshacer.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={deleting}
+              onClick={handleDelete}
+            >
+              {deleting && <Loader2 className="w-4 h-4 animate-spin mr-2" />}
+              Eliminar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
@@ -306,11 +359,12 @@ export function ClientsManager() {
 interface ClientCardProps {
   client: Client;
   onEdit: (client: Client) => void;
+  onDelete: (client: Client) => void;
   onViewStatement: () => void;
   formatCurrency: (value: number) => string;
 }
 
-function ClientCard({ client, onEdit, onViewStatement, formatCurrency }: ClientCardProps) {
+function ClientCard({ client, onEdit, onDelete, onViewStatement, formatCurrency }: ClientCardProps) {
   const hasDebt = Number(client.balance) > 0;
   
   return (
@@ -342,6 +396,13 @@ function ClientCard({ client, onEdit, onViewStatement, formatCurrency }: ClientC
               <p className="text-sm text-muted-foreground flex items-center gap-1">
                 <IdCard className="w-3 h-3" />
                 {client.identification_number}
+              </p>
+            )}
+
+            {client.email && (
+              <p className="text-sm text-muted-foreground flex items-center gap-1">
+                <Mail className="w-3 h-3" />
+                {client.email}
               </p>
             )}
             
@@ -382,6 +443,14 @@ function ClientCard({ client, onEdit, onViewStatement, formatCurrency }: ClientC
               onClick={onViewStatement}
             >
               <FileText className="w-4 h-4" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="opacity-0 group-hover:opacity-100 transition-opacity text-destructive hover:text-destructive"
+              onClick={() => onDelete(client)}
+            >
+              <Trash2 className="w-4 h-4" />
             </Button>
           </div>
         </div>

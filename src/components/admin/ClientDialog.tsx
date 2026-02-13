@@ -28,6 +28,7 @@ const ClientDialog = ({dialogOpen, setDialogOpen, busqueda, handleClientSelect}:
         notes: '',
         company: '',
         identification_number: '',
+        email: '',
     });
 
   useEffect(() => {
@@ -40,7 +41,7 @@ const ClientDialog = ({dialogOpen, setDialogOpen, busqueda, handleClientSelect}:
 
     const openCreateDialog = () => {
     setEditingClient(null);
-    setFormData({ name: '', phone: '', address: '', notes: '', company: '', identification_number: '' });
+    setFormData({ name: '', phone: '', address: '', notes: '', company: '', identification_number: '', email: '' });
     setDialogOpen(true);
   };
 
@@ -58,6 +59,7 @@ const ClientDialog = ({dialogOpen, setDialogOpen, busqueda, handleClientSelect}:
           notes: formData.notes || null,
           company: formData.company || null,
           identification_number: formData.identification_number || null,
+          email: formData.email || null,
         },
       });
     } else {
@@ -68,6 +70,7 @@ const ClientDialog = ({dialogOpen, setDialogOpen, busqueda, handleClientSelect}:
         notes: formData.notes || null,
         company: formData.company || null,
         identification_number: formData.identification_number || null,
+        email: formData.email || null,
       });
     }
     
@@ -79,6 +82,7 @@ const ClientDialog = ({dialogOpen, setDialogOpen, busqueda, handleClientSelect}:
         notes: '',
         company: '',
         identification_number: '',
+        email: '',
     })
   };
 

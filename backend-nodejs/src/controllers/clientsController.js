@@ -41,17 +41,17 @@ const getWithDebt = async (req, res) => {
 // POST /api/clients
 const create = async (req, res) => {
   try {
-    const { name, phone, address, notes, company, identification_number } = req.body;
+    const { name, phone, address, notes, company, identification_number, email } = req.body;
     
     if (!name) {
       return res.status(400).json({ error: 'El nombre es requerido' });
     }
 
     const result = await pool.query(
-      `INSERT INTO clients (name, phone, address, notes, company, identification_number)
-       VALUES ($1, $2, $3, $4, $5, $6)
+      `INSERT INTO clients (name, phone, address, notes, company, identification_number, email)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)
        RETURNING *`,
-      [name, phone || null, address || null, notes || null, company || null, identification_number || null]
+      [name, phone || null, address || null, notes || null, company || null, identification_number || null, email || null]
     );
 
     res.status(201).json({ data: result.rows[0], error: null });
@@ -65,7 +65,7 @@ const create = async (req, res) => {
 const update = async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, phone, address, notes, balance, company, identification_number } = req.body;
+    const { name, phone, address, notes, balance, company, identification_number, email } = req.body;
 
     const result = await pool.query(
       `UPDATE clients 
@@ -76,10 +76,11 @@ const update = async (req, res) => {
            balance = COALESCE($5, balance),
            company = $6,
            identification_number = $7,
+           email = $8,
            updated_at = now()
-       WHERE id = $8
+       WHERE id = $9
        RETURNING *`,
-      [name, phone || null, address || null, notes || null, balance, company || null, identification_number || null, id]
+      [name, phone || null, address || null, notes || null, balance, company || null, identification_number || null, email || null, id]
     );
 
     if (result.rows.length === 0) {

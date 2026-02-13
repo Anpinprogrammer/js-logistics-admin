@@ -71,6 +71,7 @@ CREATE TABLE IF NOT EXISTS clients (
   balance NUMERIC DEFAULT 0,
   company TEXT,
   identification_number TEXT,
+  email TEXT,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );

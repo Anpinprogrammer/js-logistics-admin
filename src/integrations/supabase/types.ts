@@ -20,6 +20,7 @@ export type Database = {
           balance: number | null
           company: string | null
           created_at: string
+          email: string | null
           id: string
           identification_number: string | null
           name: string
@@ -32,6 +33,7 @@ export type Database = {
           balance?: number | null
           company?: string | null
           created_at?: string
+          email?: string | null
           id?: string
           identification_number?: string | null
           name: string
@@ -44,6 +46,7 @@ export type Database = {
           balance?: number | null
           company?: string | null
           created_at?: string
+          email?: string | null
           id?: string
           identification_number?: string | null
           name?: string
