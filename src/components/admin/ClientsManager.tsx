@@ -156,11 +156,17 @@ export function ClientsManager() {
                   <Input id="identification_number" value={formData.identification_number} onChange={(e) => setFormData({ ...formData, identification_number: e.target.value })} placeholder="NIT o cédula" />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="phone">Teléfono</Label>
+                  <Label htmlFor="phone" className="flex items-center gap-2">
+                    <Phone className="w-4 h-4 text-muted-foreground" />
+                    Teléfono
+                  </Label>
                   <Input id="phone" value={formData.phone} onChange={(e) => setFormData({ ...formData, phone: e.target.value })} placeholder="Telefono del cliente" />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="address">Dirección</Label>
+                  <Label htmlFor="address" className='flex items-center gap-2'>
+                    <MapPin className="w-4 h-4 text-muted-foreground" />
+                    Dirección
+                  </Label>
                   <Input id="address" value={formData.address} onChange={(e) => setFormData({ ...formData, address: e.target.value })} placeholder="Direccion del cliente" />
                 </div>
                 <div className="space-y-2">

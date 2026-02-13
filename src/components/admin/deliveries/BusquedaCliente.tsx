@@ -11,6 +11,8 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
+import ClientDialog from "../ClientDialog";
+import { MyClient } from "@/types";
 
 interface BusquedaClienteProps {
   onClientSelect?: (client: Client) => void;
@@ -22,11 +24,17 @@ const BusquedaCliente = ({ onClientSelect }: BusquedaClienteProps) => {
   const [busqueda, setBusqueda] = useState('');
   const [showResults, setShowResults] = useState(false);
 
+  
+
   // New client dialog
   const [dialogOpen, setDialogOpen] = useState(false);
   const [newName, setNewName] = useState('');
+  const [newCompany, setNewCompany] = useState('');
+  const [newID, setNewId] = useState('');
   const [newPhone, setNewPhone] = useState('');
   const [newAddress, setNewAddress] = useState('');
+  const [newNotes, setNewNotes] = useState('');
+  
 
   const clientesFiltrados = busqueda === ''
     ? []
@@ -88,7 +96,6 @@ const BusquedaCliente = ({ onClientSelect }: BusquedaClienteProps) => {
             className="p-3 cursor-pointer hover:bg-primary/10 transition-colors border-b border-border flex items-center gap-2 text-primary font-medium"
             onClick={() => {
               setShowResults(false);
-              setNewName(busqueda);
               setDialogOpen(true);
             }}
           >
@@ -141,58 +148,13 @@ const BusquedaCliente = ({ onClientSelect }: BusquedaClienteProps) => {
         </ul>
       )}
 
-      {/* Create New Client Dialog */}
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="sm:max-w-md z-[200]">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Plus className="w-5 h-5 text-primary" />
-              Crear cliente nuevo
-            </DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4 py-2">
-            <div className="space-y-2">
-              <Label htmlFor="new-client-name">Nombre *</Label>
-              <Input
-                id="new-client-name"
-                placeholder="Nombre del cliente"
-                value={newName}
-                onChange={(e) => setNewName(e.target.value)}
-                maxLength={100}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="new-client-phone">Teléfono</Label>
-              <Input
-                id="new-client-phone"
-                placeholder="Teléfono"
-                value={newPhone}
-                onChange={(e) => setNewPhone(e.target.value)}
-                maxLength={20}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="new-client-address">Dirección</Label>
-              <Input
-                id="new-client-address"
-                placeholder="Dirección"
-                value={newAddress}
-                onChange={(e) => setNewAddress(e.target.value)}
-                maxLength={200}
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setDialogOpen(false)} disabled={createClient.isPending}>
-              Cancelar
-            </Button>
-            <Button onClick={handleCreateClient} disabled={createClient.isPending || !newName.trim()}>
-              {createClient.isPending && <Loader2 className="w-4 h-4 animate-spin mr-2" />}
-              Guardar
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      {/**Create new client dialog */}
+      <ClientDialog 
+        dialogOpen={dialogOpen}
+        setDialogOpen={setDialogOpen}
+        busqueda={busqueda}
+        handleClientSelect={handleClientSelect}
+      />
     </div>
   );
 };
