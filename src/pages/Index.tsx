@@ -9,7 +9,7 @@ import { DeliveryList } from '@/components/delivery/DeliveryList';
 import Deliveries from '@/components/admin/deliveries/Deliveries';
 import { AdminNewDeliveryForm } from '@/components/admin/AdminNewDeliveryForm';
 import { CouriersList } from '@/components/admin/CouriersList';
-import { ClientsManager } from '@/components/admin/ClientsManager';
+import { ClientsManager } from '@/components/admin/companies/ClientsManager';
 import { AuditLog } from '@/components/admin/AuditLog';
 import { SettingsPage } from '@/components/admin/SettingsPage';
 import { ConsolidatedCash } from '@/components/admin/ConsolidatedCash';

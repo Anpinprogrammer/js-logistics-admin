@@ -3,9 +3,6 @@ import { useQueryClient, useMutation } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useClients } from '@/hooks/useClients';
 import { useCouriers } from '@/hooks/useCouriers';
-import { getCurrentWeekDates } from '@/hooks/useDeliveries';
-import { useAuth } from '@/contexts/AuthContext';
-import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
@@ -23,89 +20,25 @@ const paymentMethods = [
 
 interface DeliveryInfoProps {
   onSuccess?: () => void;
+  deliveryFormData: {
+    courierId: string;
+    recipientName: string;
+    totalToCollect: string;
+    paymentMethod: string;
+    notes: string;
+  };
+  setDeliveryFormData: React.Dispatch<React.SetStateAction<{
+    courierId: string;
+    recipientName: string;
+    totalToCollect: string;
+    paymentMethod: string;
+    notes: string;
+  }>>;
 }
 
-export function DeliveryInfo({ onSuccess }: DeliveryInfoProps) {
+export function DeliveryInfo({ onSuccess, deliveryFormData, setDeliveryFormData }: DeliveryInfoProps) {
   const { data: clients, isLoading: loadingClients } = useClients();
   const { data: couriers, isLoading: loadingCouriers } = useCouriers();
-  const { user } = useAuth();
-  const queryClient = useQueryClient();
-  
-  const [formData, setFormData] = useState({
-    courier_id: '',
-    client_id: '',
-    recipient_name: '',
-    service_value: '',
-    total_to_collect: '',
-    payment_method: '' as 'cash' | 'transfer_to_courier' | 'transfer_to_client' | '',
-    notes: '',
-  });
-
-  const createDelivery = useMutation({
-    mutationFn: async (data: {
-      courier_id: string;
-      client_id: string;
-      recipient_name?: string;
-      service_value: number;
-      total_to_collect: number;
-      payment_method: 'cash' | 'transfer_to_courier' | 'transfer_to_client';
-      notes?: string;
-    }) => {
-      if (!user) throw new Error('No user logged in');
-      
-      const { weekStart, weekEnd } = getCurrentWeekDates();
-      
-      // Create delivery with pending status - courier will complete it
-      const { data: delivery, error } = await supabase
-        .from('deliveries')
-        .insert({
-          courier_id: data.courier_id,
-          client_id: data.client_id,
-          recipient_name: data.recipient_name || null,
-          notes: data.notes || null,
-          created_by: user.id,
-          week_start: weekStart,
-          week_end: weekEnd,
-          delivery_date: new Date().toISOString().split('T')[0],
-          status: 'pending',
-          service_value: data.service_value,
-          total_to_collect: data.total_to_collect,
-          amount: data.total_to_collect, // Keep for backward compatibility
-          payment_method: data.payment_method,
-        })
-        .select()
-        .single();
-      
-      if (error) throw error;
-      return delivery;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['deliveries'] });
-      toast.success('Pedido creado exitosamente');
-    },
-    onError: (error) => {
-      toast.error('Error al crear pedido: ' + error.message);
-    },
-  });
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!formData.courier_id || !formData.client_id || !formData.payment_method) return;
-    
-    await createDelivery.mutateAsync({
-      courier_id: formData.courier_id,
-      client_id: formData.client_id,
-      recipient_name: formData.recipient_name || undefined,
-      service_value: parseFloat(formData.service_value) || 0,
-      total_to_collect: parseFloat(formData.total_to_collect) || 0,
-      payment_method: formData.payment_method,
-      notes: formData.notes || undefined,
-    });
-    
-    // Reset form
-    setFormData({ courier_id: '', client_id: '', recipient_name: '', service_value: '', total_to_collect: '', payment_method: '', notes: '' });
-    onSuccess?.();
-  };
 
   return (
     <Card className="glass-card animate-slide-up max-w-xl h-full">
@@ -119,7 +52,7 @@ export function DeliveryInfo({ onSuccess }: DeliveryInfoProps) {
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <form onSubmit={handleSubmit} className="space-y-6">
+        <form className="space-y-6">
           {/* Courier selection */}
           <div className="space-y-2">
             <Label htmlFor="courier" className="flex items-center gap-2">
@@ -127,8 +60,8 @@ export function DeliveryInfo({ onSuccess }: DeliveryInfoProps) {
               Mensajero *
             </Label>
             <Select
-              value={formData.courier_id}
-              onValueChange={(value) => setFormData({ ...formData, courier_id: value })}
+              value={deliveryFormData.courierId}
+              onValueChange={(value) => setDeliveryFormData({ ...deliveryFormData, courierId: value })}
             >
               <SelectTrigger>
                 <SelectValue placeholder={loadingCouriers ? "Cargando..." : (couriers?.length === 0 ? "No hay mensajeros" : "Selecciona un mensajero")} />
@@ -157,8 +90,8 @@ export function DeliveryInfo({ onSuccess }: DeliveryInfoProps) {
               id="recipient_name"
               type="text"
               placeholder="Nombre del destinatario"
-              value={formData.recipient_name}
-              onChange={(e) => setFormData({ ...formData, recipient_name: e.target.value })}
+              value={deliveryFormData.recipientName}
+              onChange={(e) => setDeliveryFormData({ ...deliveryFormData, recipientName: e.target.value })}
             />
           </div>
 
@@ -174,8 +107,8 @@ export function DeliveryInfo({ onSuccess }: DeliveryInfoProps) {
                 min="0"
                 placeholder="0.00"
                 className="pl-9"
-                value={formData.total_to_collect}
-                onChange={(e) => setFormData({ ...formData, total_to_collect: e.target.value })}
+                value={deliveryFormData.totalToCollect}
+                onChange={(e) => setDeliveryFormData({ ...deliveryFormData, totalToCollect: e.target.value })}
                 required
               />
             </div>
@@ -189,10 +122,10 @@ export function DeliveryInfo({ onSuccess }: DeliveryInfoProps) {
                 <button
                   key={method.value}
                   type="button"
-                  onClick={() => setFormData({ ...formData, payment_method: method.value })}
+                  onClick={() => setDeliveryFormData({ ...deliveryFormData, paymentMethod: method.value })}
                   className={cn(
                     "p-3 rounded-xl border-2 transition-all duration-200 flex flex-col items-center gap-2",
-                    formData.payment_method === method.value
+                    deliveryFormData.paymentMethod === method.value
                       ? "border-primary bg-primary/5"
                       : "border-border hover:border-primary/50"
                   )}
@@ -210,8 +143,8 @@ export function DeliveryInfo({ onSuccess }: DeliveryInfoProps) {
             <Textarea
               id="notes"
               placeholder="Instrucciones para el mensajero..."
-              value={formData.notes}
-              onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+              value={deliveryFormData.notes}
+              onChange={(e) => setDeliveryFormData({ ...deliveryFormData, notes: e.target.value })}
               rows={3}
             />
           </div>

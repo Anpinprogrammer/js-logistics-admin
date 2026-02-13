@@ -1,106 +1,40 @@
 import { useState, useEffect } from 'react'
+import { UseMutationResult } from '@tanstack/react-query';
 import { useClients, useCreateClient, useUpdateClient, Client } from '@/hooks/useClients';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Users, Plus, Phone, MapPin, Loader2, Edit, AlertTriangle, FileText, DollarSign, Building2, IdCard, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Users, Plus, Phone, MapPin, Loader2, Edit, AlertTriangle, FileText, DollarSign, Building2, IdCard, Mail, ChevronLeft, ChevronRight } from 'lucide-react';
 import { MyClient } from '@/types';
 
 interface ClientDialogProps {
-    dialogOpen : boolean;
     setDialogOpen: React.Dispatch<React.SetStateAction<boolean>>;
-    busqueda: string;
-    handleClientSelect: (client: Client) => void;
+    formData: MyClient;
+    setFormData: React.Dispatch<React.SetStateAction<MyClient>>;
+    handler: (e: React.FormEvent<Element>) => Promise<void>;
+    editing?: boolean;
+    pending: boolean;
 }
 
-const ClientDialog = ({dialogOpen, setDialogOpen, busqueda, handleClientSelect}: ClientDialogProps) => {
-
-    const { data: clients, isLoading } = useClients();
+const ClientDialog = ({setDialogOpen, formData, setFormData, handler, editing, pending}: ClientDialogProps) => {
     const createClient = useCreateClient();
     const updateClient = useUpdateClient();
-    const [editingClient, setEditingClient] = useState<Client | null>(null);
-
-    const [formData, setFormData] = useState<MyClient>({
-        name: '',
-        phone: '',
-        address: '',
-        notes: '',
-        company: '',
-        identification_number: '',
-        email: '',
-    });
-
-  useEffect(() => {
-    if(busqueda){
-        setFormData({...formData, name: busqueda})
-    }
-  }, [dialogOpen])
-    
-
-
-    const openCreateDialog = () => {
-    setEditingClient(null);
-    setFormData({ name: '', phone: '', address: '', notes: '', company: '', identification_number: '', email: '' });
-    setDialogOpen(true);
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    console.log(formData)
-    
-    if (editingClient) {
-      await updateClient.mutateAsync({
-        id: editingClient.id,
-        updates: {
-          name: formData.name,
-          phone: formData.phone || null,
-          address: formData.address || null,
-          notes: formData.notes || null,
-          company: formData.company || null,
-          identification_number: formData.identification_number || null,
-          email: formData.email || null,
-        },
-      });
-    } else {
-      await createClient.mutateAsync({
-        name: formData.name,
-        phone: formData.phone || null,
-        address: formData.address || null,
-        notes: formData.notes || null,
-        company: formData.company || null,
-        identification_number: formData.identification_number || null,
-        email: formData.email || null,
-      });
-    }
-    
-    setDialogOpen(false);
-    setFormData({
-        name: '',
-        phone: '',
-        address: '',
-        notes: '',
-        company: '',
-        identification_number: '',
-        email: '',
-    })
-  };
 
   return (
     <>
-    <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
       <DialogContent className="sm:max-w-md z-[200] max-h-[85vh] overflow-hidden flex flex-col">
-            <form onSubmit={handleSubmit} className="flex flex-col h-full">
+            <form onSubmit={handler} className="flex flex-col overflow-hidden h-full">
               <DialogHeader>
                 <DialogTitle>
-                  {editingClient ? 'Editar Cliente' : 'Nuevo Cliente'}
+                  {editing ? 'Editar Cliente' : 'Nuevo Cliente'}
                 </DialogTitle>
                 <DialogDescription>
-                  {editingClient ? 'Modifica los datos del cliente' : 'Añade un nuevo cliente al sistema'}
+                  {editing ? 'Modifica los datos del cliente' : 'Añade un nuevo cliente al sistema'}
                 </DialogDescription>
               </DialogHeader>
               
-              <div className="space-y-4 py-4 overflow-y-auto flex-1">
+              <div className="space-y-4 py-4 overflow-y-auto flex-1 pr-2 pl-1">
                 <div className="space-y-2">
                   <Label htmlFor="name">Nombre *</Label>
                   <Input id="name" value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} placeholder="Nombre del cliente" required />
@@ -118,6 +52,14 @@ const ClientDialog = ({dialogOpen, setDialogOpen, busqueda, handleClientSelect}:
                     Número de Identificación
                   </Label>
                   <Input id="identification_number" value={formData.identification_number} onChange={(e) => setFormData({ ...formData, identification_number: e.target.value })} placeholder="NIT o cédula" />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="email" className="flex items-center gap-2">
+                    <Mail className="w-4 h-4 text-muted-foreground" />
+                    Correo Electrónico
+                  </Label>
+                  <Input id="email" type="email" value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} placeholder="correo@ejemplo.com (opcional)" />
+                  <p className="text-xs text-muted-foreground">Si se asigna un correo, el cliente podrá acceder a su portal</p>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="phone" className="flex items-center gap-2">
@@ -138,21 +80,20 @@ const ClientDialog = ({dialogOpen, setDialogOpen, busqueda, handleClientSelect}:
                   <Input id="notes" value={formData.notes} onChange={(e) => setFormData({ ...formData, notes: e.target.value })} />
                 </div>
               </div>
-               
-              <DialogFooter className="mt-auto pt-4 border-t">
+              
+              <DialogFooter className="pt-4 border-t mt-auto">
                 <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>
                   Cancelar
                 </Button>
-                <Button type="submit" disabled={createClient.isPending || updateClient.isPending}>
-                  {(createClient.isPending || updateClient.isPending) && (
+                <Button type="submit" disabled={pending}>
+                  {pending && (
                     <Loader2 className="w-4 h-4 animate-spin mr-2" />
                   )}
-                  {editingClient ? 'Guardar Cambios' : 'Crear Cliente'}
+                  {editing ? 'Guardar Cambios' : 'Crear Cliente'}
                 </Button>
               </DialogFooter>
             </form>
           </DialogContent>
-        </Dialog>
     </>
   )
 }

@@ -16,115 +16,43 @@ import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import BusquedaCliente from './BusquedaCliente';
 
-const paymentMethods = [
-  { value: 'cash', label: 'Efectivo', icon: DollarSign, color: 'text-cash' },
-  { value: 'transfer_to_courier', label: 'Transferencia a JS', icon: CreditCard, color: 'text-transfer-courier' },
-  { value: 'transfer_to_client', label: 'Transferencia Directa', icon: ArrowLeftRight, color: 'text-transfer-client' },
-] as const;
 
 interface ClientInfoProps {
   onSuccess?: () => void;
+  clientFormData: {
+    clientId: string,
+    clientName: string,
+    clientCompany: string,
+    clientPhone: string,
+    clientAddress: string,
+    serviceValue: string
+  };
+  setClientFormData: React.Dispatch<React.SetStateAction<{
+    clientId: string;
+    clientName: string;
+    clientCompany: string;
+    clientPhone: string;
+    clientAddress: string;
+    serviceValue: string;
+}>>
 }
 
-export function ClientInfo({ onSuccess }: ClientInfoProps) {
+export function ClientInfo({ onSuccess, clientFormData, setClientFormData }: ClientInfoProps) {
   const { data: clients, isLoading: loadingClients } = useClients();
   const { data: couriers, isLoading: loadingCouriers } = useCouriers();
   const { user } = useAuth();
   const queryClient = useQueryClient();
-  const [serviceValue, setServiceValue] = useState<number>(0)
 
-  
-  const [formData, setFormData] = useState({
-    client_id: '',
-    client_name: '',
-    client_company: '',
-    client_phone: '',
-    client_address: '',
-  });
 
-  const handleSelectedClient = (cliente: Client) => {
-    setFormData({
-      ...formData,
-      client_id: cliente.id,
-      client_name: cliente.name,
-      client_address: cliente.address,
-      client_company: cliente.company,
-      client_phone: cliente.phone
+  const handleClientSelect = (client: Client) => {
+    setClientFormData({
+      clientId: client.id,
+      clientName: client.name,
+      clientCompany: client.company || '',
+      clientPhone: client.phone || '',
+      clientAddress: client.address || '',
+      serviceValue: ''
     })
-  }
-
-  /*
-  const createDelivery = useMutation({
-    mutationFn: async (data: {
-      client_id: string;
-      client_name: string;
-      client_company: string;
-      client_phone: string;
-      client_address: string;
-    }) => {
-      if (!user) throw new Error('No user logged in');
-      
-      const { weekStart, weekEnd } = getCurrentWeekDates();
-      
-      // Create delivery with pending status - courier will complete it
-     
-      const { data: delivery, error } = await supabase
-        .from('deliveries')
-        .insert({
-          courier_id: data.courier_id,
-          client_id: data.client_id,
-          recipient_name: data.recipient_name || null,
-          notes: data.notes || null,
-          created_by: user.id,
-          week_start: weekStart,
-          week_end: weekEnd,
-          delivery_date: new Date().toISOString().split('T')[0],
-          status: 'pending',
-          service_value: data.service_value,
-          total_to_collect: data.total_to_collect,
-          amount: data.total_to_collect, // Keep for backward compatibility
-          payment_method: data.payment_method,
-        })
-        .select()
-        .single();
-      
-      if (error) throw error;
-      return delivery;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['deliveries'] });
-      toast.success('Pedido creado exitosamente');
-    },
-    onError: (error) => {
-      toast.error('Error al crear pedido: ' + error.message);
-    },
-  });
-  */
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!formData.client_name || !formData.client_id || !formData.client_phone) return;
-    
-    /**
-     * await createDelivery.mutateAsync({
-      client_id: formData.client_id,
-      client_name: formData.client_name,
-    client_company: '',
-    client_phone: '',
-    client_address: '',
-      
-    });
-     */
-    
-    
-    // Reset form
-    setFormData({ client_id: '',
-    client_name: '',
-    client_company: '',
-    client_phone: '',
-    client_address: '',
-  });
-    onSuccess?.();
   };
 
   return (
@@ -139,104 +67,76 @@ export function ClientInfo({ onSuccess }: ClientInfoProps) {
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <form onSubmit={handleSubmit} className="space-y-6">
+        <form className="space-y-6">
           
-          <BusquedaCliente onClientSelect={handleSelectedClient} />
-
-          {/* Client selection 
-          <div className="space-y-2">
-            <Label htmlFor="client" className="flex items-center gap-2">
-              <Users className="w-4 h-4 text-muted-foreground" />
-              Cliente *
-            </Label>
-            <Select
-              value={formData.client_id}
-              onValueChange={(value) => setFormData({ ...formData, client_id: value })}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder={loadingClients ? "Cargando..." : "Selecciona un cliente"} />
-              </SelectTrigger>
-              <SelectContent>
-                {clients?.map((client) => (
-                  <SelectItem key={client.id} value={client.id}>
-                    {client.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          */}
+          <BusquedaCliente onClientSelect={handleClientSelect} />
 
           {/* Client name */}
           <div className="space-y-2">
-            <Label htmlFor="recipient_name">Nombre *</Label>
+            <Label htmlFor="clientName">Nombre *</Label>
             <Input
-              id="recipient_name"
+              id="clientName"
               type="text"
-              placeholder="Nombre del destinatario"
-              value={formData.client_name}
-              onChange={(e) => setFormData({ ...formData, client_name: e.target.value })}
+              placeholder="Nombre del Cliente"
+              value={clientFormData.clientName}
+              onChange={(e) => setClientFormData({ ...clientFormData, clientName: e.target.value })}
             />
           </div>
 
           {/* Company name */}
           <div className="space-y-2">
-            <Label htmlFor="recipient_name">Empresa *</Label>
+            <Label htmlFor="clientCompany">Empresa *</Label>
             <Input
-              id="recipient_name"
+              id="clientCompany"
               type="text"
               placeholder="Empresa del cliente"
-              value={formData.client_company}
-              onChange={(e) => setFormData({ ...formData, client_company: e.target.value })}
+              value={clientFormData.clientCompany}
+              onChange={(e) => setClientFormData({ ...clientFormData, clientCompany: e.target.value })}
             />
           </div>
 
           {/* Phone */}
           <div className="space-y-2">
-            <Label htmlFor="recipient_name">Telefono *</Label>
+            <Label htmlFor="clientPhone">Telefono *</Label>
             <Input
-              id="recipient_name"
+              id="clientPhone"
               type="text"
               placeholder="Telefono del cliente"
-              value={formData.client_phone}
-              onChange={(e) => setFormData({ ...formData, client_phone: e.target.value })}
+              value={clientFormData.clientPhone}
+              onChange={(e) => setClientFormData({ ...clientFormData, clientPhone: e.target.value })}
             />
           </div>
 
           {/* PickUp Location */}
           <div className="space-y-2">
-            <Label htmlFor="recipient_name">Direccion de Recogida *</Label>
+            <Label htmlFor="clientAddress">Direccion de Recogida *</Label>
             <Input
-              id="recipient_name"
+              id="clientAddress"
               type="text"
               placeholder="Direccion del cliente"
-              value={formData.client_address}
-              onChange={(e) => setFormData({ ...formData, client_address: e.target.value })}
+              value={clientFormData.clientAddress}
+              onChange={(e) => setClientFormData({ ...clientFormData, clientAddress: e.target.value })}
             />
           </div>
 
-          {/* Service Value */}
-          <div className="space-y-2">
-            <Label htmlFor="service_value" className="flex items-center gap-2">
-              <DollarSign className="w-4 h-4 text-primary" />
-              Valor del Servicio *
-            </Label>
-            <div className="relative">
-              <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <Input
-                id="service_value"
-                type="number"
-                step="0.01"
-                min="0"
-                placeholder="0.00"
-                className="pl-9"
-                value={serviceValue}
-                onChange={(e) => setServiceValue(Number(e.target.value))}
-                required
-              />
+          {/* Service Value (manual) */}
+            <div className="space-y-2">
+              <Label htmlFor='serviceValue' >Valor del Servicio *</Label>
+              <div className="relative">
+                <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Input
+                  id='serviceValue'
+                  type="number"
+                  min="0"
+                  placeholder="0"
+                  className="pl-9"
+                  value={clientFormData.serviceValue}
+                  onChange={(e) => setClientFormData({ ...clientFormData, serviceValue: e.target.value })}
+                  required
+                />
+              </div>
+              <p className="text-xs text-muted-foreground">Valor neto que cobra la empresa por el domicilio. El 70% se paga al mensajero.</p>
             </div>
-            <p className="text-xs text-muted-foreground">70% mensajero / 30% empresa</p>
-          </div>
 
         </form>
       </CardContent>

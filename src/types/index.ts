@@ -1,4 +1,5 @@
 export interface MyClient {
+    id?: string;
     name: string;
     phone: string;
     address: string;

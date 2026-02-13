@@ -1,17 +1,9 @@
 import { useState } from "react";
-import { Search, Building2, User, Phone, MapPin, IdCard, Plus, Loader2 } from "lucide-react";
+import { Search, Building2, User, Phone, IdCard, Plus } from "lucide-react";
 import { useClients, useCreateClient, Client } from "@/hooks/useClients";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from "@/components/ui/dialog";
-import ClientDialog from "../ClientDialog";
+import { Dialog } from "@/components/ui/dialog";
+import ClientDialog from "../companies/ClientDialog";
 import { MyClient } from "@/types";
 
 interface BusquedaClienteProps {
@@ -24,16 +16,17 @@ const BusquedaCliente = ({ onClientSelect }: BusquedaClienteProps) => {
   const [busqueda, setBusqueda] = useState('');
   const [showResults, setShowResults] = useState(false);
 
-  
-
   // New client dialog
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [newName, setNewName] = useState('');
-  const [newCompany, setNewCompany] = useState('');
-  const [newID, setNewId] = useState('');
-  const [newPhone, setNewPhone] = useState('');
-  const [newAddress, setNewAddress] = useState('');
-  const [newNotes, setNewNotes] = useState('');
+  const [formData, setFormData] = useState<MyClient>({
+          name: '',
+          phone: '',
+          address: '',
+          notes: '',
+          company: '',
+          identification_number: '',
+          email: '',
+  });
   
 
   const clientesFiltrados = busqueda === ''
@@ -50,24 +43,31 @@ const BusquedaCliente = ({ onClientSelect }: BusquedaClienteProps) => {
     setShowResults(false);
   };
 
-  const handleCreateClient = async () => {
-    if (!newName.trim()) return;
+  const handleCreateClient = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!formData.name.trim()) return;
     try {
       const created = await createClient.mutateAsync({
-        name: newName.trim(),
-        phone: newPhone.trim() || null,
-        address: newAddress.trim() || null,
-        company: null,
-        identification_number: null,
-        notes: null,
-        email: null,
+        name: formData.name,
+        phone: formData.phone || null,
+        address: formData.address || null,
+        notes: formData.notes || null,
+        company: formData.company || null,
+        identification_number: formData.identification_number || null,
+        email: formData.email || null,
       });
       // Auto-select the new client
       handleClientSelect(created as Client);
       setDialogOpen(false);
-      setNewName('');
-      setNewPhone('');
-      setNewAddress('');
+      setFormData({
+        name: '',
+        phone: '',
+        address: '',
+        notes: '',
+        company: '',
+        identification_number: '',
+        email: '',
+      })
     } catch {
       // error handled by hook
     }
@@ -83,6 +83,7 @@ const BusquedaCliente = ({ onClientSelect }: BusquedaClienteProps) => {
           placeholder="Buscar por nombre, empresa o identificación..."
           onChange={(e) => {
             setBusqueda(e.target.value);
+            setFormData({...formData, name: busqueda})
             setShowResults(true);
           }}
           onFocus={() => setShowResults(true)}
@@ -150,12 +151,16 @@ const BusquedaCliente = ({ onClientSelect }: BusquedaClienteProps) => {
       )}
 
       {/**Create new client dialog */}
-      <ClientDialog 
-        dialogOpen={dialogOpen}
-        setDialogOpen={setDialogOpen}
-        busqueda={busqueda}
-        handleClientSelect={handleClientSelect}
-      />
+      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+        <ClientDialog 
+          setDialogOpen={setDialogOpen}
+          formData={formData}
+          setFormData={setFormData}
+          handler={handleCreateClient}
+          pending={createClient.isPending}
+        />
+      </Dialog>
+      
     </div>
   );
 };

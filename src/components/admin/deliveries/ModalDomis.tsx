@@ -1,28 +1,15 @@
-import { useState } from 'react';
+import { useState} from 'react';
 import { createPortal } from 'react-dom';
-import { X, Package, Building2, UserCheck, DollarSign, CreditCard, ArrowLeftRight } from 'lucide-react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { useCouriers } from '@/hooks/useCouriers';
 import { getCurrentWeekDates } from '@/hooks/useDeliveries';
 import { reopenDailySettlement } from '@/hooks/useDailyOperations';
-import { Client } from '@/hooks/useClients';
-import BusquedaCliente from './BusquedaCliente';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Button } from '@/components/ui/button';
-import { toast } from 'sonner';
-import { cn } from '@/lib/utils';
+import { X } from 'lucide-react';
+import { DeliveryInfo } from './DeliveryInfo';
+import { ClientInfo } from './ClientInfo';
+import { nanoid } from 'nanoid';
 import Swal from 'sweetalert2';
-
-const paymentMethods = [
-  { value: 'cash', label: 'Efectivo', icon: DollarSign },
-  { value: 'transfer_to_courier', label: 'Transferencia a JS', icon: CreditCard },
-  { value: 'transfer_to_client', label: 'Transferencia Directa', icon: ArrowLeftRight },
-] as const;
 
 interface ModalDomisProps {
   isOpen: boolean;
@@ -30,67 +17,65 @@ interface ModalDomisProps {
 }
 
 const ModalDomis = ({ isOpen, onClose }: ModalDomisProps) => {
-  const { user } = useAuth();
-  const { data: couriers, isLoading: loadingCouriers } = useCouriers();
-  const queryClient = useQueryClient();
 
-  // Client fields
-  const [clientId, setClientId] = useState('');
-  const [clientName, setClientName] = useState('');
-  const [clientCompany, setClientCompany] = useState('');
-  const [clientPhone, setClientPhone] = useState('');
-  const [clientAddress, setClientAddress] = useState('');
+    const { user } = useAuth();
+    const queryClient = useQueryClient();
+    const [editar, setEditar] = useState<boolean>(false)
+    
+    const [alerta, setAlerta] = useState('');
 
-  // Delivery fields
-  const [courierId, setCourierId] = useState('');
-  const [recipientName, setRecipientName] = useState('');
-  const [totalToCollect, setTotalToCollect] = useState('');
-  const [serviceValue, setServiceValue] = useState('');
-  const [paymentMethod, setPaymentMethod] = useState<'cash' | 'transfer_to_courier' | 'transfer_to_client' | ''>('');
-  const [notes, setNotes] = useState('');
-  const [alerta, setAlerta] = useState('');
+    const [clientFormData, setClientFormData] = useState({
+      clientId: '',
+      clientName: '',
+      clientCompany: '',
+      clientPhone: '',
+      clientAddress: '',
+      serviceValue: ''
+    })
 
-  // No auto-calculation: service value is entered manually by admin
+    const [deliveryFormData, setDeliveryFormData] = useState({
+      courierId: '',
+      recipientName: '',
+      totalToCollect: '',
+      paymentMethod: 'cash',
+      notes: ''
+    })
 
-  const resetForm = () => {
-    setClientId('');
-    setClientName('');
-    setClientCompany('');
-    setClientPhone('');
-    setClientAddress('');
-    setCourierId('');
-    setRecipientName('');
-    setTotalToCollect('');
-    setServiceValue('');
-    setPaymentMethod('');
-    setNotes('');
-    setAlerta('');
-  };
+    const resetForm = () => {
+      setClientFormData({
+        clientId: '',
+        clientName: '',
+        clientCompany: '',
+        clientPhone: '',
+        clientAddress: '',
+        serviceValue: ''
+      })
 
-  const handleClientSelect = (client: Client) => {
-    setClientId(client.id);
-    setClientName(client.name);
-    setClientCompany(client.company || '');
-    setClientPhone(client.phone || '');
-    setClientAddress(client.address || '');
-  };
+      setDeliveryFormData({
+        courierId: '',
+        recipientName: '',
+        totalToCollect: '',
+        paymentMethod: '',
+        notes: ''
+      })
+    };
 
-  const createDelivery = useMutation({
+    const createDelivery = useMutation({
     mutationFn: async () => {
       if (!user) throw new Error('No user logged in');
       const { weekStart, weekEnd } = getCurrentWeekDates();
 
-      const totalNum = parseFloat(totalToCollect) || 0;
-      const serviceNum = parseFloat(serviceValue) || 0;
+      const totalNum = parseFloat(deliveryFormData.totalToCollect) || 0;
+      const serviceNum = parseFloat(clientFormData.serviceValue) || 0;
 
       const { data: delivery, error } = await supabase
         .from('deliveries')
         .insert({
-          client_id: clientId,
-          courier_id: courierId,
+          client_id: clientFormData.clientId,
+          courier_id: deliveryFormData.courierId,
           created_by: user.id,
-          recipient_name: recipientName || null,
-          notes: notes || null,
+          recipient_name: deliveryFormData.recipientName || null,
+          notes: deliveryFormData.notes || null,
           week_start: weekStart,
           week_end: weekEnd,
           delivery_date: new Date().toISOString().split('T')[0],
@@ -98,7 +83,7 @@ const ModalDomis = ({ isOpen, onClose }: ModalDomisProps) => {
           service_value: serviceNum,
           total_to_collect: totalNum,
           amount: totalNum,
-          payment_method: paymentMethod as 'cash' | 'transfer_to_courier' | 'transfer_to_client',
+          payment_method: deliveryFormData.paymentMethod as 'cash' | 'transfer_to_courier' | 'transfer_to_client',
         })
         .select()
         .single();
@@ -106,7 +91,7 @@ const ModalDomis = ({ isOpen, onClose }: ModalDomisProps) => {
       if (error) throw error;
 
       // Reopen daily settlement if it was already closed
-      await reopenDailySettlement(courierId);
+      await reopenDailySettlement(deliveryFormData.courierId);
 
       // Audit log
       await supabase.from('delivery_audit_log').insert({
@@ -141,19 +126,19 @@ const ModalDomis = ({ isOpen, onClose }: ModalDomisProps) => {
   });
 
   const handleSave = () => {
-    if (!clientId) {
+    if (!clientFormData.clientId) {
       setAlerta('Selecciona un cliente.');
       return;
     }
-    if (!courierId) {
+    if (!deliveryFormData.courierId) {
       setAlerta('Selecciona un mensajero.');
       return;
     }
-    if (!totalToCollect || parseFloat(totalToCollect) <= 0) {
+    if (!deliveryFormData.totalToCollect || parseFloat(deliveryFormData.totalToCollect) <= 0) {
       setAlerta('Ingresa el valor total a cobrar.');
       return;
     }
-    if (!paymentMethod) {
+    if (!deliveryFormData.paymentMethod) {
       setAlerta('Selecciona una forma de pago.');
       return;
     }
@@ -165,188 +150,153 @@ const ModalDomis = ({ isOpen, onClose }: ModalDomisProps) => {
 
   const modalContent = (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[100] p-4">
-      <div className="bg-background rounded-2xl shadow-xl w-full max-w-4xl p-6 md:p-8 overflow-y-auto max-h-[90vh] border border-border">
+      <div className="bg-background rounded-2xl shadow-xl w-full max-w-6xl p-6 md:p-8 overflow-y-auto max-h-[90vh] border border-border">
+        
         {/* Header */}
         <div className="flex items-center justify-between border-b border-border pb-4 mb-6">
-          <h2 className="text-2xl font-semibold text-foreground">Crear Nuevo Pedido</h2>
+          <h2 className="text-2xl font-semibold text-foreground">
+            {editar ? 'Editar Domicilio' : 'Crear Nuevo Domicilio'}
+          </h2>
           <button
             className="text-muted-foreground hover:text-foreground transition p-2 hover:bg-muted rounded-lg"
-            onClick={() => { onClose(); resetForm(); }}
+            onClick={() => { 
+              onClose(); 
+              resetForm(); 
+            }}
             type="button"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
-        <div className="grid md:grid-cols-2 gap-6">
-          {/* Client Column */}
-          <div className="space-y-4">
-            <h3 className="text-lg font-semibold flex items-center gap-2 text-foreground">
-              <Building2 className="w-5 h-5 text-primary" />
-              Datos del Cliente
-            </h3>
+        {/* Contenido */}
 
-            <BusquedaCliente onClientSelect={handleClientSelect} />
+        
+         
 
-            <div className="space-y-3">
-              <div>
-                <Label>Nombre</Label>
-                <Input value={clientName} onChange={(e) => setClientName(e.target.value)} placeholder="Nombre del cliente" readOnly className="bg-muted/50" />
-              </div>
-              <div>
-                <Label>Empresa</Label>
-                <Input value={clientCompany} onChange={(e) => setClientCompany(e.target.value)} placeholder="Empresa" readOnly className="bg-muted/50" />
-              </div>
-              <div>
-                <Label>Teléfono</Label>
-                <Input value={clientPhone} onChange={(e) => setClientPhone(e.target.value)} placeholder="Teléfono" readOnly className="bg-muted/50" />
-              </div>
-              <div>
-                <Label>Dirección de Recogida</Label>
-                <Input value={clientAddress} onChange={(e) => setClientAddress(e.target.value)} placeholder="Dirección" readOnly className="bg-muted/50" />
-              </div>
-            </div>
-          </div>
-
-          {/* Delivery Column */}
-          <div className="space-y-4">
-            <h3 className="text-lg font-semibold flex items-center gap-2 text-foreground">
-              <Package className="w-5 h-5 text-primary" />
-              Datos de Entrega
-            </h3>
-
-            {/* Courier */}
-            <div className="space-y-2">
-              <Label className="flex items-center gap-2">
-                <UserCheck className="w-4 h-4 text-primary" />
-                Mensajero *
-              </Label>
-              <Select value={courierId} onValueChange={setCourierId}>
-                <SelectTrigger>
-                  <SelectValue placeholder={loadingCouriers ? "Cargando..." : "Selecciona un mensajero"} />
-                </SelectTrigger>
-                <SelectContent className="z-[200]">
-                  {loadingCouriers ? (
-                    <div className="p-2 text-center text-muted-foreground">Cargando...</div>
-                  ) : couriers?.length === 0 ? (
-                    <div className="p-2 text-center text-muted-foreground">No hay mensajeros</div>
-                  ) : (
-                    couriers?.map((c) => (
-                      <SelectItem key={c.user_id} value={c.user_id}>{c.full_name}</SelectItem>
-                    ))
-                  )}
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Recipient */}
-            <div className="space-y-2">
-              <Label>Nombre de quien recibe</Label>
-              <Input
-                value={recipientName}
-                onChange={(e) => setRecipientName(e.target.value)}
-                placeholder="Nombre del destinatario"
-              />
-            </div>
-
-            {/* Total to collect */}
-            <div className="space-y-2">
-              <Label>Valor Total a Cobrar *</Label>
-              <div className="relative">
-                <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                <Input
-                  type="number"
-                  min="0"
-                  placeholder="0"
-                  className="pl-9"
-                  value={totalToCollect}
-                  onChange={(e) => setTotalToCollect(e.target.value)}
-                />
-              </div>
-            </div>
-
-            {/* Service Value (manual) */}
-            <div className="space-y-2">
-              <Label>Valor del Servicio *</Label>
-              <div className="relative">
-                <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                <Input
-                  type="number"
-                  min="0"
-                  placeholder="0"
-                  className="pl-9"
-                  value={serviceValue}
-                  onChange={(e) => setServiceValue(e.target.value)}
-                  required
-                />
-              </div>
-              <p className="text-xs text-muted-foreground">Valor neto que cobra la empresa por el domicilio. El 70% se paga al mensajero.</p>
-            </div>
-
-            {/* Payment method */}
-            <div className="space-y-2">
-              <Label>Forma de Pago *</Label>
-              <div className="grid grid-cols-3 gap-2">
-                {paymentMethods.map((m) => (
-                  <button
-                    key={m.value}
-                    type="button"
-                    onClick={() => setPaymentMethod(m.value)}
-                    className={cn(
-                      "p-2 rounded-xl border-2 transition-all flex flex-col items-center gap-1",
-                      paymentMethod === m.value
-                        ? "border-primary bg-primary/5"
-                        : "border-border hover:border-primary/50"
-                    )}
-                  >
-                    <m.icon className="w-4 h-4 text-primary" />
-                    <span className="text-[10px] font-medium text-center leading-tight">{m.label}</span>
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Notes */}
-            <div className="space-y-2">
-              <Label>Instrucciones (opcional)</Label>
-              <Textarea
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                placeholder="Instrucciones para el mensajero..."
-                rows={2}
-              />
-            </div>
-          </div>
+       <div className="grid md:grid-cols-2 gap-6">
+        {/* Columna Cliente */}
+        <div className="h-full">
+            <ClientInfo 
+              clientFormData={clientFormData}
+              setClientFormData={setClientFormData}
+            />
         </div>
 
-        {/* Alert */}
+        {/* Columna Entrega */}
+        <div className="h-full">
+            <DeliveryInfo 
+              deliveryFormData={deliveryFormData}
+              setDeliveryFormData={setDeliveryFormData}
+            />
+        </div>
+        </div>
+
+        
+
+        {/* Alerta */}
         {alerta && (
-          <div className="mt-4 p-3 bg-destructive/10 border border-destructive/20 rounded-lg">
-            <p className="text-center text-destructive font-medium text-sm">{alerta}</p>
+          <div className="mt-5 p-3 bg-destructive/10 border border-destructive/20 rounded-lg">
+            <p className="text-center text-destructive font-medium">{alerta}</p>
           </div>
         )}
 
         {/* Footer */}
-        <div className="flex gap-4 mt-6 justify-end">
-          <Button
-            variant="outline"
-            onClick={() => { onClose(); resetForm(); }}
-            disabled={createDelivery.isPending}
+        <div className="flex gap-4 mt-8 justify-center">
+          <button
+            type="button"
+            className="px-6 py-2.5 bg-muted text-muted-foreground rounded-lg hover:bg-muted/80 transition font-medium"
+            onClick={() => { 
+              onClose(); 
+              resetForm(); 
+            }}
           >
             Cancelar
-          </Button>
-          <Button
+          </button>
+          <button
+            type="button"
+            className="px-6 py-2.5 bg-primary gradient-primary text-primary-foreground rounded-lg transition shadow-md font-medium hover:bg-primary/90 cursor-pointer"
             onClick={handleSave}
-            disabled={createDelivery.isPending}
           >
-            {createDelivery.isPending ? 'Creando...' : 'Crear Pedido'}
-          </Button>
+            {editar ? 'Actualizar Pedido' : 'Crear Pedido'}
+          </button>
         </div>
       </div>
     </div>
   );
 
+  // Use portal to render modal at document body level
   return createPortal(modalContent, document.body);
 };
+
+// Subcomponentes reutilizables
+interface InputProps {
+  label: string;
+  value: string | number;
+  setValue: (value: any) => void;
+  placeholder?: string;
+  type?: string;
+}
+
+const Input = ({ label, value, setValue, placeholder, type = 'text' }: InputProps) => (
+  <div>
+    <label className="block text-sm font-medium text-gray-700 mb-1">{label}</label>
+    <input
+      type={type}
+      value={value}
+      onChange={(e) => setValue(type === 'number' ? Number(e.target.value) : e.target.value)}
+      placeholder={placeholder}
+      className="w-full border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-orange-400 outline-none"
+    />
+  </div>
+);
+
+interface SelectOption {
+  value: string;
+  label: string;
+}
+
+interface SelectProps {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  options: SelectOption[];
+  placeholder: string;
+}
+
+const Select = ({ label, value, onChange, options, placeholder }: SelectProps) => (
+  <div>
+    <label className="block text-sm font-medium text-gray-700 mb-1">{label}</label>
+    <select
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      className="w-full border border-gray-300 rounded-lg p-2 bg-white focus:ring-2 focus:ring-orange-400 outline-none cursor-pointer"
+    >
+      <option value="">{placeholder}</option>
+      {options.map((opt) => (
+        <option key={opt.value} value={opt.value}>{opt.label}</option>
+      ))}
+    </select>
+  </div>
+);
+
+interface TextAreaProps {
+  label: string;
+  value: string;
+  setValue: (value: string) => void;
+  placeholder?: string;
+}
+
+const TextArea = ({ label, value, setValue, placeholder }: TextAreaProps) => (
+  <div>
+    <label className="block text-sm font-medium text-gray-700 mb-1">{label}</label>
+    <textarea
+      value={value}
+      onChange={(e) => setValue(e.target.value)}
+      placeholder={placeholder}
+      className="w-full border border-gray-300 rounded-lg p-2 h-20 resize-none focus:ring-2 focus:ring-orange-400 outline-none"
+    />
+  </div>
+);
 
 export default ModalDomis;
