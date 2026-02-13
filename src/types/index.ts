@@ -5,4 +5,5 @@ export interface MyClient {
     notes: string;
     company: string;
     identification_number: string;
+    email: string;
 }

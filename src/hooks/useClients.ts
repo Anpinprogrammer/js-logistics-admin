@@ -12,6 +12,7 @@ export interface Client {
   balance: number;
   company: string | null;
   identification_number: string | null;
+  email: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -73,6 +74,29 @@ export function useCreateClient() {
     },
     onError: (error) => {
       toast.error('Error al crear cliente: ' + error.message);
+    },
+  });
+}
+
+export function useDeleteClient() {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase
+        .from('clients')
+        .delete()
+        .eq('id', id);
+      
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['clients'] });
+      queryClient.invalidateQueries({ queryKey: ['clients-with-debt'] });
+      toast.success('Cliente eliminado exitosamente');
+    },
+    onError: (error) => {
+      toast.error('Error al eliminar cliente: ' + error.message);
     },
   });
 }
