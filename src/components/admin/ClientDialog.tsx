@@ -89,8 +89,8 @@ const ClientDialog = ({dialogOpen, setDialogOpen, busqueda, handleClientSelect}:
   return (
     <>
     <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-          <DialogContent className="sm:max-w-md z-[200]">
-            <form onSubmit={handleSubmit}>
+      <DialogContent className="sm:max-w-md z-[200] max-h-[85vh] overflow-hidden flex flex-col">
+            <form onSubmit={handleSubmit} className="flex flex-col h-full">
               <DialogHeader>
                 <DialogTitle>
                   {editingClient ? 'Editar Cliente' : 'Nuevo Cliente'}
@@ -100,7 +100,7 @@ const ClientDialog = ({dialogOpen, setDialogOpen, busqueda, handleClientSelect}:
                 </DialogDescription>
               </DialogHeader>
               
-              <div className="space-y-4 py-4">
+              <div className="space-y-4 py-4 overflow-y-auto flex-1">
                 <div className="space-y-2">
                   <Label htmlFor="name">Nombre *</Label>
                   <Input id="name" value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} placeholder="Nombre del cliente" required />
@@ -138,8 +138,8 @@ const ClientDialog = ({dialogOpen, setDialogOpen, busqueda, handleClientSelect}:
                   <Input id="notes" value={formData.notes} onChange={(e) => setFormData({ ...formData, notes: e.target.value })} />
                 </div>
               </div>
-              
-              <DialogFooter>
+               
+              <DialogFooter className="mt-auto pt-4 border-t">
                 <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>
                   Cancelar
                 </Button>
