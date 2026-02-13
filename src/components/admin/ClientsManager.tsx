@@ -145,8 +145,8 @@ export function ClientsManager() {
               Nuevo Cliente
             </Button>
           </DialogTrigger>
-          <DialogContent>
-            <form onSubmit={handleSubmit}>
+          <DialogContent className="max-h-[85vh] overflow-hidden flex flex-col">
+            <form onSubmit={handleSubmit} className="flex flex-col overflow-hidden h-full">
               <DialogHeader>
                 <DialogTitle>
                   {editingClient ? 'Editar Cliente' : 'Nuevo Cliente'}
@@ -156,7 +156,7 @@ export function ClientsManager() {
                 </DialogDescription>
               </DialogHeader>
               
-              <div className="space-y-4 py-4">
+              <div className="space-y-4 py-4 overflow-y-auto flex-1 pr-2">
                 <div className="space-y-2">
                   <Label htmlFor="name">Nombre *</Label>
                   <Input id="name" value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} placeholder="Nombre del cliente" required />
@@ -203,7 +203,7 @@ export function ClientsManager() {
                 </div>
               </div>
               
-              <DialogFooter>
+              <DialogFooter className="pt-4 border-t mt-auto">
                 <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>
                   Cancelar
                 </Button>
