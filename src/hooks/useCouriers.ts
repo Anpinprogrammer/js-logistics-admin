@@ -1,6 +1,8 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from '@/contexts/AuthContext';
+import api from '@/services/api';
+//import { useAuth } from '@/contexts/AuthContext';
+import { useAuth } from '@/contexts/AuthContextTest';
 
 export interface Courier {
   id: string;
@@ -42,6 +44,22 @@ export function useCouriers() {
       })) as Courier[];
     },
     enabled: isAdmin,
+  });
+}
+
+export function useCouriersTest() {
+  const { user } = useAuth();
+
+  return useQuery({
+    queryKey: ['couriers', user?.id], // 👈 ESTO es la clave
+    queryFn: async (): Promise<Courier[]> => {
+      const { data } = await api.get<{ data: Courier[] }>('/couriers', {
+        params: { role: 'courier' },
+      });
+
+      return data.data;
+    },
+    enabled: !!user,
   });
 }
 

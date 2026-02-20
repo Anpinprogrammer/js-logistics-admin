@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { useCouriers } from '@/hooks/useCouriers';
-import { useDeliveries, getCurrentWeekDates } from '@/hooks/useDeliveries';
+import { useCouriers, useCouriersTest } from '@/hooks/useCouriers';
+import { useDeliveriesTest, getCurrentWeekDates } from '@/hooks/useDeliveries';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -12,6 +12,7 @@ import { Truck, Phone, Package, DollarSign, Loader2, UserPlus, Pencil, Trash2, C
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { supabase } from '@/integrations/supabase/client';
+import api from '@/services/api';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 
@@ -75,18 +76,19 @@ function CourierFormDialog({
     setSaving(true);
     try {
       if (mode === 'create') {
-        const { data, error } = await supabase.functions.invoke('create-courier', {
-          body: { email, password, full_name: fullName, phone },
-        });
-        if (error) throw error;
-        if (data?.error) throw new Error(data.error);
+        const { data } = await api.post('/couriers', { email, password, full_name: fullName, phone })
+        console.log(data)
+        
         toast.success(`Mensajero "${fullName}" creado exitosamente`);
       } else {
         const body: any = { user_id: courier!.user_id, full_name: fullName, phone };
         if (password) body.password = password;
+        const { data } = await api.put(`/couriers/${body.user_id}`, { body })
+        /** 
         const { data, error } = await supabase.functions.invoke('update-courier', { body });
         if (error) throw error;
         if (data?.error) throw new Error(data.error);
+        */
         toast.success(`Mensajero "${fullName}" actualizado`);
       }
 
@@ -138,8 +140,8 @@ function CourierFormDialog({
 }
 
 export function CouriersList() {
-  const { data: couriers, isLoading } = useCouriers();
-  const { data: deliveries } = useDeliveries();
+  const { data: couriers, isLoading } = useCouriersTest();
+  const { data: deliveries } = useDeliveriesTest();
   const { weekStart, weekEnd } = getCurrentWeekDates();
   const queryClient = useQueryClient();
 
@@ -162,11 +164,16 @@ export function CouriersList() {
     if (!deleteCourier) return;
     setDeleting(true);
     try {
+      const { data } = await api.delete(`/couriers/${deleteCourier.user_id}`)
+      /**
+       * 
+       
       const { data, error } = await supabase.functions.invoke('delete-courier', {
         body: { user_id: deleteCourier.user_id },
       });
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
+      */
       toast.success(`Mensajero "${deleteCourier.full_name}" eliminado`);
       queryClient.invalidateQueries({ queryKey: ['couriers'] });
       setDeleteCourier(null);
@@ -248,9 +255,17 @@ export function CouriersList() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {paginatedCouriers.map((courier) => {
               const courierDeliveries = deliveries?.filter(
-                d => d.courier_id === courier.user_id &&
+                d => {
+                  const deliveryWeek = new Date(d.week_start)
+                      .toISOString()
+                      .split('T')[0];
+
+                  return (
+                    d.courier_id === courier.user_id &&
                      (d.status === 'completed' || d.status === 'not_delivered_collected') &&
-                     d.week_start === weekStart
+                     deliveryWeek === weekStart
+                  )    
+                } 
               ) || [];
 
               const stats = {
@@ -263,7 +278,7 @@ export function CouriersList() {
                   .reduce((sum, d) => sum + Number(d.amount), 0),
                 transferClient: courierDeliveries
                   .filter(d => d.payment_method === 'transfer_to_client')
-                  .reduce((sum, d) => sum + Number(d.amount), 0),
+                  .reduce((sum, d) => sum + Number(d.service_value), 0),
               };
 
               return (

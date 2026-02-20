@@ -50,6 +50,7 @@ export function RegisterDeliveryDialog({
   onRegister,
   loading,
 }: RegisterDeliveryDialogProps) {
+  
   const [formData, setFormData] = useState({
     final_status: '' as DeliveryFinalStatus | '',
     received_amount: '',
@@ -134,6 +135,8 @@ export function RegisterDeliveryDialog({
   const receivedAmount = parseFloat(formData.received_amount) || 0;
   const difference = totalToCollect - receivedAmount;
   const hasDifference = needsPaymentInfo && formData.received_amount && difference > 0;
+  const differenceDirectTransfer = Number(delivery?.service_value || 0) - receivedAmount;
+  const hasDifferenceDirectTransfer = needsPaymentInfo && formData.received_amount && differenceDirectTransfer > 0;
 
   return (
     <Dialog open={open} onOpenChange={(isOpen) => {
@@ -163,17 +166,17 @@ export function RegisterDeliveryDialog({
               </div>
             )}
             
-            {delivery && delivery.service_value > 0 && (
+            {delivery && Number(delivery.service_value) > 0 && (
               <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground">Valor del servicio:</span>
-                <span className="font-medium">${delivery.service_value.toFixed(2)}</span>
+                <span className="font-medium">${Number(delivery.service_value).toFixed(2)}</span>
               </div>
             )}
             
-            {delivery && delivery.total_to_collect > 0 && (
+            {delivery && Number(delivery.total_to_collect) > 0 && (
               <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground">Valor a cobrar:</span>
-                <span className="font-medium text-primary">${delivery.total_to_collect.toFixed(2)}</span>
+                <span className="font-medium text-primary">${Number(delivery.total_to_collect).toFixed(2)}</span>
               </div>
             )}
           </div>
@@ -247,7 +250,18 @@ export function RegisterDeliveryDialog({
               </div>
 
               {/* Difference Warning */}
-              {hasDifference && (
+              {formData.payment_method === 'transfer_to_client' ?
+                hasDifferenceDirectTransfer && (
+                  <div className="flex items-center gap-2 p-3 rounded-lg bg-warning/10 border border-warning/30">
+                  <AlertTriangle className="w-5 h-5 text-warning shrink-0" />
+                  <div className="text-sm">
+                    <p className="font-medium text-warning">Faltante detectado: ${differenceDirectTransfer.toFixed(2)}</p>
+                    <p className="text-muted-foreground">Registra unicamente el valor a cobrar por el servicio</p>
+                  </div>
+                </div>
+                )
+                :
+                hasDifference && (
                 <div className="flex items-center gap-2 p-3 rounded-lg bg-warning/10 border border-warning/30">
                   <AlertTriangle className="w-5 h-5 text-warning shrink-0" />
                   <div className="text-sm">
@@ -256,6 +270,9 @@ export function RegisterDeliveryDialog({
                   </div>
                 </div>
               )}
+
+              
+              
             </>
           )}
 

@@ -1,6 +1,8 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from '@/contexts/AuthContext';
+import api from '@/services/api';
+//import { useAuth } from '@/contexts/AuthContext';
+import { useAuth } from '@/contexts/AuthContextTest';
 import { getCurrentWeekDates } from '@/hooks/useDeliveries';
 import { toast } from 'sonner';
 
@@ -24,56 +26,59 @@ export function useAdminCompleteDelivery() {
     mutationFn: async (data: AdminCompleteDeliveryData) => {
       if (!user) throw new Error('No user logged in');
 
-      const { data: oldDelivery, error: fetchError } = await supabase
-        .from('deliveries')
-        .select('*')
-        .eq('id', data.deliveryId)
-        .single();
-
-      if (fetchError) throw fetchError;
+      const { data: oldDeliveryResponse } = await api.get(`/deliveries/${data.deliveryId}`)
+      const oldDelivery = oldDeliveryResponse.data
 
       if (oldDelivery.status !== 'pending') {
         throw new Error('Esta entrega ya fue registrada');
       }
 
-      const totalToCollect = oldDelivery.total_to_collect || 0;
-      const serviceValue = oldDelivery.service_value || 0;
+      const totalToCollect = Number(oldDelivery.total_to_collect) || 0;
+      const serviceValue = Number(oldDelivery.service_value) || 0;
       const hasCollection = data.final_status === 'completed' || data.final_status === 'not_delivered_collected';
       const isCompleted = data.final_status === 'completed';
       const difference = isCompleted ? totalToCollect - data.received_amount : 0;
 
-      const { data: newDelivery, error: updateError } = await supabase
-        .from('deliveries')
-        .update({
-          received_amount: hasCollection ? data.received_amount : 0,
-          payment_method: data.payment_method,
-          notes: data.notes || null,
-          receipt_photo_url: data.receipt_photo_url || null,
-          status: data.final_status as any,
-          delivery_date: new Date().toISOString().split('T')[0],
-        })
-        .eq('id', data.deliveryId)
-        .select()
-        .single();
+      const payload = {
+        received_amount: hasCollection ? data.received_amount : 0,
+        payment_method: data.payment_method,
+        notes: data.notes || null,
+        receipt_photo_url: data.receipt_photo_url || null,
+        status: data.final_status,
+        delivery_date: new Date().toISOString().split('T')[0],
+      }
 
-      if (updateError) throw updateError;
+      const { data: newDeliveryResponse } = await api.put(`/deliveries/${data.deliveryId}`, payload)
+
+      const newDelivery = newDeliveryResponse.data
 
       // Handle client balance updates
       let clientDebtAdded = 0;
 
+      if(data.final_status === 'completed' || data.final_status === 'not_delivered_collected'){
+        const { data: currentClientResponse } = await api.get(`/clients/${oldDelivery.client_id}`)
+        const currentClient = currentClientResponse.data
+
+        if(currentClient){
+          const newBalance = data.received_amount - newDelivery.service_value + Number(currentClient.balance || 0)
+          if(newBalance < 0){
+            clientDebtAdded = Number(newBalance)
+          }
+          await api.put(`/clients/${oldDelivery.client_id}`, { balance: newBalance })
+        }
+      }
+
+      return { delivery: newDelivery, advance: 0, status: data.final_status, clientDebtAdded };
+
+      
+
       if (data.final_status === 'not_delivered_collected') {
-        const { data: currentClient } = await supabase
-          .from('clients')
-          .select('balance')
-          .eq('id', oldDelivery.client_id)
-          .single();
+        const { data: currentClientResponse } = await api.get(`/clients/${oldDelivery.client_id}`) 
+        const currentClient = currentClientResponse.data
 
         if (currentClient) {
           const newBalance = Number(currentClient.balance || 0) + serviceValue;
-          await supabase
-            .from('clients')
-            .update({ balance: newBalance })
-            .eq('id', oldDelivery.client_id);
+          await api.put(`/clients/${oldDelivery.client_id}`, { balance: newBalance })
           clientDebtAdded = serviceValue;
         }
       }
@@ -82,18 +87,15 @@ export function useAdminCompleteDelivery() {
         data.payment_method === 'transfer_to_client' &&
         (data.final_status === 'completed' || data.final_status === 'not_delivered_collected')
       ) {
-        const { data: currentClient } = await supabase
-          .from('clients')
-          .select('balance')
-          .eq('id', oldDelivery.client_id)
-          .single();
+        const { data: currentClientResponse } = await api.get(`/clients/${oldDelivery.client_id}`)
+        const currentClient = currentClientResponse.data
+
 
         if (currentClient) {
+          console.log('Balance previo: ', currentClient.balance)
           const newBalance = Number(currentClient.balance || 0) + serviceValue;
-          await supabase
-            .from('clients')
-            .update({ balance: newBalance })
-            .eq('id', oldDelivery.client_id);
+          console.log('Balance nuevo: ', newBalance)
+          await api.put(`/clients/${oldDelivery.client_id}`, { balance: newBalance })
           clientDebtAdded += serviceValue;
         }
       }
@@ -104,7 +106,8 @@ export function useAdminCompleteDelivery() {
         not_delivered_no_collection: 'No entregado (sin cobro)',
       };
 
-      await supabase.from('delivery_audit_log').insert([{
+      /** Audit Log (Se espera trabajar en esta feature en futuras presentaciones)
+       * await supabase.from('delivery_audit_log').insert([{
         delivery_id: data.deliveryId,
         action: 'registered',
         changed_by: user.id,
@@ -112,17 +115,19 @@ export function useAdminCompleteDelivery() {
         new_values: JSON.parse(JSON.stringify(newDelivery)),
         reason: `Entrega registrada por administrador: ${statusLabels[data.final_status]}`,
       }]);
+       */
+      
 
       if (isCompleted && difference > 0) {
         const { weekStart, weekEnd } = getCurrentWeekDates();
-        await supabase.from('salary_advances').insert({
+        await api.post('/salary-advances', {
           courier_id: data.courierId,
           amount: difference,
           reason: `Faltante automático - Entrega ${data.deliveryId.substring(0, 8)}`,
           created_by: user.id,
           week_start: weekStart,
           week_end: weekEnd,
-        });
+        })
 
         return { delivery: newDelivery, advance: difference, status: data.final_status, clientDebtAdded };
       }
@@ -144,8 +149,8 @@ export function useAdminCompleteDelivery() {
 
       let message = statusMessages[result.status] || 'Registro guardado';
 
-      if (result.clientDebtAdded > 0) {
-        message += ` • Deuda cliente: +$${result.clientDebtAdded.toFixed(2)}`;
+      if (result.clientDebtAdded < 0) {
+        message += ` • Deuda cliente: +$${Math.abs(Number(result.clientDebtAdded)).toFixed(2)}`;
       }
       if (result.advance > 0) {
         message += ` • Adelanto: $${result.advance.toFixed(2)}`;

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useCouriers } from '@/hooks/useCouriers';
+import { useCouriers, useCouriersTest } from '@/hooks/useCouriers';
 import { 
   useDailyBaseMoney, 
   usePartialDeliveries, 
@@ -11,7 +11,7 @@ import {
   useSettleDaily,
   getTodayDate
 } from '@/hooks/useDailyOperations';
-import { useDeliveries } from '@/hooks/useDeliveries';
+import { useDeliveriesTest } from '@/hooks/useDeliveries';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -36,12 +36,12 @@ import { Textarea } from '@/components/ui/textarea';
 
 export function DailySettlements() {
   const today = getTodayDate();
-  const { data: couriers, isLoading: loadingCouriers } = useCouriers();
+  const { data: couriers, isLoading: loadingCouriers } = useCouriersTest();
   const { data: baseMoney, isLoading: loadingBase } = useDailyBaseMoney(today);
   const { data: partials, isLoading: loadingPartials } = usePartialDeliveries(today);
   const { data: charges, isLoading: loadingCharges } = useOperationalCharges(today);
   const { data: settlements, isLoading: loadingSettlements } = useDailySettlements(today);
-  const { data: deliveries } = useDeliveries();
+  const { data: deliveries } = useDeliveriesTest();
   
   const assignBaseMoney = useAssignBaseMoney();
   const registerPartial = useRegisterPartialDelivery();
@@ -88,11 +88,17 @@ export function DailySettlements() {
     const courierSettlement = settlements?.find(s => s.courier_id === courier.user_id);
     
     // Get today's completed deliveries for this courier
-    const courierDeliveries = deliveries?.filter(d => 
-      d.courier_id === courier.user_id && 
-      d.delivery_date === today &&
-      (d.status === 'completed' || d.status === 'not_delivered_collected')
-    ) || [];
+    const courierDeliveries = deliveries?.filter(d => {
+      const deliveryDate = new Date(d.delivery_date)
+                                    .toISOString()
+                                    .split('T')[0]
+    
+      return (
+        d.courier_id === courier.user_id && 
+        deliveryDate === today &&
+        (d.status === 'completed' || d.status === 'not_delivered_collected')
+      )
+    }) || [];
     
     let totalCollected = 0;
     courierDeliveries.forEach(d => {
@@ -348,10 +354,10 @@ export function DailySettlements() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Mensajero</TableHead>
-                  <TableHead className="text-right">Base</TableHead>
+                  <TableHead className="text-center">Base</TableHead>
                   <TableHead className="text-right">Cobrado</TableHead>
                   <TableHead className="text-right">Entregado</TableHead>
-                  <TableHead className="text-right">Saldo</TableHead>
+                  <TableHead className="text-center">Saldo</TableHead>
                   <TableHead className="text-center">Estado</TableHead>
                   <TableHead className="text-center">Acción</TableHead>
                 </TableRow>

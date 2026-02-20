@@ -14,6 +14,7 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import { supabase } from '@/integrations/supabase/client';
+import api from '@/services/api';
 import { useToast } from '@/hooks/use-toast';
 
 export function SettingsPage() {
@@ -26,17 +27,13 @@ export function SettingsPage() {
     try {
       const dummy = '00000000-0000-0000-0000-000000000000';
       // Delete in order: audit log, deliveries, then financial records
-      await supabase.from('delivery_audit_log').delete().neq('id', dummy);
-      await supabase.from('deliveries').delete().neq('id', dummy);
-      await supabase.from('daily_settlements').delete().neq('id', dummy);
-      await supabase.from('daily_base_money').delete().neq('id', dummy);
-      await supabase.from('partial_deliveries').delete().neq('id', dummy);
+      await api.delete('/deliveries')
+      await api.delete('/daily-settlements')
       await supabase.from('weekly_settlements').delete().neq('id', dummy);
       await supabase.from('salary_advances').delete().neq('id', dummy);
 
       // Reset client balances to 0
-      const { error } = await supabase.from('clients').update({ balance: 0 }).neq('id', dummy);
-      if (error) throw error;
+      const { data } = await api.put('/clients', { balance: 0 })
 
       toast({ title: 'Sistema reiniciado correctamente', description: 'Todas las entregas y saldos han sido eliminados.' });
     } catch (err: any) {

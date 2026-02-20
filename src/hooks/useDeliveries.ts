@@ -1,6 +1,8 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from '@/contexts/AuthContext';
+import api from '@/services/api';
+//import { useAuth } from '@/contexts/AuthContext';
+import { useAuth } from '@/contexts/AuthContextTest';
 import { toast } from 'sonner';
 import { reopenDailySettlement } from '@/hooks/useDailyOperations';
 
@@ -121,6 +123,31 @@ export function useDeliveries(courierId?: string) {
   });
 }
 
+export function useDeliveriesTest(courierId?: string) {
+  const { user, isAdmin } = useAuth();
+
+  return useQuery({
+    queryKey: ['deliveries', courierId || user?.id],
+    queryFn: async () => {
+      const params: Record<string, string> = {};
+
+      // Si no es admin, solo puede ver sus entregas
+      if (!isAdmin && user) {
+        params.courier_id = user.id;
+      } else if (courierId) {
+        params.courier_id = courierId;
+      }
+
+      const { data } = await api.get<{ data: Delivery[] }>('/deliveries', {
+        params,
+      });
+
+      return data.data;
+    },
+    enabled: !!user,
+  });
+}
+
 export function useCreateDelivery() {
   const queryClient = useQueryClient();
   const { user } = useAuth();
@@ -189,13 +216,8 @@ export function useUpdateDelivery() {
       if (!user) throw new Error('No user logged in');
       
       // First get the old values for audit
-      const { data: oldDelivery, error: fetchError } = await supabase
-        .from('deliveries')
-        .select('*')
-        .eq('id', id)
-        .single();
-      
-      if (fetchError) throw fetchError;
+      const { data: oldDeliveryResponse } = await api.get(`/deliveries/${id}`)
+      const oldDelivery = oldDeliveryResponse.data
       
       // If courier is updating, restrict which fields can be changed
       let allowedUpdates = updates;
@@ -223,16 +245,13 @@ export function useUpdateDelivery() {
       }
       
       // Update the delivery
-      const { data: newDelivery, error: updateError } = await supabase
-        .from('deliveries')
-        .update(allowedUpdates)
-        .eq('id', id)
-        .select()
-        .single();
-      
-      if (updateError) throw updateError;
+      const { data: newDelieryResponse } = await api.put(`/deliveries/${id}`, allowedUpdates)
+      const newDelivery = newDelieryResponse.data
       
       // Create audit log
+      /**
+       * 
+       
       const { error: auditError } = await supabase
         .from('delivery_audit_log')
         .insert([{
@@ -245,6 +264,7 @@ export function useUpdateDelivery() {
         }]);
       
       if (auditError) throw auditError;
+      */
       
       // If there's an automatic salary advance to register
       if (autoAdvance && autoAdvance.amount > 0) {
@@ -292,13 +312,8 @@ export function useCancelDelivery() {
       if (!user) throw new Error('No user logged in');
       
       // Get old values
-      const { data: oldDelivery, error: fetchError } = await supabase
-        .from('deliveries')
-        .select('*')
-        .eq('id', id)
-        .single();
-      
-      if (fetchError) throw fetchError;
+      const { data: oldDeliveryResponse } = await api.get(`/deliveries/${id}`)
+      const oldDelivery = oldDeliveryResponse.data
       
       // Cancel the delivery
       const { data: newDelivery, error: updateError } = await supabase
@@ -346,30 +361,23 @@ export function useDeleteDelivery() {
       if (!user) throw new Error('No user logged in');
 
       // Get old values for audit
-      const { data: oldDelivery, error: fetchError } = await supabase
-        .from('deliveries')
-        .select('*')
-        .eq('id', id)
-        .single();
-
-      if (fetchError) throw fetchError;
+      const { data: oldDeliveryResponse } = await api.get(`/deliveries/${id}`)
+      const oldDelivery = oldDeliveryResponse.data
 
       // Create audit log before deleting
-      await supabase.from('delivery_audit_log').insert({
+      /**
+       * await supabase.from('delivery_audit_log').insert({
         delivery_id: id,
         action: 'deleted',
         changed_by: user.id,
         old_values: JSON.parse(JSON.stringify(oldDelivery)),
         reason,
       });
+       */
+      
 
       // Delete the delivery
-      const { error: deleteError } = await supabase
-        .from('deliveries')
-        .delete()
-        .eq('id', id);
-
-      if (deleteError) throw deleteError;
+      const { data: deletedDeliveryResponse } =  await api.delete(`/deliveries/${id}`)
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['deliveries'] });

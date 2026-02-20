@@ -1,6 +1,8 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from '@/contexts/AuthContext';
+import api from '@/services/api';
+//import { useAuth } from '@/contexts/AuthContext';
+import { useAuth } from '@/contexts/AuthContextTest';
 import { toast } from 'sonner';
 
 export interface Client {

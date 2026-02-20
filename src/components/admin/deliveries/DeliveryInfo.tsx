@@ -1,8 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useQueryClient, useMutation } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useClients } from '@/hooks/useClients';
-import { useCouriers } from '@/hooks/useCouriers';
+import { useCouriersTest } from '@/hooks/useCouriers';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
@@ -37,8 +37,10 @@ interface DeliveryInfoProps {
 }
 
 export function DeliveryInfo({ onSuccess, deliveryFormData, setDeliveryFormData }: DeliveryInfoProps) {
-  const { data: clients, isLoading: loadingClients } = useClients();
-  const { data: couriers, isLoading: loadingCouriers } = useCouriers();
+  const { data: couriers, isLoading: loadingCouriers } = useCouriersTest();
+  
+  
+  
 
   return (
     <Card className="glass-card animate-slide-up max-w-xl h-full">

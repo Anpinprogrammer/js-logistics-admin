@@ -2,7 +2,9 @@ import { useState} from 'react';
 import { createPortal } from 'react-dom';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from '@/contexts/AuthContext';
+import api from '@/services/api';
+//import { useAuth } from '@/contexts/AuthContext';
+import { useAuth } from '@/contexts/AuthContextTest';
 import { getCurrentWeekDates } from '@/hooks/useDeliveries';
 import { reopenDailySettlement } from '@/hooks/useDailyOperations';
 import { X } from 'lucide-react';
@@ -68,6 +70,25 @@ const ModalDomis = ({ isOpen, onClose }: ModalDomisProps) => {
       const totalNum = parseFloat(deliveryFormData.totalToCollect) || 0;
       const serviceNum = parseFloat(clientFormData.serviceValue) || 0;
 
+      const { data: delivery } = await api.post("/deliveries", {
+        client_id: clientFormData.clientId,
+        courier_id: deliveryFormData.courierId,
+        created_by: user.id,
+        recipient_name: deliveryFormData.recipientName || null,
+        notes: deliveryFormData.notes || null,
+        week_start: weekStart,
+        week_end: weekEnd,
+        delivery_date: new Date().toISOString().split('T')[0],
+        status: 'pending' as const,
+        service_value: serviceNum,
+        total_to_collect: totalNum,
+        amount: totalNum,
+        payment_method: deliveryFormData.paymentMethod as 'cash' | 'transfer_to_courier' | 'transfer_to_client',
+      })
+
+      /**
+       * 
+       
       const { data: delivery, error } = await supabase
         .from('deliveries')
         .insert({
@@ -90,16 +111,21 @@ const ModalDomis = ({ isOpen, onClose }: ModalDomisProps) => {
 
       if (error) throw error;
 
+      */
+
       // Reopen daily settlement if it was already closed
       await reopenDailySettlement(deliveryFormData.courierId);
 
       // Audit log
-      await supabase.from('delivery_audit_log').insert({
+      /**
+       *  await supabase.from('delivery_audit_log').insert({
         delivery_id: delivery.id,
         action: 'created',
         changed_by: user.id,
         new_values: delivery as any,
       });
+       */
+     
 
       return delivery;
     },

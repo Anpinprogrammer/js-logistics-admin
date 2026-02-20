@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import api from '@/services/api';
 
 export interface ClientStatement {
   id: string;
@@ -25,54 +26,48 @@ export interface ClientDelivery {
   total_to_collect: number;
   received_amount: number | null;
   notes: string | null;
+  courier_id: string;
   courier_name?: string;
 }
 
 export function useClientStatement(clientId: string, startDate?: string, endDate?: string) {
   return useQuery({
     queryKey: ['client-statement', clientId, startDate, endDate],
-    queryFn: async () => {
+    queryFn: async (): Promise<ClientStatement> => {
+      if(!clientId) throw Error('No clientId provided');
+
       // Get client info
-      const { data: client, error: clientError } = await supabase
-        .from('clients')
-        .select('*')
-        .eq('id', clientId)
-        .single();
-      
-      if (clientError) throw clientError;
+      const {data: clientResponse} = await api.get<{ data: any }>(`/clients/${clientId}`)
+      const client = clientResponse.data 
+
+      if(!client) throw Error('Cliente no encontrado')
       
       // Get deliveries for this client
-      let query = supabase
-        .from('deliveries')
-        .select('*')
-        .eq('client_id', clientId)
-        .order('delivery_date', { ascending: false });
-      
-      if (startDate) {
-        query = query.gte('delivery_date', startDate);
-      }
-      if (endDate) {
-        query = query.lte('delivery_date', endDate);
-      }
-      
-      const { data: deliveries, error: deliveriesError } = await query;
-      if (deliveriesError) throw deliveriesError;
+      const params: Record<string, string> = {} //Record<KeyType, ValueType>
+      if(startDate) params.startDate = startDate
+      if(endDate) params.endDate = endDate
+      const { data: deliveriesResponse } = await api.get<{ data: ClientDelivery[] }>('/deliveries', { params: { client_id: clientId, ...params } })
+      const deliveries = deliveriesResponse.data || []
       
       // Get courier names
       const courierIds = [...new Set(deliveries?.map(d => d.courier_id) || [])];
-      const { data: profiles } = await supabase
-        .from('profiles')
-        .select('user_id, full_name')
-        .in('user_id', courierIds);
+      let courierMap = new Map<string, string>();
+
+      if(courierIds.length > 0){
+        const { data: profilesResponse } = await api.get('/couriers')
+        const profiles = profilesResponse.data || []
       
-      const courierMap = new Map(profiles?.map(p => [p.user_id, p.full_name]) || []);
+        courierMap = new Map(profiles?.map(p => [p.user_id, p.full_name]) || []);
+      }
+      
       
       // Calculate totals
       let totalCollected = 0;
       let totalServices = 0;
       let totalLostTrips = 0;
       
-      const enrichedDeliveries: ClientDelivery[] = (deliveries || []).map(d => {
+      const enrichedDeliveries: ClientDelivery[] = (deliveries || [])
+      .map(d => {
         // Only count completed deliveries and lost trips with collection
         if (d.status === 'completed' || d.status === 'not_delivered_collected') {
           totalServices += Number(d.service_value) || 0;
@@ -97,6 +92,7 @@ export function useClientStatement(clientId: string, startDate?: string, endDate
           total_to_collect: Number(d.total_to_collect) || 0,
           received_amount: d.received_amount ? Number(d.received_amount) : null,
           notes: d.notes,
+          courier_id: d.courier_id,
           courier_name: courierMap.get(d.courier_id) || 'Desconocido',
         };
       });
@@ -105,16 +101,19 @@ export function useClientStatement(clientId: string, startDate?: string, endDate
       // Net = totalCollected - totalServices - totalLostTrips
       // If positive: client has credit (saldo a favor / accountsPayable)
       // If negative: client owes us (cuenta por cobrar / accountsReceivable)
-      const netFromDeliveries = totalCollected - totalServices - totalLostTrips;
+      const netFromDeliveries = totalCollected - totalServices
+      //const netFromDeliveries = totalCollected - totalServices - totalLostTrips;
       
       // Also consider existing balance from direct transfers
+      //El balance del cliente lo consideraremos para tener un apartado que de visibilidad a la cantidad que fue transferida al cliente, mas el resultado del estado de cuenta dependera de la resta entre el total recogido por JS Logistics comparado con el total que debia recoger que en nuestro caso es la variable totalServices
       const clientBalance = Number(client.balance) || 0;
+      
       
       // Combined: positive means client has money in their favor
       const combinedBalance = netFromDeliveries - clientBalance;
       
-      const accountsPayable = combinedBalance > 0 ? combinedBalance : 0;
-      const accountsReceivable = combinedBalance < 0 ? Math.abs(combinedBalance) : clientBalance > 0 ? clientBalance : 0;
+      const accountsPayable = netFromDeliveries > 0 ? netFromDeliveries : 0;
+      const accountsReceivable = netFromDeliveries < 0 ? Math.abs(netFromDeliveries) : 0;
       
       const statement: ClientStatement = {
         id: client.id,
@@ -140,14 +139,11 @@ export function useClientsWithDebt() {
   return useQuery({
     queryKey: ['clients-with-debt'],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('clients')
-        .select('*')
-        .gt('balance', 0)
-        .order('balance', { ascending: false });
-      
-      if (error) throw error;
-      return data;
+      const { data: response } = await api.get<{ data: any[] }>('/clients', {
+        params: { minBalance: 1, orderBy: 'balance', order: 'desc' },
+      });
+      console.log(response.data)
+      return response.data;
     },
   });
 }

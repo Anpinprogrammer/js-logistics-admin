@@ -1,6 +1,7 @@
-import { useDeliveries, getCurrentWeekDates } from '@/hooks/useDeliveries';
-import { useCouriers } from '@/hooks/useCouriers';
-import { useClientsWithDebt } from '@/hooks/useClients';
+import { useDeliveriesTest, getCurrentWeekDates } from '@/hooks/useDeliveries';
+import { useCouriersTest } from '@/hooks/useCouriers';
+//import { useClientsWithDebt } from '@/hooks/useClients';
+import { useClients, useClientsWithDebt } from '@/hooks/useClientsTest';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { 
@@ -16,16 +17,22 @@ import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 
 export function AdminDashboard() {
-  const { data: deliveries } = useDeliveries();
-  const { data: couriers } = useCouriers();
+  const { data: deliveries } = useDeliveriesTest();
+  const { data: couriers } = useCouriersTest();
   const { data: debtClients } = useClientsWithDebt();
   
   const { weekStart, weekEnd } = getCurrentWeekDates();
 
   // Calculate weekly stats - include both completed and not_delivered_collected (ida perdida)
   const weeklyDeliveries = deliveries?.filter(d => 
-    (d.status === 'completed' || d.status === 'not_delivered_collected') && 
-    d.week_start === weekStart
+    {
+      const week_start = new Date(d.week_start).toISOString().split('T')[0]
+                          
+      return (
+        (d.status === 'completed' || d.status === 'not_delivered_collected') && 
+          week_start === weekStart
+      )
+    }
   ) || [];
 
   const totalCash = weeklyDeliveries
@@ -38,9 +45,9 @@ export function AdminDashboard() {
 
   const totalTransfersClient = weeklyDeliveries
     .filter(d => d.payment_method === 'transfer_to_client')
-    .reduce((sum, d) => sum + Number(d.amount), 0);
+    .reduce((sum, d) => sum + Number(d.service_value), 0);
 
-  const totalDebt = debtClients?.reduce((sum, c) => sum + Number(c.balance), 0) || 0;
+  const totalDebt = Math.abs(debtClients?.reduce((sum, c) => sum + Number(c.balance), 0)) || 0;
 
   const stats = [
     {
@@ -185,7 +192,7 @@ export function AdminDashboard() {
                       )}
                     </div>
                     <Badge variant="outline" className="text-warning border-warning">
-                      ${Number(client.balance).toFixed(2)}
+                      ${Math.abs(Number(client.balance)).toFixed(2)}
                     </Badge>
                   </div>
                 ))}

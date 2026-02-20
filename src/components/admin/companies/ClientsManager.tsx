@@ -1,5 +1,7 @@
 import { useState } from 'react';
-import { useClients, useCreateClient, useUpdateClient, useDeleteClient, Client } from '@/hooks/useClients';
+//import { useClients, useCreateClient, useUpdateClient, useDeleteClient, Client } from '@/hooks/useClients';
+import { useClients, useCreateClient, useUpdateClient, useDeleteClient, Client } from '@/hooks/useClientsTest';
+import { useClientStatement, ClientStatement } from '@/hooks/useClientStatement';
 import { ClientStatementView } from './ClientStatementView';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -8,7 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogCancel, AlertDialogAction } from '@/components/ui/alert-dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Users, Plus, Phone, MapPin, Loader2, Edit, AlertTriangle, FileText, DollarSign, Building2, IdCard, ChevronLeft, ChevronRight, Trash2, Mail } from 'lucide-react';
+import { Users, Plus, Phone, MapPin, Loader2, Edit, AlertTriangle, FileText, DollarSign, Building2, IdCard, ChevronLeft, ChevronRight, Trash2, Mail, TrendingUp, Wallet } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import ClientDialog from './ClientDialog';
@@ -39,6 +41,7 @@ export function ClientsManager() {
 
   const [allPage, setAllPage] = useState(0);
   const [debtPage, setDebtPage] = useState(0);
+  const [favorPage, setFavorPage] = useState(0);
 
   const formatCurrency = (value: number) => 
     new Intl.NumberFormat('es-CO', { 
@@ -122,13 +125,16 @@ export function ClientsManager() {
     );
   }
 
-  const clientsWithDebt = clients?.filter(c => Number(c.balance) > 0) || [];
+  const clientsWithDebt = clients?.filter(c => Number(c.balance) < 0) || [];
+  const clientsWithFavor = clients?.filter(c => Number(c.balance) > 0) || [];
   const allClients = clients || [];
 
   const allTotalPages = Math.max(1, Math.ceil(allClients.length / PAGE_SIZE));
   const debtTotalPages = Math.max(1, Math.ceil(clientsWithDebt.length / PAGE_SIZE));
+  const favorTotalPages = Math.max(1, Math.ceil(clientsWithDebt.length / PAGE_SIZE));
   const paginatedAll = allClients.slice(allPage * PAGE_SIZE, (allPage + 1) * PAGE_SIZE);
   const paginatedDebt = clientsWithDebt.slice(debtPage * PAGE_SIZE, (debtPage + 1) * PAGE_SIZE);
+  const paginatedFavor = clientsWithFavor.slice(favorPage * PAGE_SIZE, (favorPage + 1) * PAGE_SIZE);
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -168,6 +174,11 @@ export function ClientsManager() {
             <Users className="w-4 h-4" />
             Todos
             <Badge variant="secondary">{allClients.length}</Badge>
+          </TabsTrigger>
+          <TabsTrigger value="payables" className="flex items-center gap-2">
+            <TrendingUp className="w-4 h-4" />
+            A Favor
+            <Badge variant="destructive" className='bg-green-800 hover:bg-green-600'>{clientsWithFavor.length}</Badge>
           </TabsTrigger>
           <TabsTrigger value="debtors" className="flex items-center gap-2">
             <AlertTriangle className="w-4 h-4" />
@@ -213,6 +224,59 @@ export function ClientsManager() {
             </>
           )}
         </TabsContent>
+
+        <TabsContent value="payables" className="mt-4">
+          {clientsWithFavor.length === 0 ? (
+            <Card>
+              <CardContent className="py-12 text-center text-muted-foreground">
+                No tienes deudas con los clientes 🎉
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="space-y-4">
+              <Card className="bg-destructive/5">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <DollarSign className="w-5 h-5 text-green-800" />
+                    Total Cuentas por Pagar
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-3xl font-bold text-green-800">
+                    {formatCurrency(clientsWithFavor.reduce((sum, c) => sum + Number(c.balance), 0))}
+                  </div>
+                </CardContent>
+              </Card>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {paginatedFavor.map((client) => (
+                  <ClientCard 
+                    key={client.id} 
+                    client={client} 
+                    onEdit={openEditDialog}
+                    onDelete={setDeleteTarget}
+                    onViewStatement={() => setStatementClientId(client.id)}
+                    formatCurrency={formatCurrency}
+
+                  />
+                ))}
+              </div>
+              {favorTotalPages > 1 && (
+                <div className="flex items-center justify-center gap-2 pt-4">
+                  <Button variant="outline" size="sm" disabled={favorPage === 0} onClick={() => setFavorPage(p => p - 1)}>
+                    <ChevronLeft className="w-4 h-4" />
+                  </Button>
+                  <span className="text-sm text-muted-foreground">
+                    Página {favorPage + 1} de {favorTotalPages}
+                  </span>
+                  <Button variant="outline" size="sm" disabled={favorPage >= favorTotalPages - 1} onClick={() => setFavorPage(p => p + 1)}>
+                    <ChevronRight className="w-4 h-4" />
+                  </Button>
+                </div>
+              )}
+            </div>
+          )}
+        </TabsContent>
         
         <TabsContent value="debtors" className="mt-4">
           {clientsWithDebt.length === 0 ? (
@@ -232,7 +296,7 @@ export function ClientsManager() {
                 </CardHeader>
                 <CardContent>
                   <div className="text-3xl font-bold text-destructive">
-                    {formatCurrency(clientsWithDebt.reduce((sum, c) => sum + Number(c.balance), 0))}
+                    {formatCurrency(Math.abs(clientsWithDebt.reduce((sum, c) => sum + Number(c.balance), 0)))}
                   </div>
                 </CardContent>
               </Card>
@@ -246,6 +310,7 @@ export function ClientsManager() {
                     onDelete={setDeleteTarget}
                     onViewStatement={() => setStatementClientId(client.id)}
                     formatCurrency={formatCurrency}
+
                   />
                 ))}
               </div>
@@ -308,7 +373,8 @@ interface ClientCardProps {
 }
 
 function ClientCard({ client, onEdit, onDelete, onViewStatement, formatCurrency }: ClientCardProps) {
-  const hasDebt = Number(client.balance) > 0;
+  const hasDebt = Number(client.balance) < 0;
+  const hasFavor = Number(client.balance) > 0;
   
   return (
     <Card className={cn(
@@ -326,6 +392,14 @@ function ClientCard({ client, onEdit, onDelete, onViewStatement, formatCurrency 
                   Debe
                 </Badge>
               )}
+              {hasFavor && (
+                <Badge variant="outline" className="text-green-600 border-green-600 shrink-0">
+                  <TrendingUp className="w-3 h-3 text-green-600" />
+                  A Favor
+                </Badge>
+              )
+
+              }
             </div>
             
             {client.company && (
@@ -365,7 +439,12 @@ function ClientCard({ client, onEdit, onDelete, onViewStatement, formatCurrency 
 
             {hasDebt && (
               <p className="text-sm font-medium text-destructive">
-                Deuda: {formatCurrency(Number(client.balance))}
+                Deuda: {formatCurrency(Math.abs(Number(client.balance)))}
+              </p>
+            )}
+            {hasFavor && (
+              <p className="text-sm font-medium text-green-600">
+                A Favor: {formatCurrency(Number(client.balance))}
               </p>
             )}
           </div>

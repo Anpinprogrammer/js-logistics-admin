@@ -7,7 +7,7 @@ import EditDeliveryModal from './EditDeliveryModal';
 import DeleteDeliveryModal from './DeleteDeliveryModal';
 import ReassignDeliveryModal from './ReassignDeliveryModal';
 import { RegisterDeliveryDialog } from '@/components/courier/RegisterDeliveryDialog';
-import { useDeliveries, Delivery } from '@/hooks/useDeliveries';
+import { useDeliveries, useDeliveriesTest, Delivery } from '@/hooks/useDeliveries';
 import { useAdminCompleteDelivery } from '@/hooks/useAdminCompleteDelivery';
 import { useIsMobile } from '@/hooks/use-mobile';
 
@@ -38,7 +38,7 @@ const Deliveries = ({ courierId, showCourier }: DeliveryListProps) => {
   const [reassignDelivery, setReassignDelivery] = useState<Delivery | null>(null);
   const [completeDelivery, setCompleteDelivery] = useState<Delivery | null>(null);
 
-  const { data: deliveries, isLoading, error } = useDeliveries(courierId);
+  const { data: deliveries, isLoading, error } = useDeliveriesTest(courierId);
   const adminComplete = useAdminCompleteDelivery();
 
   // Compute filtered count per tab for badges

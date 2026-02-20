@@ -1,6 +1,8 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from '@/contexts/AuthContext';
+import api from '@/services/api';
+//import { useAuth } from '@/contexts/AuthContext';
+import { useAuth } from '@/contexts/AuthContextTest';
 import { toast } from 'sonner';
 
 // Types
@@ -14,6 +16,10 @@ export interface DailyBaseMoney {
   created_at: string;
 }
 
+export interface DailyBaseMoneyResponse {
+  data: DailyBaseMoney[]
+}
+
 export interface PartialDelivery {
   id: string;
   courier_id: string;
@@ -22,6 +28,10 @@ export interface PartialDelivery {
   received_by: string;
   notes: string | null;
   created_at: string;
+}
+
+export interface PartialDeliveryResponse {
+  data: PartialDelivery[]
 }
 
 export interface OperationalCharge {
@@ -48,6 +58,10 @@ export interface DailySettlement {
   settled_at: string | null;
   notes: string | null;
   created_at: string;
+}
+
+export interface DailySettlementResponse {
+  data: DailySettlement[]
 }
 
 export interface SystemSetting {
@@ -104,22 +118,21 @@ export function useGetSetting(key: string) {
 // Hook: Daily Base Money
 export function useDailyBaseMoney(date?: string, courierId?: string) {
   const targetDate = date || getTodayDate();
-  
+
   return useQuery({
     queryKey: ['daily-base-money', targetDate, courierId],
     queryFn: async () => {
-      let query = supabase
-        .from('daily_base_money')
-        .select('*')
-        .eq('date', targetDate);
-      
-      if (courierId) {
-        query = query.eq('courier_id', courierId);
-      }
-      
-      const { data, error } = await query;
-      if (error) throw error;
-      return data as DailyBaseMoney[];
+      const response = await api.get<DailyBaseMoneyResponse>(
+        '/daily-settlements/get-base-money',
+        {
+          params: {
+            date: targetDate,
+            courierId,
+          },
+        }
+      );
+
+      return response.data.data;
     },
   });
 }
@@ -139,21 +152,13 @@ export function useAssignBaseMoney() {
       
       const targetDate = date || getTodayDate();
       
-      const { data, error } = await supabase
-        .from('daily_base_money')
-        .upsert({
-          courier_id: courierId,
+      const { data } = await api.post('/daily-settlements/base-money', {
+        courier_id: courierId,
           date: targetDate,
           amount,
           assigned_by: user.id,
           notes: notes || null,
-        }, {
-          onConflict: 'courier_id,date',
-        })
-        .select()
-        .single();
-      
-      if (error) throw error;
+      }) 
       return data;
     },
     onSuccess: () => {
@@ -173,21 +178,20 @@ export function usePartialDeliveries(date?: string, courierId?: string) {
   return useQuery({
     queryKey: ['partial-deliveries', targetDate, courierId],
     queryFn: async () => {
-      let query = supabase
-        .from('partial_deliveries')
-        .select('*')
-        .eq('date', targetDate)
-        .order('created_at', { ascending: false });
+      const response = await api.get<PartialDeliveryResponse>(
+        '/daily-settlements/get-partial-deliveries', 
+        {
+          params: {
+            date: targetDate,
+            courierId,
+          },
+        }
+      )
       
-      if (courierId) {
-        query = query.eq('courier_id', courierId);
-      }
-      
-      const { data, error } = await query;
-      if (error) throw error;
-      return data as PartialDelivery[];
+      return response.data.data as PartialDelivery[];
     },
   });
+
 }
 
 export function useRegisterPartialDelivery() {
@@ -204,20 +208,16 @@ export function useRegisterPartialDelivery() {
       if (!user) throw new Error('No user logged in');
       
       const targetDate = date || getTodayDate();
-      
-      const { data, error } = await supabase
-        .from('partial_deliveries')
-        .insert({
+
+      const { data } = await api.post('/daily-settlements/partial-delivery', {
           courier_id: courierId,
           date: targetDate,
           amount,
           received_by: user.id,
           notes: notes || null,
-        })
-        .select()
-        .single();
+        }
+      )
       
-      if (error) throw error;
       return data;
     },
     onSuccess: () => {
@@ -294,20 +294,19 @@ export function useDailySettlements(date?: string, courierId?: string) {
   return useQuery({
     queryKey: ['daily-settlements', targetDate, courierId],
     queryFn: async () => {
-      let query = supabase
-        .from('daily_settlements')
-        .select('*')
-        .eq('date', targetDate);
-      
-      if (courierId) {
-        query = query.eq('courier_id', courierId);
-      }
-      
-      const { data, error } = await query;
-      if (error) throw error;
-      return data as DailySettlement[];
+      const response = await api.get<DailySettlementResponse>(
+        '/daily-settlements',
+        {
+          params: {
+            date: targetDate,
+            courierId,
+          }
+        }
+      )
+
+      return response.data.data as DailySettlement[]
     },
-  });
+    });
 }
 
 export function useSettleDaily() {
@@ -337,29 +336,23 @@ export function useSettleDaily() {
       const targetDate = date || getTodayDate();
       const expectedBalance = baseMoney + totalCollected - partialDeliveriesSum;
       const difference = actualBalance - expectedBalance;
+
+
+      const { data } = await api.post('/daily-settlements', {
+        courier_id: courierId,
+        date: targetDate,
+        base_money: baseMoney,
+        total_collected: totalCollected,
+        partial_deliveries_sum: partialDeliveriesSum,
+        expected_balance: expectedBalance,
+        actual_balance: actualBalance,
+        difference,
+        is_settled: true,
+        settled_by: user.id,
+        settled_at: new Date().toISOString(),
+        notes: notes || null,
+      })
       
-      const { data, error } = await supabase
-        .from('daily_settlements')
-        .upsert({
-          courier_id: courierId,
-          date: targetDate,
-          base_money: baseMoney,
-          total_collected: totalCollected,
-          partial_deliveries_sum: partialDeliveriesSum,
-          expected_balance: expectedBalance,
-          actual_balance: actualBalance,
-          difference,
-          is_settled: true,
-          settled_by: user.id,
-          settled_at: new Date().toISOString(),
-          notes: notes || null,
-        }, {
-          onConflict: 'courier_id,date',
-        })
-        .select()
-        .single();
-      
-      if (error) throw error;
 
       // If there's a shortfall (difference < 0), create a salary advance
       let advanceCreated = 0;
