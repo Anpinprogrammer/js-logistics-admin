@@ -40,7 +40,6 @@ export function useClients() {
     queryKey: ['clients'],
     queryFn: async () => {
       const { data } = await api.get<ClientResponse>('/clients');
-      console.log(data.data)
       return data.data;
     },
     enabled: !!user, // Solo ejecuta si hay usuario autenticado
@@ -95,8 +94,8 @@ export function useCreateClient() {
   
   return useMutation({
     mutationFn: async (clientData: Omit<Client, 'id' | 'created_at' | 'updated_at' | 'balance'>) => {
-      const { data } = await api.post<Client>('/clients', clientData);
-      return data;
+      const { data } = await api.post('/clients', clientData);
+      return data.data;
     },
     onSuccess: () => {
       // Invalidar queries para refrescar los datos

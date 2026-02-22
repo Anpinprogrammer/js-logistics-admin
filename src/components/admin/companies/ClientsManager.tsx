@@ -10,12 +10,12 @@ import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogCancel, AlertDialogAction } from '@/components/ui/alert-dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Users, Plus, Phone, MapPin, Loader2, Edit, AlertTriangle, FileText, DollarSign, Building2, IdCard, ChevronLeft, ChevronRight, Trash2, Mail, TrendingUp, Wallet } from 'lucide-react';
+import { Users, Plus, Phone, MapPin, Loader2, Edit, AlertTriangle, FileText, DollarSign, Building2, IdCard, ChevronLeft, ChevronRight, Trash2, Mail, TrendingUp, Wallet, Search } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import ClientDialog from './ClientDialog';
 
-const PAGE_SIZE = 5;
+const PAGE_SIZE = 9;
 
 export function ClientsManager() {
   const { data: clients, isLoading } = useClients();
@@ -169,23 +169,38 @@ export function ClientsManager() {
       </div>
 
       <Tabs defaultValue="all">
-        <TabsList>
-          <TabsTrigger value="all" className="flex items-center gap-2">
-            <Users className="w-4 h-4" />
-            Todos
-            <Badge variant="secondary">{allClients.length}</Badge>
-          </TabsTrigger>
-          <TabsTrigger value="payables" className="flex items-center gap-2">
-            <TrendingUp className="w-4 h-4" />
-            A Favor
-            <Badge variant="destructive" className='bg-green-800 hover:bg-green-600'>{clientsWithFavor.length}</Badge>
-          </TabsTrigger>
-          <TabsTrigger value="debtors" className="flex items-center gap-2">
-            <AlertTriangle className="w-4 h-4" />
-            Con Deuda
-            <Badge variant="destructive">{clientsWithDebt.length}</Badge>
-          </TabsTrigger>
-        </TabsList>
+        <div className="flex flex-col gap-3 md:flex-row md:justify-between md:items-center md:gap-4">
+
+        
+          <TabsList>
+            <TabsTrigger value="all" className="flex items-center gap-2">
+              <Users className="w-4 h-4" />
+              Todos
+              <Badge variant="secondary">{allClients.length}</Badge>
+            </TabsTrigger>
+            <TabsTrigger value="payables" className="flex items-center gap-2">
+              <TrendingUp className="w-4 h-4" />
+              A Favor
+              <Badge variant="destructive" className='bg-green-800 hover:bg-green-600'>{clientsWithFavor.length}</Badge>
+            </TabsTrigger>
+            <TabsTrigger value="debtors" className="flex items-center gap-2">
+              <AlertTriangle className="w-4 h-4" />
+              Con Deuda
+              <Badge variant="destructive">{clientsWithDebt.length}</Badge>
+            </TabsTrigger>
+          </TabsList>
+
+          <div className="flex items-center w-full h-[40px] md:w-1/2 bg-background rounded-xl shadow-sm border border-border focus-within:ring-2 focus-within:ring-primary transition-all">
+            <Search className="w-5 h-5 md:w-6 md:h-6 ml-3 md:ml-4 text-muted-foreground shrink-0" />
+            <input
+              type="text"
+              placeholder="Buscar por nombre, empresa o documento"
+              className="w-full py-2.5 md:py-3 px-3 md:px-4 bg-transparent outline-none text-sm md:text-base text-foreground placeholder-muted-foreground"
+              onChange={() => {}}
+              value={''}
+            />
+          </div>
+        </div>
         
         <TabsContent value="all" className="mt-4">
           {allClients.length === 0 ? (

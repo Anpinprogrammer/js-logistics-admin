@@ -1,14 +1,16 @@
 import { useState, useEffect } from 'react';
 import { useCouriers, useCouriersTest } from '@/hooks/useCouriers';
 import { useDeliveriesTest, getCurrentWeekDates } from '@/hooks/useDeliveries';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } 
+from '@/components/ui/card';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
-import { Truck, Phone, Package, DollarSign, Loader2, UserPlus, Pencil, Trash2, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Truck, Phone, Package, DollarSign, Loader2, UserPlus, Pencil, Trash2, ChevronLeft, ChevronRight, Search } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { supabase } from '@/integrations/supabase/client';
@@ -22,7 +24,7 @@ interface CourierData {
   phone?: string | null;
 }
 
-const PAGE_SIZE = 5;
+const PAGE_SIZE = 6;
 
 function CourierFormDialog({
   open,
@@ -203,6 +205,17 @@ export function CouriersList() {
           <p className="text-muted-foreground">
             Cuadre semanal: {format(new Date(weekStart), 'd MMM', { locale: es })} - {format(new Date(weekEnd), 'd MMM yyyy', { locale: es })}
           </p>
+        </div>
+
+        <div className="flex items-center w-full h-[40px] md:w-1/2 bg-background rounded-xl shadow-sm border border-border focus-within:ring-2 focus-within:ring-primary transition-all">
+          <Search className="w-2 h-2 md:w-6 md:h-6 ml-3 md:ml-4 text-muted-foreground shrink-0" />
+          <input
+            type="text"
+            placeholder="Buscar por nombre o celular"
+            className="w-full py-2.5 md:py-3 px-3 md:px-4 bg-transparent outline-none text-sm md:text-base text-foreground placeholder-muted-foreground"
+            onChange={() => {}}
+            value={''}
+          />
         </div>
 
         <Button size="sm" onClick={() => setAddDialog(true)}>

@@ -39,6 +39,7 @@ const ModalDomis = ({ isOpen, onClose }: ModalDomisProps) => {
       courierId: '',
       recipientName: '',
       totalToCollect: '',
+      inAdvancedPayment: false,
       paymentMethod: 'cash',
       notes: ''
     })
@@ -57,6 +58,7 @@ const ModalDomis = ({ isOpen, onClose }: ModalDomisProps) => {
         courierId: '',
         recipientName: '',
         totalToCollect: '',
+        inAdvancedPayment: false,
         paymentMethod: '',
         notes: ''
       })
@@ -160,14 +162,20 @@ const ModalDomis = ({ isOpen, onClose }: ModalDomisProps) => {
       setAlerta('Selecciona un mensajero.');
       return;
     }
-    if (!deliveryFormData.totalToCollect || parseFloat(deliveryFormData.totalToCollect) <= 0) {
-      setAlerta('Ingresa el valor total a cobrar.');
-      return;
-    }
+
     if (!deliveryFormData.paymentMethod) {
       setAlerta('Selecciona una forma de pago.');
       return;
     }
+    
+    if(deliveryFormData.paymentMethod === 'cash' || deliveryFormData.paymentMethod === 'text-transfer-courier'){
+      if (!deliveryFormData.totalToCollect || parseFloat(deliveryFormData.totalToCollect) <= 0) {
+        setAlerta('Ingresa el valor total a cobrar.');
+        return;
+      }
+    }
+    
+    
     setAlerta('');
     createDelivery.mutate();
   };

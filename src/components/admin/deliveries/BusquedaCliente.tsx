@@ -11,6 +11,11 @@ interface BusquedaClienteProps {
   onClientSelect?: (client: Client) => void;
 }
 
+interface ClientResponse {
+  data: Client;
+  error: any;
+}
+
 const BusquedaCliente = ({ onClientSelect }: BusquedaClienteProps) => {
   const { data: clients, isLoading } = useClients();
   const createClient = useCreateClient();
@@ -30,13 +35,14 @@ const BusquedaCliente = ({ onClientSelect }: BusquedaClienteProps) => {
   });
   
 
-  const clientesFiltrados = busqueda === ''
-    ? []
+  const clientesFiltrados = busqueda === '' 
+    ? [] 
     : (clients || []).filter(cliente => 
-        cliente.name.toLowerCase().includes(busqueda.toLowerCase()) ||
-        cliente.company?.toLowerCase().includes(busqueda.toLowerCase()) ||
-        cliente.identification_number?.toLowerCase().includes(busqueda.toLowerCase())
-      );
+      cliente.name.toLowerCase().includes(busqueda.toLowerCase()) || 
+      cliente.company?.toLowerCase().includes(busqueda.toLowerCase()) || 
+      cliente.identification_number?.toLowerCase().includes(busqueda.toLowerCase()) 
+    );
+
 
   const handleClientSelect = (client: Client) => {
     onClientSelect?.(client);
@@ -57,6 +63,8 @@ const BusquedaCliente = ({ onClientSelect }: BusquedaClienteProps) => {
         identification_number: formData.identification_number || null,
         email: formData.email || null,
       });
+
+      if(!created) return;
       // Auto-select the new client
       handleClientSelect(created as Client);
       setDialogOpen(false);

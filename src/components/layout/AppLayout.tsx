@@ -16,10 +16,12 @@ import {
   Wallet,
   Calendar,
   ClipboardList,
-  TrendingUp
+  TrendingUp, 
+  DollarSign
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
+
 
 interface AppLayoutProps {
   children: ReactNode;
@@ -38,6 +40,7 @@ export function AppLayout({ children, currentPage, onNavigate }: AppLayoutProps)
     { id: 'daily-settlements', label: 'Cuadres Diarios', icon: ClipboardList },
     { id: 'cash', label: 'Caja Consolidada', icon: Wallet },
     { id: 'payroll', label: 'Nómina Semanal', icon: Calendar },
+    { id: 'services', label: 'Servicios', icon: DollarSign },
     { id: 'couriers', label: 'Mensajeros', icon: Truck },
     { id: 'clients', label: 'Clientes', icon: Users },
     { id: 'audit', label: 'Auditoría', icon: History },
@@ -103,7 +106,7 @@ export function AppLayout({ children, currentPage, onNavigate }: AppLayoutProps)
                 key={item.id}
                 onClick={() => handleNavigate(item.id)}
                 className={cn(
-                  "w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 text-left cursor-pointer",
+                  "w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 text-sm text-left cursor-pointer",
                   isActive
                   ? "bg-sidebar-accent text-sidebar-accent-foreground"
                   : "text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"

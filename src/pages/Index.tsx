@@ -8,6 +8,7 @@ import { AppLayout } from '@/components/layout/AppLayout';
 import { AdminDashboard } from '@/components/admin/AdminDashboard';
 import { DeliveryList } from '@/components/delivery/DeliveryList';
 import Deliveries from '@/components/admin/deliveries/Deliveries';
+import { ServicesList } from '@/components/admin/options/ServicesList';
 import { AdminNewDeliveryForm } from '@/components/admin/AdminNewDeliveryForm';
 import { CouriersList } from '@/components/admin/CouriersList';
 import { ClientsManager } from '@/components/admin/companies/ClientsManager';
@@ -68,6 +69,8 @@ function AppContent() {
           return <ConsolidatedCash />;
         case 'payroll':
           return <WeeklyPayroll />;
+        case 'services':
+          return <ServicesList />;
         case 'couriers':
           return <CouriersList />;
         case 'clients':
