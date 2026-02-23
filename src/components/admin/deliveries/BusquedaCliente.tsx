@@ -11,11 +11,6 @@ interface BusquedaClienteProps {
   onClientSelect?: (client: Client) => void;
 }
 
-interface ClientResponse {
-  data: Client;
-  error: any;
-}
-
 const BusquedaCliente = ({ onClientSelect }: BusquedaClienteProps) => {
   const { data: clients, isLoading } = useClients();
   const createClient = useCreateClient();

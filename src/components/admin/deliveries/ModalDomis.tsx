@@ -32,7 +32,7 @@ const ModalDomis = ({ isOpen, onClose }: ModalDomisProps) => {
       clientCompany: '',
       clientPhone: '',
       clientAddress: '',
-      serviceValue: ''
+      serviceValue: '',
     })
 
     const [deliveryFormData, setDeliveryFormData] = useState({
@@ -51,7 +51,7 @@ const ModalDomis = ({ isOpen, onClose }: ModalDomisProps) => {
         clientCompany: '',
         clientPhone: '',
         clientAddress: '',
-        serviceValue: ''
+        serviceValue: '',
       })
 
       setDeliveryFormData({
@@ -168,11 +168,18 @@ const ModalDomis = ({ isOpen, onClose }: ModalDomisProps) => {
       return;
     }
     
-    if(deliveryFormData.paymentMethod === 'cash' || deliveryFormData.paymentMethod === 'text-transfer-courier'){
+    if(deliveryFormData.paymentMethod === 'cash' || deliveryFormData.paymentMethod === 'transfer_to_courier'){
       if (!deliveryFormData.totalToCollect || parseFloat(deliveryFormData.totalToCollect) <= 0) {
         setAlerta('Ingresa el valor total a cobrar.');
         return;
       }
+      if(!deliveryFormData.inAdvancedPayment){
+        if(parseFloat(deliveryFormData.totalToCollect) < Number(clientFormData.serviceValue)){
+          setAlerta('El valor a cobrar debe ser mayor o igual al valor del servicio')
+          return;
+        }
+      }
+      
     }
     
     
@@ -222,6 +229,7 @@ const ModalDomis = ({ isOpen, onClose }: ModalDomisProps) => {
             <DeliveryInfo 
               deliveryFormData={deliveryFormData}
               setDeliveryFormData={setDeliveryFormData}
+              totalServices={clientFormData.serviceValue}
             />
         </div>
         </div>

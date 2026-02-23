@@ -11,12 +11,20 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Dialog } from '@radix-ui/react-dialog';
+import ServiceDialog from './ServiceDialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Building2, Package, UserCheck, Users, DollarSign, CreditCard, ArrowLeftRight } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import BusquedaCliente from './BusquedaCliente';
+import { ServiceFormModal } from '../options/ServiceFormModal';
 
+interface AddedService {
+  serviceId: string
+  name: string
+  amount: string
+}
 
 interface ClientInfoProps {
   onSuccess?: () => void;
@@ -39,11 +47,24 @@ interface ClientInfoProps {
 }
 
 export function ClientInfo({ onSuccess, clientFormData, setClientFormData }: ClientInfoProps) {
-  const { data: clients, isLoading: loadingClients } = useClients();
-  const { data: couriers, isLoading: loadingCouriers } = useCouriers();
-  const { user } = useAuth();
-  const queryClient = useQueryClient();
 
+  const [services, setServices] = useState<AddedService[]>([])
+  const [openServiceModal, setOpenServiceModal] = useState(false)
+  const [regularService, setRegularService] = useState('')
+  const [addedService, setAddedService] = useState(0)
+
+  useEffect(() => {
+    const totalServices = () => {
+      const suma = services.reduce((total, service) => total + Number(service.amount), 0)
+      const sumatoriaTotal = suma + Number(regularService)
+      setClientFormData({...clientFormData, serviceValue: sumatoriaTotal.toString()})
+    }
+    totalServices()
+  }, [services, regularService])
+
+  const handleTotalServices = () => {
+
+  }
 
   const handleClientSelect = (client: Client) => {
     setClientFormData({
@@ -131,16 +152,72 @@ export function ClientInfo({ onSuccess, clientFormData, setClientFormData }: Cli
                   min="0"
                   placeholder="0"
                   className="pl-9"
-                  value={clientFormData.serviceValue}
-                  onChange={(e) => setClientFormData({ ...clientFormData, serviceValue: e.target.value })}
+                  value={regularService}
+                  onChange={(e) => setRegularService(e.target.value)}
                   required
                 />
               </div>
               <p className="text-xs text-muted-foreground">Valor neto que cobra la empresa por el domicilio. El 70% se paga al mensajero.</p>
             </div>
 
+          {/**Servicios adicionales */}
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <Label>Servicios adicionales</Label>
+
+              <button
+                type="button"
+                onClick={() => setOpenServiceModal(true)}
+                className="text-sm text-primary font-medium hover:underline"
+              >
+                + Agregar servicio
+              </button>
+            </div>
+
+            {services.length === 0 && (
+              <p className="text-sm text-muted-foreground">
+                No hay adicionales agregados
+              </p>
+            )}
+
+            <div className="space-y-2">
+              {services.map((service, index) => (
+                <div
+                  key={index}
+                  className="flex items-center justify-between rounded-lg border p-3"
+                >
+                  <div>
+                    <p className="font-medium">{service.name}</p>
+                    <p className="text-sm text-muted-foreground">
+                      ${service.amount.toLocaleString()}
+                    </p>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() =>
+                    setServices(services.filter((_, i) => i !== index))
+                    }
+                    className="text-sm text-red-500 hover:underline"
+                  >
+                    Eliminar
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+
+
         </form>
       </CardContent>
+      {/**Create new service dialog */}
+      <Dialog open={openServiceModal} onOpenChange={setOpenServiceModal} >
+        <ServiceDialog 
+          setDialogOpen={setOpenServiceModal}
+          services={services}
+          setServices={setServices}
+        />
+      </Dialog>
     </Card>
   );
 }

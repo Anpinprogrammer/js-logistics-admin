@@ -115,7 +115,7 @@ export function AdminDashboard() {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Couriers summary */}
-        <Card>
+        <Card className='overflow-hidden flex flex-col h-[500px]'>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Users className="w-5 h-5 text-primary" />
@@ -125,7 +125,7 @@ export function AdminDashboard() {
               Resumen de entregas por mensajero esta semana
             </CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className='overflow-y-auto'>
             {couriers?.length === 0 ? (
               <p className="text-muted-foreground text-center py-6">
                 No hay mensajeros registrados

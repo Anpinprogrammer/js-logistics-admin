@@ -1,4 +1,4 @@
-import { ReactNode, useState } from 'react';
+import { ReactNode, useState, useEffect } from 'react';
 //import { useAuth } from '@/contexts/AuthContext';
 import { useAuth } from '@/contexts/AuthContextTest';
 import { Button } from '@/components/ui/button';
@@ -17,10 +17,25 @@ import {
   Calendar,
   ClipboardList,
   TrendingUp, 
-  DollarSign
+  DollarSign,
+  Building2,
+  LucideIcon,
+  ChevronDown
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
+
+interface NavItemBase {
+  id: string;
+  label: string;
+  icon: LucideIcon;
+}
+
+interface NavItemWithChildren extends NavItemBase {
+  children: NavItemBase[];
+}
+
+type NavItem = NavItemBase | NavItemWithChildren;
 
 
 interface AppLayoutProps {
@@ -33,15 +48,61 @@ export function AppLayout({ children, currentPage, onNavigate }: AppLayoutProps)
   const { user, signOut, isAdmin, isCourier } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
-  const adminNavItems = [
+  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
+
+  useEffect(() => {
+    navItems.forEach(item => {
+      if ('children' in item) {
+        if (item.children.some(c => c.id === currentPage)) {
+          setOpenGroups(prev => ({ ...prev, [item.id]: true }));
+        }
+      }
+    });
+  }, [currentPage]);
+
+
+  const toggleGroup = (id: string) => {
+    setOpenGroups(prev => ({
+      ...prev,
+      [id]: !prev[id],
+    }));
+  };
+
+  const adminNavItems: NavItem[] = [
     { id: 'dashboard', label: 'Dashboard', icon: BarChart3 },
     //{ id: 'new-delivery', label: 'Nuevo Pedido', icon: Package },
     { id: 'deliveries', label: 'Entregas', icon: Package },
-    { id: 'daily-settlements', label: 'Cuadres Diarios', icon: ClipboardList },
-    { id: 'cash', label: 'Caja Consolidada', icon: Wallet },
-    { id: 'payroll', label: 'Nómina Semanal', icon: Calendar },
-    { id: 'services', label: 'Servicios', icon: DollarSign },
-    { id: 'couriers', label: 'Mensajeros', icon: Truck },
+    {
+      id: 'daily',
+      label: 'Cuadres Diarios',
+      icon: ClipboardList,
+      children: [
+        { id: 'daily/mensajeros', label: 'Cuadre Mensajeros', icon: Truck },
+        { id: 'daily/caja', label: 'Cuadre Caja', icon: Wallet },
+      ]
+    },
+    {
+      id: 'weekly',
+      label: 'Cuadre Semanal',
+      icon: Calendar,
+      children: [
+        { id: 'weekly/cash', label: 'Caja Consolidada', icon: Wallet },
+        { id: 'weekly/payroll', label: 'Nómina Semanal', icon: Calendar },
+      ]
+    },
+    //{ id: 'cash', label: 'Caja Consolidada', icon: Wallet },
+    //{ id: 'payroll', label: 'Nómina Semanal', icon: Calendar },
+    //{ id: 'services', label: 'Servicios', icon: DollarSign },
+    {
+      id: 'personal',
+      label: 'Personal',
+      icon: Building2,
+      children: [
+        { id: 'personal/admins', label: 'Administradores', icon: User },
+        { id: 'personal/patinadores', label: 'Patinadores', icon: ClipboardList },
+        { id: 'personal/mensajeros', label: 'Mensajeros', icon: Truck },
+      ],
+    },
     { id: 'clients', label: 'Clientes', icon: Users },
     { id: 'audit', label: 'Auditoría', icon: History },
     { id: 'settings', label: 'Configuración', icon: Settings },
@@ -99,6 +160,63 @@ export function AppLayout({ children, currentPage, onNavigate }: AppLayoutProps)
         {/* Navigation */}
         <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
           {navItems.map((item) => {
+            // 🔹 ITEM CON SUBMENÚ
+            if ('children' in item) {
+              const isOpen = openGroups[item.id];
+              const isGroupActive = currentPage.startsWith(item.id);
+
+              return (
+                <div key={item.id}>
+                  {/* Botón principal */}
+                  <button
+                    onClick={() => toggleGroup(item.id)}
+                    className={cn(
+                      "w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-sm",
+                      "text-sidebar-foreground/70 hover:bg-sidebar-accent/50"
+                    )}
+                  >
+                    <div className="flex items-center gap-3">
+                      <item.icon className="w-5 h-5 text-white" />
+                      <span className="font-medium text-white">{item.label}</span>
+                    </div>
+
+                    <ChevronDown
+                      className={cn(
+                        "w-4 h-4 text-white transition-transform duration-200",
+                        openGroups[item.id] ? "rotate-180" : "rotate-0"
+                      )}
+                    />
+                  </button>
+
+
+                  {/* Subtabs */}
+                  {isOpen && (
+                    <div className="ml-6 mt-1 space-y-1">
+                      {item.children.map(sub => {
+                        const isActive = currentPage === sub.id;
+
+                        return (
+                          <button
+                            key={sub.id}
+                            onClick={() => handleNavigate(sub.id)}
+                            className={cn(
+                              "w-full flex items-center gap-3 px-3 py-2 rounded-md text-sm",
+                              isActive
+                              ? "bg-sidebar-accent text-sidebar-accent-foreground"
+                              : "text-sidebar-foreground/60 hover:bg-sidebar-accent/40"
+                            )}
+                          >
+                            <sub.icon className={`${!isActive && 'text-white'} w-4 h-4`} />
+                              <span className={`${!isActive && 'text-white'}`} >{sub.label}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+               );
+            }
+
             const isActive = currentPage === item.id;
 
             return (

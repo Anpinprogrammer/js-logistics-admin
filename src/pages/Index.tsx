@@ -11,11 +11,14 @@ import Deliveries from '@/components/admin/deliveries/Deliveries';
 import { ServicesList } from '@/components/admin/options/ServicesList';
 import { AdminNewDeliveryForm } from '@/components/admin/AdminNewDeliveryForm';
 import { CouriersList } from '@/components/admin/CouriersList';
+import AdminsList from '@/components/admin/personel/AdminsList';
+import PatinadoresList from '@/components/admin/personel/PatinadoresList';
 import { ClientsManager } from '@/components/admin/companies/ClientsManager';
 import { AuditLog } from '@/components/admin/AuditLog';
 import { SettingsPage } from '@/components/admin/SettingsPage';
 import { ConsolidatedCash } from '@/components/admin/ConsolidatedCash';
 import { DailySettlements } from '@/components/admin/DailySettlements';
+import DailySettlementCash from '@/components/admin/daily/DailySettlementCash';
 import { WeeklyPayroll } from '@/components/admin/WeeklyPayroll';
 import { CourierSummary } from '@/components/courier/CourierSummary';
 import { CourierTodayDeliveries } from '@/components/courier/CourierTodayDeliveries';
@@ -63,15 +66,21 @@ function AppContent() {
               <Deliveries showCourier />
             </div>
           );
-        case 'daily-settlements':
+        case 'daily/mensajeros':
           return <DailySettlements />;
-        case 'cash':
+        case 'daily/caja':
+          return <DailySettlementCash />;
+        case 'weekly/cash':
           return <ConsolidatedCash />;
-        case 'payroll':
+        case 'weekly/payroll':
           return <WeeklyPayroll />;
         case 'services':
           return <ServicesList />;
-        case 'couriers':
+        case 'personal/admins':
+          return <AdminsList />;
+        case 'personal/patinadores':
+          return <PatinadoresList />;
+        case 'personal/mensajeros':
           return <CouriersList />;
         case 'clients':
           return <ClientsManager />;

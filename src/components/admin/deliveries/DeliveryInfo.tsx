@@ -37,9 +37,10 @@ interface DeliveryInfoProps {
     paymentMethod: string;
     notes: string;
   }>>;
+  totalServices: string;
 }
 
-export function DeliveryInfo({ onSuccess, deliveryFormData, setDeliveryFormData }: DeliveryInfoProps) {
+export function DeliveryInfo({ onSuccess, deliveryFormData, setDeliveryFormData, totalServices }: DeliveryInfoProps) {
   const { data: couriers, isLoading: loadingCouriers } = useCouriersTest();
 
   const [paymentMethod, setPaymentMethod] = useState('cash')
@@ -150,19 +151,26 @@ export function DeliveryInfo({ onSuccess, deliveryFormData, setDeliveryFormData 
                 required
               />
             </div>
-            {paymentMethod === 'transfer_to_courier' && (
-              <div className="flex gap-2 pt-2">
-                <Label>Pagó por adelantado</Label>
+            
+            <div className="flex gap-2 pt-2">
+              <Label>Pagó por adelantado</Label>
 
-                <input 
-                  type="checkbox" 
-                  checked={deliveryFormData.inAdvancedPayment}
-                  onChange={e => setDeliveryFormData({ ...deliveryFormData, inAdvancedPayment: e.target.checked })}
-                />
-              </div>
-            )}
+              <input 
+                type="checkbox" 
+                checked={deliveryFormData.inAdvancedPayment}
+                onChange={e => setDeliveryFormData({ ...deliveryFormData, inAdvancedPayment: e.target.checked })}
+              />
+            </div>
+            
           </div>
           )}
+
+          <div className='pt-1'>
+              <Label>
+                Total Servicios: {' '}
+                <span>${totalServices || 0}</span>
+              </Label>
+          </div>
           
 
           {/* Notes */}

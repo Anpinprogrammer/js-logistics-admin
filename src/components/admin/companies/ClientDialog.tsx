@@ -18,8 +18,6 @@ interface ClientDialogProps {
 }
 
 const ClientDialog = ({setDialogOpen, formData, setFormData, handler, editing, pending}: ClientDialogProps) => {
-    const createClient = useCreateClient();
-    const updateClient = useUpdateClient();
 
   return (
     <>
