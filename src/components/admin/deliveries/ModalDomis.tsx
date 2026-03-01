@@ -10,6 +10,7 @@ import { reopenDailySettlement } from '@/hooks/useDailyOperations';
 import { X } from 'lucide-react';
 import { DeliveryInfo } from './DeliveryInfo';
 import { ClientInfo } from './ClientInfo';
+import PaymentServices from './PaymentServices';
 import { nanoid } from 'nanoid';
 import Swal from 'sweetalert2';
 
@@ -213,25 +214,22 @@ const ModalDomis = ({ isOpen, onClose }: ModalDomisProps) => {
         {/* Contenido */}
 
         
-         
-
        <div className="grid md:grid-cols-2 gap-6">
         {/* Columna Cliente */}
         <div className="h-full">
             <ClientInfo 
               clientFormData={clientFormData}
               setClientFormData={setClientFormData}
+              deliveryFormData={deliveryFormData}
+              setDeliveryFormData={setDeliveryFormData}
             />
         </div>
 
-        {/* Columna Entrega */}
-        <div className="h-full">
-            <DeliveryInfo 
-              deliveryFormData={deliveryFormData}
-              setDeliveryFormData={setDeliveryFormData}
-              totalServices={clientFormData.serviceValue}
-            />
-        </div>
+        <PaymentServices 
+          deliveryFormData={deliveryFormData}
+          setDeliveryFormData={setDeliveryFormData}
+          totalServices={clientFormData.serviceValue}
+        />
         </div>
 
         

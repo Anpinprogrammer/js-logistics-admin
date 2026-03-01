@@ -5,6 +5,7 @@ import { useClients, Client } from '@/hooks/useClients';
 import { useCouriers } from '@/hooks/useCouriers';
 import { getCurrentWeekDates } from '@/hooks/useDeliveries';
 //import { useAuth } from '@/contexts/AuthContext';
+import { useCouriersTest } from '@/hooks/useCouriers';
 import { useAuth } from '@/contexts/AuthContextTest';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -19,10 +20,12 @@ import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import BusquedaCliente from './BusquedaCliente';
 import { ServiceFormModal } from '../options/ServiceFormModal';
+import { Badge } from '@/components/ui/badge';
 
 interface AddedService {
   serviceId: string
   name: string
+  subAccount?: string
   amount: string
 }
 
@@ -44,9 +47,28 @@ interface ClientInfoProps {
     clientAddress: string;
     serviceValue: string;
 }>>
+deliveryFormData?: {
+    courierId: string;
+    recipientName: string;
+    totalToCollect: string;
+    inAdvancedPayment: boolean;
+    paymentMethod: string;
+    notes: string;
+  };
+  setDeliveryFormData?: React.Dispatch<React.SetStateAction<{
+    courierId: string;
+    recipientName: string;
+    totalToCollect: string;
+    inAdvancedPayment?: boolean;
+    paymentMethod: string;
+    notes: string;
+  }>>;
 }
 
-export function ClientInfo({ onSuccess, clientFormData, setClientFormData }: ClientInfoProps) {
+export function ClientInfo({ onSuccess, clientFormData, setClientFormData, deliveryFormData, setDeliveryFormData }: ClientInfoProps) {
+
+  const { data: couriers, isLoading: loadingCouriers } = useCouriersTest();
+
 
   const [services, setServices] = useState<AddedService[]>([])
   const [openServiceModal, setOpenServiceModal] = useState(false)
@@ -93,28 +115,14 @@ export function ClientInfo({ onSuccess, clientFormData, setClientFormData }: Cli
           
           <BusquedaCliente onClientSelect={handleClientSelect} />
 
-          {/* Client name */}
+          {/* Client and company name */}
           <div className="space-y-2">
-            <Label htmlFor="clientName">Nombre *</Label>
-            <Input
-              id="clientName"
-              type="text"
-              placeholder="Nombre del Cliente"
-              value={clientFormData.clientName}
-              onChange={(e) => setClientFormData({ ...clientFormData, clientName: e.target.value })}
-            />
-          </div>
-
-          {/* Company name */}
-          <div className="space-y-2">
-            <Label htmlFor="clientCompany">Empresa *</Label>
-            <Input
-              id="clientCompany"
-              type="text"
-              placeholder="Empresa del cliente"
-              value={clientFormData.clientCompany}
-              onChange={(e) => setClientFormData({ ...clientFormData, clientCompany: e.target.value })}
-            />
+            <Label>Nombre o Empresa *</Label>
+            <p className="px-3 py-2 text-sm rounded-md border bg-muted text-muted-foreground min-h-9 flex items-center">
+              {clientFormData?.clientName ? 
+              clientFormData.clientCompany ? clientFormData.clientName + ' / ' + clientFormData.clientCompany : clientFormData.clientName 
+              : 'Nombre y Empresa del Cliente'}
+            </p>
           </div>
 
           {/* Phone */}
@@ -141,7 +149,61 @@ export function ClientInfo({ onSuccess, clientFormData, setClientFormData }: Cli
             />
           </div>
 
-          {/* Service Value (manual) */}
+          {/* Courier selection 
+          <div className="space-y-2">
+            <Label htmlFor="courier" className="flex items-center gap-2">
+                <UserCheck className="w-4 h-4 text-primary" />
+                Mensajero *
+            </Label>
+            <Select
+              value={deliveryFormData.courierId}
+              onValueChange={(value) => setDeliveryFormData({ ...deliveryFormData, courierId: value })}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder={loadingCouriers ? "Cargando..." : (couriers?.length === 0 ? "No hay mensajeros" : "Selecciona un mensajero")} />
+              </SelectTrigger>
+              <SelectContent className="z-[200]">
+                {loadingCouriers ? (
+                  <div className="p-2 text-center text-muted-foreground">Cargando...</div>
+                ) : couriers?.length === 0 ? (
+                  <div className="p-2 text-center text-muted-foreground">No hay mensajeros disponibles</div>
+                ) : (
+                  couriers?.map((courier) => (
+                    <SelectItem key={courier.user_id} value={courier.user_id}>
+                      {courier.full_name}
+                    </SelectItem>
+                    ))
+                )}
+              </SelectContent>
+            </Select>
+          </div>
+          */}
+
+          {/* Recipient name */}
+          <div className="space-y-2">
+            <Label htmlFor="recipient_name">Nombre de quien recibe</Label>
+            <Input
+              id="recipient_name"
+              type="text"
+              placeholder="Nombre del destinatario"
+              value={deliveryFormData.recipientName}
+              onChange={(e) => setDeliveryFormData({ ...deliveryFormData, recipientName: e.target.value })}
+            />
+          </div>
+
+          {/* Notes */}
+          <div className="space-y-2">
+            <Label htmlFor="notes">Instrucciones (opcional)</Label>
+            <Textarea
+              id="notes"
+              placeholder="Instrucciones para el mensajero..."
+              value={deliveryFormData.notes}
+              onChange={(e) => setDeliveryFormData({ ...deliveryFormData, notes: e.target.value })}
+              rows={3}
+            />
+          </div>
+
+          {/* Service Value (manual) 
             <div className="space-y-2">
               <Label htmlFor='serviceValue' >Valor del Servicio *</Label>
               <div className="relative">
@@ -159,8 +221,9 @@ export function ClientInfo({ onSuccess, clientFormData, setClientFormData }: Cli
               </div>
               <p className="text-xs text-muted-foreground">Valor neto que cobra la empresa por el domicilio. El 70% se paga al mensajero.</p>
             </div>
+            */}
 
-          {/**Servicios adicionales */}
+          {/**Servicios adicionales 
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <Label>Servicios adicionales</Label>
@@ -193,6 +256,26 @@ export function ClientInfo({ onSuccess, clientFormData, setClientFormData }: Cli
                     </p>
                   </div>
 
+                  {service.subAccount && (
+                    <Badge
+                      className={`${service.subAccount === 'Efectivo' ? 'bg-green-300' 
+                        : service.subAccount === 'Bancolombia' ? 'bg-orange-300' 
+                        : 'bg-purple-300'} hover:bg-none`}
+                    >
+                      <p className={
+                        `${service.subAccount === 'Efectivo' ? 'text-green-700' 
+                        : service.subAccount === 'Bancolombia' ? 'text-orange-400' 
+                        : 'text-purple-600'} text-sm`
+                      } >
+                        {service.subAccount}
+                      </p>
+                    </Badge>
+                    
+                  )
+
+                  }
+
+
                   <button
                     type="button"
                     onClick={() =>
@@ -206,6 +289,7 @@ export function ClientInfo({ onSuccess, clientFormData, setClientFormData }: Cli
               ))}
             </div>
           </div>
+          */}
 
 
         </form>

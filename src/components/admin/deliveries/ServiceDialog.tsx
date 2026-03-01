@@ -7,8 +7,9 @@ import { Label } from '@/components/ui/label';
 import { DollarSign, Plus } from 'lucide-react';
 
 interface AddedService {
-  name: string
-  amount: string
+  name: string;
+  sucAccount?: string;
+  amount: string;
 }
 
 interface ServiceDialogProps {
@@ -19,7 +20,11 @@ interface ServiceDialogProps {
 }
 
 const servicesName = [
-    'caja', 'drop', 'terminal'
+    'Caja', 'Drop', 'Terminal'
+]
+
+const subAccounts = [
+    'Efectivo', 'Bancolombia', 'Nequi'
 ]
 
 
@@ -28,6 +33,7 @@ const ServiceDialog = ({ setDialogOpen, services, setServices, editing }: Servic
 
     const [serviceObj, setserviceObj] = useState({
         name: '',
+        subAccount: '',
         amount: ''
     })
 
@@ -37,6 +43,7 @@ const handleAddService = (e: React.FormEvent<HTMLFormElement>) => {
         setDialogOpen(false)
         setserviceObj({
             name: '',
+            subAccount: '',
             amount: ''
         })
 }
@@ -83,6 +90,35 @@ const handleAddService = (e: React.FormEvent<HTMLFormElement>) => {
                         </SelectContent>
                     </Select>
                 </div>
+
+                { serviceObj.name === 'Caja' && (
+                    <div className="space-y-2">
+                    <Label htmlFor="courier" className="flex items-center gap-2">
+                        <Plus className="w-4 h-4 text-primary" />
+                        Selecciona Cuenta *
+                    </Label>
+                    <Select
+                        value={serviceObj.subAccount}
+                        onValueChange={(value) => setserviceObj({...serviceObj, subAccount: value})}
+                    >
+                        <SelectTrigger>
+                            <SelectValue placeholder={subAccounts?.length === 0 ? "No hay cuentas" : "Selecciona una cuenta"} />
+                        </SelectTrigger>
+                        <SelectContent className="z-[200]">
+                            {subAccounts.length === 0 ? (
+                                <div className="p-2 text-center text-muted-foreground">No hay cuentas disponibles</div>
+                            ) : (
+                                subAccounts.map((serviceAccount, index) => (
+                                    <SelectItem key={index} value={serviceAccount}>
+                                        {serviceAccount}
+                                    </SelectItem>
+                                ))
+                            )}
+                        </SelectContent>
+                    </Select>
+                </div>
+                )
+                }
 
                 {/**Added Service Value */}
                 <div className='space-y-2'>

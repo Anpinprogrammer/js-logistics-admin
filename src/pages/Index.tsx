@@ -8,16 +8,19 @@ import { AppLayout } from '@/components/layout/AppLayout';
 import { AdminDashboard } from '@/components/admin/AdminDashboard';
 import { DeliveryList } from '@/components/delivery/DeliveryList';
 import Deliveries from '@/components/admin/deliveries/Deliveries';
+import PickUps from '@/components/admin/pickups/PickUps';
 import { ServicesList } from '@/components/admin/options/ServicesList';
 import { AdminNewDeliveryForm } from '@/components/admin/AdminNewDeliveryForm';
 import { CouriersList } from '@/components/admin/CouriersList';
 import AdminsList from '@/components/admin/personel/AdminsList';
 import PatinadoresList from '@/components/admin/personel/PatinadoresList';
 import { ClientsManager } from '@/components/admin/companies/ClientsManager';
-import { AuditLog } from '@/components/admin/AuditLog';
-import { SettingsPage } from '@/components/admin/SettingsPage';
+import { AuditLog } from '@/components/admin/system/AuditLog';
+import { SettingsPage } from '@/components/admin/system/SettingsPage';
+import RolesSetting from '@/components/admin/system/RolesSetting';
 import { ConsolidatedCash } from '@/components/admin/ConsolidatedCash';
 import { DailySettlements } from '@/components/admin/DailySettlements';
+import DailyClientSettlement from '@/components/admin/daily/DailyClientSettlement';
 import DailySettlementCash from '@/components/admin/daily/DailySettlementCash';
 import { WeeklyPayroll } from '@/components/admin/WeeklyPayroll';
 import { CourierSummary } from '@/components/courier/CourierSummary';
@@ -59,15 +62,24 @@ function AppContent() {
           return <AdminDashboard />;
         case 'new-delivery':
           return <AdminNewDeliveryForm />;
-        case 'deliveries':
+        case 'deliveries_pickups/deliveries':
           return (
             <div className="space-y-4 animate-fade-in">
               <h1 className="text-2xl font-bold">Todas las Entregas</h1>
               <Deliveries showCourier />
             </div>
           );
+        case 'deliveries_pickups/pickups':
+          return (
+            <div className="space-y-4 animate-fade-in">
+              <h1 className="text-2xl font-bold">Todas las Recogidas</h1>
+              <PickUps />
+            </div>
+          );
         case 'daily/mensajeros':
           return <DailySettlements />;
+        case 'daily/clientes':
+          return <DailyClientSettlement />;  
         case 'daily/caja':
           return <DailySettlementCash />;
         case 'weekly/cash':
@@ -84,10 +96,12 @@ function AppContent() {
           return <CouriersList />;
         case 'clients':
           return <ClientsManager />;
-        case 'audit':
+        case 'system/audit':
           return <AuditLog />;
-        case 'settings':
+        case 'system/settings':
           return <SettingsPage />;
+        case 'system/roles':
+          return <RolesSetting />
         default:
           return <AdminDashboard />;
       }

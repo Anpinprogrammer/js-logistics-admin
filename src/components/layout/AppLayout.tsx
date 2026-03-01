@@ -20,7 +20,14 @@ import {
   DollarSign,
   Building2,
   LucideIcon,
-  ChevronDown
+  ChevronDown,
+  PackageCheck,
+  PackagePlus,
+  ArrowRightCircle,
+  Warehouse,
+  UserRoundCog,
+  ArrowDownCircle,
+  Settings2
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
@@ -71,13 +78,23 @@ export function AppLayout({ children, currentPage, onNavigate }: AppLayoutProps)
   const adminNavItems: NavItem[] = [
     { id: 'dashboard', label: 'Dashboard', icon: BarChart3 },
     //{ id: 'new-delivery', label: 'Nuevo Pedido', icon: Package },
-    { id: 'deliveries', label: 'Entregas', icon: Package },
+    //{ id: 'deliveries', label: 'Entregas', icon: Package },
+    {
+      id: 'deliveries_pickups',
+      label: 'Entregas/Recogidas',
+      icon: Package,
+      children: [
+        { id: 'deliveries_pickups/deliveries', label: 'Entregas', icon: ArrowRightCircle },
+        { id: 'deliveries_pickups/pickups', label: 'Recogidas', icon: ArrowDownCircle }
+      ]
+    },
     {
       id: 'daily',
       label: 'Cuadres Diarios',
       icon: ClipboardList,
       children: [
         { id: 'daily/mensajeros', label: 'Cuadre Mensajeros', icon: Truck },
+        { id:'daily/clientes', label: 'Cuadre Clientes', icon: Users },
         { id: 'daily/caja', label: 'Cuadre Caja', icon: Wallet },
       ]
     },
@@ -104,8 +121,15 @@ export function AppLayout({ children, currentPage, onNavigate }: AppLayoutProps)
       ],
     },
     { id: 'clients', label: 'Clientes', icon: Users },
-    { id: 'audit', label: 'Auditoría', icon: History },
-    { id: 'settings', label: 'Configuración', icon: Settings },
+    { id: 'system',
+      label: 'Sistema',
+      icon: Settings2,
+      children: [
+        { id: 'system/audit', label: 'Auditoría', icon: History },
+        { id: 'system/settings', label: 'Configuración', icon: Settings },
+        { id: 'system/roles', label: 'Roles', icon: UserRoundCog }
+      ]
+     },
   ];
 
   const courierNavItems = [
