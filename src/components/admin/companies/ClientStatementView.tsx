@@ -93,7 +93,8 @@ export function ClientStatementView({ clientId, open, onOpenChange }: ClientStat
         ) : statement ? (
           <div className="space-y-6">
             {/* Client Info */}
-            <Card>
+           <div className='flex gap-4 w-full'>
+            <Card className='flex-1'>
               <CardHeader className="pb-3">
                 <CardTitle className="flex items-center gap-2 text-lg">
                   <User className="w-5 h-5" />
@@ -115,6 +116,24 @@ export function ClientStatementView({ clientId, open, onOpenChange }: ClientStat
                 )}
               </CardContent>
             </Card>
+
+             <Card className={cn(
+                "flex-1 p-4",
+                statement.accountsReceivable > 0 ? "bg-destructive/10" : "bg-success/10"
+              )}>
+                <div className="text-sm text-muted-foreground">
+                  {statement.accountsReceivable > 0 ? 'Debe' : 'A Favor'}
+                </div>
+                <div className={cn(
+                  "text-xl font-bold",
+                  statement.accountsReceivable > 0 ? "text-destructive" : "text-success"
+                )}>
+                  {formatCurrency(statement.accountsReceivable > 0 
+                    ? statement.accountsReceivable 
+                    : statement.accountsPayable)}
+                </div>
+              </Card>
+             </div>
             
             {/* Financial Summary */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
@@ -132,24 +151,14 @@ export function ClientStatementView({ clientId, open, onOpenChange }: ClientStat
               </Card>
               <Card className="p-4">
                 <div className="text-sm text-muted-foreground">Idas Perdidas</div>
-                <div className="text-xl font-bold text-warning">
+                <div className="text-xl font-bold text-red-600">
                   {formatCurrency(statement.totalLostTrips)}
                 </div>
               </Card>
-              <Card className={cn(
-                "p-4",
-                statement.accountsReceivable > 0 ? "bg-destructive/10" : "bg-success/10"
-              )}>
-                <div className="text-sm text-muted-foreground">
-                  {statement.accountsReceivable > 0 ? 'Debe' : 'A Favor'}
-                </div>
-                <div className={cn(
-                  "text-xl font-bold",
-                  statement.accountsReceivable > 0 ? "text-destructive" : "text-success"
-                )}>
-                  {formatCurrency(statement.accountsReceivable > 0 
-                    ? statement.accountsReceivable 
-                    : statement.accountsPayable)}
+              <Card className="p-4">
+                <div className="text-sm text-muted-foreground">Prestamos JS</div>
+                <div className="text-xl font-bold text-warning">
+                  {formatCurrency(statement.totalLoans)}
                 </div>
               </Card>
             </div>
@@ -167,27 +176,45 @@ export function ClientStatementView({ clientId, open, onOpenChange }: ClientStat
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead>Fecha</TableHead>
+                        <TableHead className='text-center'>Fecha</TableHead>
                         <TableHead>Destinatario</TableHead>
                         <TableHead>Estado</TableHead>
                         <TableHead>Pago</TableHead>
-                        <TableHead className="text-right">Servicio</TableHead>
-                        <TableHead className="text-right">Cobro</TableHead>
+                        <TableHead className="text-right">Servicios</TableHead>
+                        <TableHead className="text-right">Prestamos</TableHead>
                         <TableHead className="text-right">Recibido</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {statement.deliveries.map(delivery => {
+                        console.log(delivery.lost_trips)
                         const status = statusLabels[delivery.status] || statusLabels.pending;
                         const StatusIcon = status.icon;
                         
                         return (
                           <TableRow key={delivery.id}>
                             <TableCell className="whitespace-nowrap">
-                              {new Date(delivery.delivery_date).toLocaleDateString('es-CO')}
+                              <div className='flex flex-col items-center gap-1'>
+                                {new Date(delivery.delivery_date).toLocaleDateString('es-CO')}
+                                <span
+                                  className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-mono bg-muted text-muted-foreground mx-auto"
+                                  title={delivery.id}
+                                >
+                                  #{delivery.id.slice(0, 8)}
+                                </span>
+                              </div>
                             </TableCell>
                             <TableCell>
-                              {delivery.recipient_name || '-'}
+                              <div className='flex flex-col text-center gap-1'>
+                                <p>
+                                  {delivery.recipient_name || '-'}
+                                </p>
+                                { delivery.lost_trips > 0 &&
+                                  <span className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium bg-red-100 text-red-700">
+                                    Devolucion: {delivery.lost_trips}
+                                  </span>
+                                }
+                              </div>
                             </TableCell>
                             <TableCell>
                               <div className={cn("flex items-center gap-1", status.color)}>
@@ -204,7 +231,7 @@ export function ClientStatementView({ clientId, open, onOpenChange }: ClientStat
                               {formatCurrency(delivery.service_value)}
                             </TableCell>
                             <TableCell className="text-right">
-                              {formatCurrency(delivery.total_to_collect)}
+                              {formatCurrency(delivery.loan)}
                             </TableCell>
                             <TableCell className="text-right">
                               {delivery.received_amount !== null 

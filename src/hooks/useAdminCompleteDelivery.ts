@@ -45,6 +45,7 @@ export function useAdminCompleteDelivery() {
         notes: data.notes || null,
         receipt_photo_url: data.receipt_photo_url || null,
         status: data.final_status,
+        lost_trips: data.final_status === 'not_delivered_collected' ? Number(oldDelivery.lost_trips || 0 ) + 1 : oldDelivery.lost_trips,
         delivery_date: new Date().toISOString().split('T')[0],
       }
 
@@ -55,9 +56,24 @@ export function useAdminCompleteDelivery() {
       // Handle client balance updates
       let clientDebtAdded = 0;
 
-      if(data.final_status === 'completed' || data.final_status === 'not_delivered_collected'){
-        const { data: currentClientResponse } = await api.get(`/clients/${oldDelivery.client_id}`)
-        const currentClient = currentClientResponse.data
+      const { data: currentClientResponse } = await api.get(`/clients/${oldDelivery.client_id}`)
+      const currentClient = currentClientResponse.data
+
+      if(data.final_status === 'completed' || data.final_status === 'not_delivered_collected') {
+        if(currentClient){
+          const newBalance = data.received_amount - newDelivery.service_value - newDelivery.loan + Number(currentClient.balance || 0) 
+          if(newBalance < 0){
+            clientDebtAdded = Number(newBalance)
+          }
+          await api.put(`/clients/${oldDelivery.client_id}`, { balance: newBalance })
+        }
+      }
+
+      /**
+       * 
+       
+
+      if(data.final_status === 'not_delivered_collected'){
 
         if(currentClient){
           const newBalance = data.received_amount - newDelivery.service_value + Number(currentClient.balance || 0)
@@ -67,6 +83,7 @@ export function useAdminCompleteDelivery() {
           await api.put(`/clients/${oldDelivery.client_id}`, { balance: newBalance })
         }
       }
+        */
 
       return { delivery: newDelivery, advance: 0, status: data.final_status, clientDebtAdded };
 

@@ -33,7 +33,7 @@ export function SettingsPage() {
       await supabase.from('salary_advances').delete().neq('id', dummy);
 
       // Reset client balances to 0
-      const { data } = await api.put('/clients', { balance: 0 })
+      const { data } = await api.put('/clients', { balance: 0, service_lost_trips: 0 })
 
       toast({ title: 'Sistema reiniciado correctamente', description: 'Todas las entregas y saldos han sido eliminados.' });
     } catch (err: any) {

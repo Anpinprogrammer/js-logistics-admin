@@ -8,9 +8,10 @@ export interface ClientStatement {
   phone: string | null;
   address: string | null;
   balance: number;
+  totalLostTrips: number;
   totalCollected: number;
   totalServices: number;
-  totalLostTrips: number;
+  totalLoans: number;
   accountsPayable: number; // Saldo a favor (what we owe client)
   accountsReceivable: number; // Deudas (what client owes us)
   deliveries: ClientDelivery[];
@@ -23,8 +24,10 @@ export interface ClientDelivery {
   status: string;
   payment_method: string;
   service_value: number;
+  lost_trips: number;
   total_to_collect: number;
   received_amount: number | null;
+  loan: number | null;
   notes: string | null;
   courier_id: string;
   courier_name?: string;
@@ -64,17 +67,22 @@ export function useClientStatement(clientId: string, startDate?: string, endDate
       // Calculate totals
       let totalCollected = 0;
       let totalServices = 0;
-      let totalLostTrips = 0;
+      let totalLoans = 0;
       
       const enrichedDeliveries: ClientDelivery[] = (deliveries || [])
       .map(d => {
         // Only count completed deliveries and lost trips with collection
         if (d.status === 'completed' || d.status === 'not_delivered_collected') {
           totalServices += Number(d.service_value) || 0;
-          
-          if (d.status === 'not_delivered_collected') {
+          totalLoans += Number(d.loan) || 0;
+
+          /**
+           * if (d.status === 'not_delivered_collected') {
             totalLostTrips += Number(d.total_to_collect) || 0;
           }
+           */
+          
+          
           
           // Collected amount (cash or transfer to courier)
           if (d.payment_method === 'cash' || d.payment_method === 'transfer_to_courier') {
@@ -89,8 +97,10 @@ export function useClientStatement(clientId: string, startDate?: string, endDate
           status: d.status,
           payment_method: d.payment_method,
           service_value: Number(d.service_value) || 0,
+          lost_trips: Number(d.lost_trips) || 0,
           total_to_collect: Number(d.total_to_collect) || 0,
           received_amount: d.received_amount ? Number(d.received_amount) : null,
+          loan: d.loan ? Number(d.loan) : null,
           notes: d.notes,
           courier_id: d.courier_id,
           courier_name: courierMap.get(d.courier_id) || 'Desconocido',
@@ -101,7 +111,7 @@ export function useClientStatement(clientId: string, startDate?: string, endDate
       // Net = totalCollected - totalServices - totalLostTrips
       // If positive: client has credit (saldo a favor / accountsPayable)
       // If negative: client owes us (cuenta por cobrar / accountsReceivable)
-      const netFromDeliveries = totalCollected - totalServices
+      const netFromDeliveries = totalCollected - totalServices - totalLoans - Number(client.service_lost_trips || 0)
       //const netFromDeliveries = totalCollected - totalServices - totalLostTrips;
       
       // Also consider existing balance from direct transfers
@@ -121,9 +131,10 @@ export function useClientStatement(clientId: string, startDate?: string, endDate
         phone: client.phone,
         address: client.address,
         balance: clientBalance,
+        totalLostTrips: client.service_lost_trips,
         totalCollected,
         totalServices,
-        totalLostTrips,
+        totalLoans,
         accountsPayable,
         accountsReceivable,
         deliveries: enrichedDeliveries,

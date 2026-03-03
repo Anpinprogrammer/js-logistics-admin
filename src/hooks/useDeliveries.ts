@@ -408,15 +408,35 @@ export function useReassignDelivery() {
     }) => {
       if (!user) throw new Error('No user logged in');
 
-      const { data: oldDelivery, error: fetchError } = await supabase
-        .from('deliveries')
-        .select('*')
-        .eq('id', id)
-        .single();
+      const { data: oldDeliveryResponse } = await api.get(`/deliveries/${id}`)
+      const oldDelivery = oldDeliveryResponse.data
 
-      if (fetchError) throw fetchError;
+      const { data: oldClientResponse } = await api.get(`/clients/${oldDelivery.client.id}`)
+      const oldClient = oldClientResponse.data
+      const newBalance = Number(oldClient.balance || 0) + Number(oldDelivery.loan || 0)
+
+      const { data: clientResponse } = await api.put(`/clients/${oldDelivery.client.id}`, {
+        service_lost_trips : Number(oldDelivery.service_value) + Number(oldClient.service_lost_trips || 0), 
+        balance: newBalance
+      })
+      const client = clientResponse.data
 
       const { weekStart, weekEnd } = getCurrentWeekDates();
+
+      const { data: newDeliveryResponse } = await api.put(`/deliveries/${id}`, {
+          courier_id: courierId,
+          delivery_date: deliveryDate,
+          status: 'pending' as const,
+          notes: notes || oldDelivery.notes,
+          week_start: weekStart,
+          week_end: weekEnd,
+      })
+
+      const newDelivery = newDeliveryResponse.data
+
+      /**
+       * 
+       
 
       const { data: newDelivery, error: updateError } = await supabase
         .from('deliveries')
@@ -442,6 +462,7 @@ export function useReassignDelivery() {
         new_values: JSON.parse(JSON.stringify(newDelivery)),
         reason: 'Pedido reasignado desde rechazados',
       });
+      */
 
       return newDelivery;
     },

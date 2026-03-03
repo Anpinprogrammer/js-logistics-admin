@@ -388,7 +388,7 @@ interface ClientCardProps {
 }
 
 function ClientCard({ client, onEdit, onDelete, onViewStatement, formatCurrency }: ClientCardProps) {
-  const hasDebt = Number(client.balance) < 0;
+  const hasDebt = Number(client.balance)  < 0;
   const hasFavor = Number(client.balance) > 0;
   
   return (

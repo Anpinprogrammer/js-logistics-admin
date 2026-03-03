@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { X, RefreshCw, Calendar, UserCheck } from 'lucide-react';
 import { Delivery, useReassignDelivery } from '@/hooks/useDeliveries';
-import { useCouriers } from '@/hooks/useCouriers';
+import { useCouriersTest } from '@/hooks/useCouriers';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
@@ -17,7 +17,7 @@ interface ReassignDeliveryModalProps {
 }
 
 const ReassignDeliveryModal = ({ delivery, isOpen, onClose }: ReassignDeliveryModalProps) => {
-  const { data: couriers, isLoading: loadingCouriers } = useCouriers();
+  const { data: couriers, isLoading: loadingCouriers } = useCouriersTest();
   const reassign = useReassignDelivery();
 
   const [courierId, setCourierId] = useState('');

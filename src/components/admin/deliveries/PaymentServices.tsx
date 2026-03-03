@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect, Dispatch, SetStateAction } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
@@ -10,7 +10,7 @@ import { cn } from '@/lib/utils';
 import { useCouriersTest } from '@/hooks/useCouriers';
 
 const SERVICE_TYPES = [
-  { id: 'Domi', label: 'Domi', description: 'Servicio regular de domicilios' },
+  { id: 'domi', label: 'Domi', description: 'Servicio regular de domicilios' },
   { id: 'caja',     label: 'Caja',     description: 'Caja registradora con sub-cuentas' },
   { id: 'drop',     label: 'Drop',     description: 'Entrega directa al destinatario' },
   { id: 'terminal', label: 'Terminal', description: 'Cobro por terminal de pago' },
@@ -37,35 +37,58 @@ const PAYMENT_METHODS = [
 interface PaymentServicesProps {
     deliveryFormData: {
     courierId: string;
-    recipientName: string;
+    loan: {
+        subAccount: string;
+        amount: string;
+    };
+    serviceValue: string;
     totalToCollect: string;
     inAdvancedPayment: boolean;
     paymentMethod: string;
-    notes: string;
   };
   setDeliveryFormData: React.Dispatch<React.SetStateAction<{
     courierId: string;
-    recipientName: string;
+    loan: {
+        subAccount: string;
+        amount: string;
+    };
+    serviceValue: string;
     totalToCollect: string;
-    inAdvancedPayment?: boolean;
+    inAdvancedPayment: boolean;
     paymentMethod: string;
-    notes: string;
   }>>;
-  totalServices: string;
 }
 
-const PaymentServices = ({deliveryFormData, setDeliveryFormData, totalServices}: PaymentServicesProps) => {
+const PaymentServices = ({deliveryFormData, setDeliveryFormData}: PaymentServicesProps) => {
   const { data: couriers, isLoading: loadingCouriers } = useCouriersTest();
 
   const [enabledServices, setEnabledServices]       = useState<string[]>([])
   const [enabledSubAccounts, setEnabledSubAccounts] = useState<string[]>([])
   const [enabledPayments, setEnabledPayments]       = useState<string[]>([])
   const [serviceAmounts, setServiceAmounts]         = useState<Record<string, string>>({})
+  const [alert, setAlert] = useState('')
   const [regularService, setRegularService]         = useState('')
   const [selectedServiceToAdd, setSelectedServiceToAdd] = useState('')
 
+  useEffect(() => {
+    const total = enabledServices
+      .filter(service => service !== 'caja')
+      .reduce(
+      (sum, service) => sum + (parseFloat(serviceAmounts[service] || '0') || 0), 0
+    )
+    setDeliveryFormData(prev => ({ ...prev, serviceValue: total.toString() }))
+  }, [enabledServices])
+
   const addService = () => {
     if (!selectedServiceToAdd) return
+    if(selectedServiceToAdd === 'caja'){
+      if(!enabledSubAccounts.length){
+        setAlert('Debe agregar subcuenta')
+        return
+      }
+      setAlert('')
+      setDeliveryFormData({ ...deliveryFormData, loan: { subAccount: enabledSubAccounts[0] , amount: serviceAmounts[selectedServiceToAdd] } })
+    }
     setEnabledServices(prev => [...prev, selectedServiceToAdd])
     setSelectedServiceToAdd('')
   }
@@ -73,7 +96,10 @@ const PaymentServices = ({deliveryFormData, setDeliveryFormData, totalServices}:
   const removeService = (id: string) => {
     setEnabledServices(prev => prev.filter(s => s !== id))
     setServiceAmounts(prev => { const next = { ...prev }; delete next[id]; return next })
-    if (id === 'caja') setEnabledSubAccounts([])
+    if (id === 'caja') {
+      setEnabledSubAccounts([])
+      setDeliveryFormData({ ...deliveryFormData, loan: { subAccount: '', amount: '' } })
+    } 
   }
 
   const setAmount = (id: string, value: string) => {
@@ -90,14 +116,7 @@ const PaymentServices = ({deliveryFormData, setDeliveryFormData, totalServices}:
     )
   }
 
-  const togglePayment = (value: string) => {
-    setEnabledPayments(prev =>
-      prev.includes(value) ? prev.filter(p => p !== value) : [...prev, value]
-    )
-  }
-
   const [paymentMethod, setPaymentMethod] = useState('cash')
-    const [inAdvanced, setInAdvanced] = useState(false)
   
   
     const handlePaymentMethod = (value: string) => {
@@ -105,7 +124,6 @@ const PaymentServices = ({deliveryFormData, setDeliveryFormData, totalServices}:
       setDeliveryFormData({ ...deliveryFormData, paymentMethod: value })
     }
 
-  const hasSelections = enabledServices.length > 0 || enabledPayments.length > 0
 
   return (
 
@@ -122,25 +140,6 @@ const PaymentServices = ({deliveryFormData, setDeliveryFormData, totalServices}:
 
         <CardContent className="space-y-3">
 
-        {/* Service Value (manual) 
-            <div className="space-y-2">
-              <Label htmlFor='serviceValue' >Valor del Servicio *</Label>
-              <div className="relative">
-                <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                <Input
-                  id='serviceValue'
-                  type="number"
-                  min="0"
-                  placeholder="0"
-                  className="pl-9"
-                  value={regularService}
-                  onChange={(e) => setRegularService(e.target.value)}
-                  required
-                />
-              </div>
-              <p className="text-xs text-muted-foreground">Valor neto que cobra la empresa por el domicilio. El 70% se paga al mensajero.</p>
-            </div>
-            */}
           {/* Courier selection */}
           <div className="space-y-2">
             <Label htmlFor="courier" className="flex items-center gap-2">
@@ -186,7 +185,8 @@ const PaymentServices = ({deliveryFormData, setDeliveryFormData, totalServices}:
                     <SelectValue placeholder='Seleccionar servicio...' />
                   </SelectTrigger>
                   <SelectContent className="z-[200]">
-                  {SERVICE_TYPES.filter(s => !enabledServices.includes(s.id)).map(service => (
+                  {SERVICE_TYPES.filter(s => !enabledServices.includes(s.id)).map(service => 
+                  (
                     <SelectItem key={service.id} value={service.id}>{service.label} — {service.description}</SelectItem>
                   ))}
                   </SelectContent>
@@ -238,6 +238,12 @@ const PaymentServices = ({deliveryFormData, setDeliveryFormData, totalServices}:
                     </button>
                   </div>
                 )}
+                {/* Alerta */}
+                {alert && (
+                  <div className="mt-5 p-1 bg-red-300">
+                    <p className="text-center text-red-600 text-sm">{alert}</p>
+                  </div>
+                )}
               </div>
             )}
             {/* Added services — compact rows */}
@@ -281,24 +287,6 @@ const PaymentServices = ({deliveryFormData, setDeliveryFormData, totalServices}:
                   <p className="text-xs text-muted-foreground">Total</p>
                 </div>
               </div>
-
-          {/* Stats counters 
-          {hasSelections && (
-            <>
-              <Separator />
-              <div className="grid grid-cols-2 gap-3">
-                <div className="rounded-lg bg-muted/50 p-3 text-center">
-                  <p className="text-2xl font-bold text-primary">{enabledServices.length}</p>
-                  <p className="text-xs text-muted-foreground">Servicios</p>
-                </div>
-                <div className="rounded-lg bg-muted/50 p-3 text-center">
-                  <p className="text-lg font-bold text-primary">${totalAmount.toLocaleString()}</p>
-                  <p className="text-xs text-muted-foreground">Total</p>
-                </div>
-              </div>
-            </>
-          )}
-            */}
 
           <Separator />
 
@@ -356,40 +344,6 @@ const PaymentServices = ({deliveryFormData, setDeliveryFormData, totalServices}:
             
           </div>
           )}
-
-          {/* Payment Methods 
-          <div className="space-y-3">
-            <Label className="text-sm font-semibold">Métodos de Pago</Label>
-            <div className="space-y-2">
-              {PAYMENT_METHODS.map((method) => {
-                const isEnabled = enabledPayments.includes(method.value)
-                const Icon = method.icon
-                return (
-                  <button
-                    key={method.value}
-                    type="button"
-                    onClick={() => togglePayment(method.value)}
-                    className={cn(
-                      "w-full flex items-center justify-between p-3 rounded-xl border-2 transition-all duration-200",
-                      isEnabled
-                        ? "border-primary bg-primary/5"
-                        : "border-border hover:border-primary/40"
-                    )}
-                  >
-                    <div className="flex items-center gap-3">
-                      <Icon className={cn("w-4 h-4", method.colorClass)} />
-                      <span className="text-sm font-medium">{method.label}</span>
-                    </div>
-                    {isEnabled
-                      ? <CheckCircle2 className="w-5 h-5 text-primary flex-shrink-0" />
-                      : <Circle       className="w-5 h-5 text-muted-foreground flex-shrink-0" />
-                    }
-                  </button>
-                )
-              })}
-            </div>
-          </div>
-          */}
 
         </CardContent>
       </Card>

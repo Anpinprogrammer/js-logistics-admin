@@ -1,4 +1,4 @@
-import { useState} from 'react';
+import { useState, useEffect} from 'react';
 import { createPortal } from 'react-dom';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -33,16 +33,20 @@ const ModalDomis = ({ isOpen, onClose }: ModalDomisProps) => {
       clientCompany: '',
       clientPhone: '',
       clientAddress: '',
-      serviceValue: '',
+      recipientName: '',
+      notes: ''
     })
 
     const [deliveryFormData, setDeliveryFormData] = useState({
       courierId: '',
-      recipientName: '',
+      loan: {
+        subAccount: '',
+        amount: ''
+      },
+      serviceValue: '',
       totalToCollect: '',
       inAdvancedPayment: false,
       paymentMethod: 'cash',
-      notes: ''
     })
 
     const resetForm = () => {
@@ -52,16 +56,20 @@ const ModalDomis = ({ isOpen, onClose }: ModalDomisProps) => {
         clientCompany: '',
         clientPhone: '',
         clientAddress: '',
-        serviceValue: '',
+        recipientName: '',
+        notes: ''
       })
 
       setDeliveryFormData({
         courierId: '',
-        recipientName: '',
+        loan: {
+          subAccount: '',
+          amount: ''
+        },
+        serviceValue: '',
         totalToCollect: '',
         inAdvancedPayment: false,
-        paymentMethod: '',
-        notes: ''
+        paymentMethod: 'cash',
       })
     };
 
@@ -71,20 +79,22 @@ const ModalDomis = ({ isOpen, onClose }: ModalDomisProps) => {
       const { weekStart, weekEnd } = getCurrentWeekDates();
 
       const totalNum = parseFloat(deliveryFormData.totalToCollect) || 0;
-      const serviceNum = parseFloat(clientFormData.serviceValue) || 0;
+      const serviceNum = parseFloat(deliveryFormData.serviceValue) || 0;
+      const loanNum = parseFloat(deliveryFormData.loan.amount) || 0;
 
       const { data: delivery } = await api.post("/deliveries", {
         client_id: clientFormData.clientId,
         courier_id: deliveryFormData.courierId,
         created_by: user.id,
-        recipient_name: deliveryFormData.recipientName || null,
-        notes: deliveryFormData.notes || null,
+        recipient_name: clientFormData.recipientName || null,
+        notes: clientFormData.notes || null,
         week_start: weekStart,
         week_end: weekEnd,
         delivery_date: new Date().toISOString().split('T')[0],
         status: 'pending' as const,
         service_value: serviceNum,
         total_to_collect: totalNum,
+        loan: loanNum,
         amount: totalNum,
         payment_method: deliveryFormData.paymentMethod as 'cash' | 'transfer_to_courier' | 'transfer_to_client',
       })
@@ -175,7 +185,7 @@ const ModalDomis = ({ isOpen, onClose }: ModalDomisProps) => {
         return;
       }
       if(!deliveryFormData.inAdvancedPayment){
-        if(parseFloat(deliveryFormData.totalToCollect) < Number(clientFormData.serviceValue)){
+        if(parseFloat(deliveryFormData.totalToCollect) < Number(deliveryFormData.serviceValue)){
           setAlerta('El valor a cobrar debe ser mayor o igual al valor del servicio')
           return;
         }
@@ -220,15 +230,12 @@ const ModalDomis = ({ isOpen, onClose }: ModalDomisProps) => {
             <ClientInfo 
               clientFormData={clientFormData}
               setClientFormData={setClientFormData}
-              deliveryFormData={deliveryFormData}
-              setDeliveryFormData={setDeliveryFormData}
             />
         </div>
 
         <PaymentServices 
           deliveryFormData={deliveryFormData}
           setDeliveryFormData={setDeliveryFormData}
-          totalServices={clientFormData.serviceValue}
         />
         </div>
 
