@@ -1,6 +1,7 @@
 import { useState, useEffect} from 'react';
 import { createPortal } from 'react-dom';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useAssignInitialMoney } from '@/hooks/useDailyCompanyOperations';
 import { supabase } from '@/integrations/supabase/client';
 import api from '@/services/api';
 //import { useAuth } from '@/contexts/AuthContext';
@@ -23,6 +24,7 @@ const ModalDomis = ({ isOpen, onClose }: ModalDomisProps) => {
 
     const { user } = useAuth();
     const queryClient = useQueryClient();
+    const assignInitialMoney = useAssignInitialMoney();
     const [editar, setEditar] = useState<boolean>(false)
     
     const [alerta, setAlerta] = useState('');
@@ -98,6 +100,16 @@ const ModalDomis = ({ isOpen, onClose }: ModalDomisProps) => {
         amount: totalNum,
         payment_method: deliveryFormData.paymentMethod as 'cash' | 'transfer_to_courier' | 'transfer_to_client',
       })
+
+
+      if(deliveryFormData.loan.subAccount) {
+          await assignInitialMoney.mutateAsync({
+            account: deliveryFormData.loan.subAccount,
+            type: 'expense',
+            amount: parseFloat(deliveryFormData.loan.amount),
+            notes: `Prestamo registrado para el pedido ${delivery.data.id.substring(0, 8).toUpperCase()}`
+          })         
+      }
 
       /**
        * 

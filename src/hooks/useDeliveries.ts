@@ -12,6 +12,7 @@ export interface Delivery {
   client_id: string;
   amount: number;
   service_value: number;
+  loan: number;
   total_to_collect: number;
   received_amount: number | null;
   recipient_name: string | null;

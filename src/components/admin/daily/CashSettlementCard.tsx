@@ -1,13 +1,19 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Card, CardTitle, CardHeader, CardContent } from '@/components/ui/card';
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Truck, CheckCircle2, AlertCircle, Wallet } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Truck, CheckCircle2, AlertCircle, Wallet, Pencil, X, Check, Eye } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useSearchParams } from 'react-router-dom';
+import { CompanyDailyResponse, useUpdateOpeningBalance, useFetchTransactions } from '@/hooks/useDailyCompanyOperations';
+import { WritableStreamDefaultWriter } from 'node:stream/web';
+import DetailsCompanyAccounts from './DetailsCompanyAccounts';
 
-const dailyCashSettlementData = [
+ 
+ 
+const dailyCashSettlement = [
   { 
     id: '1',
     name: 'Caja', 
@@ -33,10 +39,80 @@ const dailyCashSettlementData = [
   }
 ]
 
+const ACCOUNT_LABELS: Record<string, string> = {
+  cash: 'Caja',
+  bancolombia: 'Bancolombia',
+  nequi: 'Nequi',
+};
+  
 
-const CashSettlementCard = () => {
+interface CashSettlementCardProps {
+  dailyCashSettlementData: CompanyDailyResponse
+}
+
+
+const CashSettlementCard = ({ dailyCashSettlementData }) => {
+
+  //Calculates total per account
+  const dailyCashSummary = dailyCashSettlementData?.map( dailyCash => {
+    
+  }) || [];
+
+  const fetchTransactions = useFetchTransactions()
+
+
+
 
   const [isSettled, setIsSettled] = useState(false)
+  const [editingAccount, setEditingAccount] = useState<string | null>(null)
+  const [editValue, setEditValue] = useState('')
+  const [ detailsDialog, setDetailsDialog ] = useState(false)
+  const [ accountInfo, setAccountInfo ] = useState({
+    account: '',
+    opening_balance: '',
+    total_income: '',
+    total_expense: '',
+    balance: ''
+  })
+  const [ transactions, setTransactions ] = useState([])
+
+  const updateOpeningBalance = useUpdateOpeningBalance();
+
+  useEffect(() => {
+    const fetchAccount = async () => {
+      if(accountInfo?.account) {
+        try {
+          await fetchTransactions.mutateAsync({
+            account: accountInfo.account
+          })
+        } catch (error) {
+          console.log(error)
+        }
+      }
+    }
+    fetchAccount()
+  }, [accountInfo])
+
+  const handleEditStart = (account: string, currentValue: string) => {
+    setEditingAccount(account)
+    setEditValue(currentValue)
+  }
+
+  const handleEditCancel = () => {
+    setEditingAccount(null)
+    setEditValue('')
+  }
+
+  const handleEditConfirm = async (account: string) => {
+    // TODO: persist the new opening_balance value for `account`
+    console.log('Updated opening_balance for', account, ':', editValue)
+    await updateOpeningBalance.mutateAsync({
+      account,
+      newAmount: editValue
+    })
+    setEditingAccount(null)
+    setEditValue('')
+  }
 
     const formatCurrency = (value: number) => 
     new Intl.NumberFormat('es-CO', { 
@@ -72,12 +148,42 @@ const CashSettlementCard = () => {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {dailyCashSettlementData.map(({ id, name, initialAmount, moneyIn, moneyOut, balance }) => (
-                  <TableRow key={id}>
-                    <TableCell className="font-medium">{name}</TableCell>
-                    <TableCell className="text-right">{formatCurrency(Number(initialAmount))}</TableCell>
-                    <TableCell className="text-right text-success">{formatCurrency(Number(moneyIn))}</TableCell>
-                    <TableCell className="text-right text-primary">{formatCurrency(Number(moneyOut))}</TableCell>
+                {dailyCashSettlementData?.map(({ account, opening_balance, total_income, total_expense, balance }) => (
+                  <TableRow key={account}>
+                    <TableCell className="font-medium">{ACCOUNT_LABELS[account] || account}</TableCell>
+                    <TableCell className="text-right">
+                      {editingAccount === account ? (
+                        <div className="flex items-center gap-1 justify-end">
+                          <Input
+                            type="number"
+                            value={editValue}
+                            onChange={(e) => setEditValue(e.target.value)}
+                            className="h-7 w-32 text-right"
+                            autoFocus
+                          />
+                          <button onClick={handleEditCancel} className="text-muted-foreground hover:text-destructive transition-colors">
+                            <X className="w-4 h-4" />
+                          </button>
+                          <button onClick={() => handleEditConfirm(account)} className="text-muted-foreground hover:text-success transition-colors">
+                            <Check className="w-4 h-4" />
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-1 justify-end">
+                          {formatCurrency(Number(opening_balance))}
+                          {Number(opening_balance) !== 0 && (
+                            <button
+                              onClick={() => handleEditStart(account, opening_balance)}
+                              className="text-muted-foreground hover:text-primary transition-colors"
+                            >
+                              <Pencil className="w-3 h-3" />
+                            </button>
+                          )}
+                        </div>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-right text-success">{formatCurrency(Number(total_income))}</TableCell>
+                    <TableCell className="text-right text-primary">{formatCurrency(Number(total_expense))}</TableCell>
                     <TableCell className={cn(
                       "text-right font-semibold",
                       Number(balance) >= 0 ? "text-success" : "text-destructive"
@@ -98,7 +204,27 @@ const CashSettlementCard = () => {
                       )}
                     </TableCell>
                     <TableCell className="text-center">
-                      {!isSettled && (
+                      <div className="flex items-center justify-center gap-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => {
+                            setAccountInfo({ account, opening_balance, total_income, total_expense, balance })
+                            setDetailsDialog(true);
+                            /**
+                             * 
+                             
+                            const summary = courierSummaries.find(s => s.courier.user_id === courier.user_id);
+                            setDetailsCourier(summary);
+                            
+                            */
+                          }}
+                        >
+                          <Eye className="w-4 h-4 mr-1" />
+                          Ver
+                        </Button>
+
+                        {!isSettled && (
                         <Button
                           size="sm"
                           variant="default"
@@ -108,7 +234,8 @@ const CashSettlementCard = () => {
                           <CheckCircle2 className="w-4 h-4 mr-1" />
                           Cerrar Cuadre
                         </Button>
-                      )}
+                        )}
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -118,7 +245,7 @@ const CashSettlementCard = () => {
 
           {/* Mobile cards */}
           <div className="md:hidden space-y-3">
-            {dailyCashSettlementData.map(({ id, name, initialAmount, moneyIn, moneyOut, balance }) => (
+            {dailyCashSettlement.map(({ id, name, initialAmount, moneyIn, moneyOut, balance }) => (
               <div key={id} className="border rounded-lg p-4 space-y-3">
                 <div className="flex items-center justify-between">
                   <span className="font-semibold">{name}</span>
@@ -171,6 +298,12 @@ const CashSettlementCard = () => {
           </div>
         </CardContent>
       </Card>
+
+      <DetailsCompanyAccounts 
+        detailsDialog={detailsDialog}
+        setDetailsDialog={setDetailsDialog}
+        accountInfo={accountInfo}
+      />
     </>
   )
 }

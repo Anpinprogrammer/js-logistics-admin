@@ -29,6 +29,7 @@ export function SettingsPage() {
       // Delete in order: audit log, deliveries, then financial records
       await api.delete('/deliveries')
       await api.delete('/daily-settlements')
+      await api.post('/daily-settlements/company/reset')
       await supabase.from('weekly_settlements').delete().neq('id', dummy);
       await supabase.from('salary_advances').delete().neq('id', dummy);
 

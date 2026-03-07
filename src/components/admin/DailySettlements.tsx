@@ -21,7 +21,7 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { 
+import {
   Wallet,
   Plus,
   DollarSign,
@@ -29,7 +29,8 @@ import {
   ArrowDownCircle,
   CheckCircle2,
   Loader2,
-  AlertCircle
+  AlertCircle,
+  Eye
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Textarea } from '@/components/ui/textarea';
@@ -62,6 +63,9 @@ export function DailySettlements() {
   const [settleCourier, setSettleCourier] = useState<any>(null);
   const [actualBalance, setActualBalance] = useState('');
   const [settleNotes, setSettleNotes] = useState('');
+
+  const [detailsDialog, setDetailsDialog] = useState(false);
+  const [detailsCourier, setDetailsCourier] = useState<any>(null);
   
   const formatCurrency = (value: number) => 
     new Intl.NumberFormat('es-CO', { 
@@ -119,6 +123,8 @@ export function DailySettlements() {
       expectedBalance,
       isSettled: courierSettlement?.is_settled || false,
       settlement: courierSettlement,
+      deliveries: courierDeliveries,
+      partials: courierPartials,
     };
   }) || [];
 
@@ -389,22 +395,36 @@ export function DailySettlements() {
                       )}
                     </TableCell>
                     <TableCell className="text-center">
-                      {!isSettled && (
+                      <div className="flex items-center justify-center gap-2">
                         <Button
                           size="sm"
-                          variant="default"
+                          variant="outline"
                           onClick={() => {
                             const summary = courierSummaries.find(s => s.courier.user_id === courier.user_id);
-                            setSettleCourier(summary);
-                            setActualBalance('');
-                            setSettleNotes('');
-                            setSettleDialog(true);
+                            setDetailsCourier(summary);
+                            setDetailsDialog(true);
                           }}
                         >
-                          <CheckCircle2 className="w-4 h-4 mr-1" />
-                          Cerrar Cuadre
+                          <Eye className="w-4 h-4 mr-1" />
+                          Ver
                         </Button>
-                      )}
+                        {!isSettled && (
+                          <Button
+                            size="sm"
+                            variant="default"
+                            onClick={() => {
+                              const summary = courierSummaries.find(s => s.courier.user_id === courier.user_id);
+                              setSettleCourier(summary);
+                              setActualBalance('');
+                              setSettleNotes('');
+                              setSettleDialog(true);
+                            }}
+                          >
+                            <CheckCircle2 className="w-4 h-4 mr-1" />
+                            Cerrar Cuadre
+                          </Button>
+                        )}
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -450,23 +470,38 @@ export function DailySettlements() {
                     </span>
                   </div>
                 </div>
-                {!isSettled && (
+                <div className="flex gap-2">
                   <Button
                     size="sm"
-                    variant="default"
-                    className="w-full"
+                    variant="outline"
+                    className="flex-1"
                     onClick={() => {
                       const summary = courierSummaries.find(s => s.courier.user_id === courier.user_id);
-                      setSettleCourier(summary);
-                      setActualBalance('');
-                      setSettleNotes('');
-                      setSettleDialog(true);
+                      setDetailsCourier(summary);
+                      setDetailsDialog(true);
                     }}
                   >
-                    <CheckCircle2 className="w-4 h-4 mr-1" />
-                    Cerrar Cuadre
+                    <Eye className="w-4 h-4 mr-1" />
+                    Ver Detalles
                   </Button>
-                )}
+                  {!isSettled && (
+                    <Button
+                      size="sm"
+                      variant="default"
+                      className="flex-1"
+                      onClick={() => {
+                        const summary = courierSummaries.find(s => s.courier.user_id === courier.user_id);
+                        setSettleCourier(summary);
+                        setActualBalance('');
+                        setSettleNotes('');
+                        setSettleDialog(true);
+                      }}
+                    >
+                      <CheckCircle2 className="w-4 h-4 mr-1" />
+                      Cerrar Cuadre
+                    </Button>
+                  )}
+                </div>
               </div>
             ))}
           </div>
@@ -492,6 +527,120 @@ export function DailySettlements() {
           </CardContent>
         </Card>
       )}
+
+      {/* Details Dialog */}
+      <Dialog open={detailsDialog} onOpenChange={setDetailsDialog}>
+        <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Eye className="w-5 h-5" />
+              Detalle del día — {detailsCourier?.courier.full_name}
+            </DialogTitle>
+            <DialogDescription>
+              Todas las transacciones registradas hoy
+            </DialogDescription>
+          </DialogHeader>
+
+          {detailsCourier && (
+            <div className="space-y-6 py-2">
+              {/* Summary strip */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-sm">
+                <div className="p-3 rounded-lg bg-muted/50 border border-border text-center">
+                  <p className="text-muted-foreground text-xs mb-1">Base</p>
+                  <p className="font-semibold">{formatCurrency(detailsCourier.baseAmount)}</p>
+                </div>
+                <div className="p-3 rounded-lg bg-muted/50 border border-border text-center">
+                  <p className="text-muted-foreground text-xs mb-1">Cobrado</p>
+                  <p className="font-semibold text-success">{formatCurrency(detailsCourier.totalCollected)}</p>
+                </div>
+                <div className="p-3 rounded-lg bg-muted/50 border border-border text-center">
+                  <p className="text-muted-foreground text-xs mb-1">Entregado</p>
+                  <p className="font-semibold text-primary">{formatCurrency(detailsCourier.partialsSum)}</p>
+                </div>
+                <div className="p-3 rounded-lg bg-muted/50 border border-border text-center">
+                  <p className="text-muted-foreground text-xs mb-1">Saldo esperado</p>
+                  <p className={cn("font-semibold", detailsCourier.expectedBalance >= 0 ? "text-success" : "text-destructive")}>
+                    {formatCurrency(detailsCourier.expectedBalance)}
+                  </p>
+                </div>
+              </div>
+
+              {/* Deliveries */}
+              <div>
+                <h3 className="font-semibold text-sm mb-2 flex items-center gap-2">
+                  <Truck className="w-4 h-4 text-primary" />
+                  Entregas del día ({detailsCourier.deliveries.length})
+                </h3>
+                {detailsCourier.deliveries.length === 0 ? (
+                  <p className="text-muted-foreground text-sm text-center py-4">Sin entregas registradas</p>
+                ) : (
+                  <div className="rounded-md border overflow-hidden">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Destinatario</TableHead>
+                          <TableHead className="text-right">A cobrar</TableHead>
+                          <TableHead className="text-right">Recibido</TableHead>
+                          <TableHead>Método</TableHead>
+                          <TableHead>Notas</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {detailsCourier.deliveries.map((d: any) => (
+                          <TableRow key={d.id}>
+                            <TableCell className="font-medium">
+                              {d.recipient_name || d.client?.name || '—'}
+                            </TableCell>
+                            <TableCell className="text-right">
+                              {formatCurrency(Number(d.total_to_collect) || 0)}
+                            </TableCell>
+                            <TableCell className="text-right text-success">
+                              {d.received_amount != null ? formatCurrency(Number(d.received_amount)) : '—'}
+                            </TableCell>
+                            <TableCell className="whitespace-nowrap">
+                              {d.payment_method === 'cash' && 'Efectivo'}
+                              {d.payment_method === 'transfer_to_courier' && 'Transfer. mensajero'}
+                              {d.payment_method === 'transfer_to_client' && 'Transfer. cliente'}
+                            </TableCell>
+                            <TableCell className="text-muted-foreground text-xs max-w-[160px] truncate">
+                              {d.notes || '—'}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                )}
+              </div>
+
+              {/* Partial deliveries */}
+              <div>
+                <h3 className="font-semibold text-sm mb-2 flex items-center gap-2">
+                  <ArrowDownCircle className="w-4 h-4 text-primary" />
+                  Entregas parciales ({detailsCourier.partials.length})
+                </h3>
+                {detailsCourier.partials.length === 0 ? (
+                  <p className="text-muted-foreground text-sm text-center py-4">Sin entregas parciales</p>
+                ) : (
+                  <div className="space-y-2">
+                    {detailsCourier.partials.map((p: any) => (
+                      <div key={p.id} className="flex items-center justify-between p-3 rounded-lg bg-muted/50 border border-border text-sm">
+                        <div>
+                          <p className="font-medium text-primary">{formatCurrency(Number(p.amount))}</p>
+                          {p.notes && <p className="text-muted-foreground text-xs mt-0.5">{p.notes}</p>}
+                        </div>
+                        <p className="text-muted-foreground text-xs">
+                          {new Date(p.created_at).toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' })}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
 
       {/* Settle Dialog */}
       <Dialog open={settleDialog} onOpenChange={setSettleDialog}>

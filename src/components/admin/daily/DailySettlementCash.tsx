@@ -1,4 +1,8 @@
 import { useState } from 'react'
+
+import { getTodayDate } from '@/hooks/useDailyOperations';
+import { useDailyCompany, useAssignInitialMoney } from '@/hooks/useDailyCompanyOperations';
+
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
@@ -16,45 +20,55 @@ interface CashSettlementData {
   balance: string;
 }
 
-const moneyReceivers = ['Caja', 'Bancolombia', 'Nequi']
+const moneyReceivers = [
+  { id: 'cash', label: 'Caja' },
+  { id: 'bancolombia', label: 'Bancolombia' },
+  { id: 'nequi', label: 'Nequi' },
+]
+
+const ACCOUNT_LABELS: Record<string, string> = {
+  cash: 'Caja',
+  bancolombia: 'Bancolombia',
+  nequi: 'Nequi',
+};
 
 const DailySettlementCash = () => {
 
-  //Dialogs
-  const [initialMoneyDialog, setInitialMoneyDialog] = useState(false)
-  const [moneyInDialog, setMoneyInDialog] = useState(false)
-  const [moneyOutDialog, setMoneyOutDialog] = useState(false)
+  const today = getTodayDate()
+  const { data: dailyCashSettlementData, isLoading: loadingDailyCash } = useDailyCompany(today)
 
+  const initialMoneyReceivers = dailyCashSettlementData?.filter( d => Number(d.opening_balance) === 0)
 
-  const [settlements, setSettlements] = useState<CashSettlementData[]>([])
-  const [selectedMoneyReceiver, setSelectedMoneyReceiver] = useState('caja')
-  const [initialMoneyAmount, setInitialMoneyAmount] = useState('')
-  const [initialDescription, setInitialDescription] = useState('')
-  const [moneyIn, setMoneyIn] = useState('')
-  const [moneyInDescription, setMoneyInDescription] = useState('')
-  const [moneyOut, setMoneyOut] = useState('')
-  const [moneyOutDescription, setMoneyOutDescription] = useState('')
+  const assignInitialMoney = useAssignInitialMoney();
+
+  const [accountAdjustment, setAccountAdjustment] = useState({
+    account: 'cash',
+    type: '',
+    amount: '',
+    description: '',
+    initialMoneyDialog: false,
+    moneyInDialog: false,
+    moneyOutDialog: false
+  })
   const [isPending, setIsPending] = useState(false)
 
-  const handleAssignInitialMoney = () => {
-    console.log('Asignando el plante inicial')
-    console.log('Se asigna a: ', selectedMoneyReceiver)
-    console.log('La cantidad de: ', initialMoneyAmount)
-    setSelectedMoneyReceiver('caja')
-  }
-
-  const handleMoneyIn = () => {
-    console.log('Asignando el plante inicial')
-    console.log('Se asigna a: ', selectedMoneyReceiver)
-    console.log('La cantidad de: ', moneyIn)
-    setSelectedMoneyReceiver('caja')
-  }
-
-  const handleMoneyOut = () => {
-    console.log('Asignando el plante inicial')
-    console.log('Se asigna a: ', selectedMoneyReceiver)
-    console.log('La cantidad de: ', moneyOut)
-    setSelectedMoneyReceiver('caja')
+  const handleAssignMoney = async () => {
+    if (!accountAdjustment.account || !accountAdjustment.amount) return;
+    await assignInitialMoney.mutateAsync({
+      account: accountAdjustment.account,
+      type: accountAdjustment.type,
+      amount: parseFloat(accountAdjustment.amount),
+      notes: accountAdjustment.description
+    })
+    setAccountAdjustment({
+      account: 'cash',
+      type: '',
+      amount: '',
+      description: '',
+      initialMoneyDialog: false,
+      moneyInDialog: false,
+      moneyOutDialog: false
+    })
   }
 
   return (
@@ -76,7 +90,8 @@ const DailySettlementCash = () => {
             </div>
             
             <div className="flex flex-wrap gap-2">
-              <Dialog open={initialMoneyDialog} onOpenChange={setInitialMoneyDialog}>
+              { initialMoneyReceivers?.length > 0 &&
+              <Dialog open={accountAdjustment.initialMoneyDialog} onOpenChange={() => setAccountAdjustment({ ...accountAdjustment, initialMoneyDialog: !accountAdjustment.initialMoneyDialog, type: 'opening_balance' })}>
                 <DialogTrigger asChild>
                   <Button variant="outline" size="sm">
                     <DollarSign className="w-4 h-4 mr-1" />
@@ -93,14 +108,14 @@ const DailySettlementCash = () => {
                   <div className="space-y-4 py-4">
                     <div className="space-y-2">
                       <Label>Asignar A: </Label>
-                      <Select value={selectedMoneyReceiver} onValueChange={setSelectedMoneyReceiver}>
+                      <Select value={accountAdjustment.account} onValueChange={(value) => setAccountAdjustment({ ...accountAdjustment, account: value })}>
                         <SelectTrigger>
                           <SelectValue placeholder="Asigna a cuenta o caja" />
                         </SelectTrigger>
                         <SelectContent>
-                          {moneyReceivers?.map((c, index) => (
-                            <SelectItem key={index} value={c}>
-                              {c}
+                          {initialMoneyReceivers?.map(c => (
+                            <SelectItem key={c.account} value={c.account}>
+                              {ACCOUNT_LABELS[c.account] || c.account}
                             </SelectItem>
                           ))}
                         </SelectContent>
@@ -110,11 +125,14 @@ const DailySettlementCash = () => {
                       <Label>Monto</Label>
                       <Input
                         type="number"
-                        value={initialMoneyAmount}
-                        onChange={(e) => setInitialMoneyAmount(e.target.value)}
+                        value={accountAdjustment.amount}
+                        onChange={(e) => setAccountAdjustment({ ...accountAdjustment, amount: e.target.value })}
                         placeholder="0"
                       />
                     </div>
+                    {/**
+                     * 
+                     
                     <div className="space-y-2">
                       <Label>Descripción</Label>
                       <Input
@@ -123,9 +141,10 @@ const DailySettlementCash = () => {
                         placeholder="Ej: Se aumenta el dinero en caja"
                       />
                     </div>
+                    */}
                     <Button 
                       className="w-full" 
-                      onClick={handleAssignInitialMoney}
+                      onClick={handleAssignMoney}
                       disabled={isPending}
                     >
                       {isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
@@ -134,8 +153,10 @@ const DailySettlementCash = () => {
                   </div>
                 </DialogContent>
               </Dialog>
+
+              }
               
-              <Dialog open={moneyInDialog} onOpenChange={setMoneyInDialog}>
+              <Dialog open={accountAdjustment.moneyInDialog} onOpenChange={() => setAccountAdjustment({ ...accountAdjustment, moneyInDialog: !accountAdjustment.moneyInDialog, type: 'income' })}>
                 <DialogTrigger asChild>
                   <Button variant="outline" size="sm">
                     <Plus className="w-4 h-4 mr-1" />
@@ -152,14 +173,14 @@ const DailySettlementCash = () => {
                   <div className="space-y-4 py-4">
                     <div className="space-y-2">
                       <Label>Destino</Label>
-                      <Select value={selectedMoneyReceiver} onValueChange={setSelectedMoneyReceiver}>
+                      <Select value={accountAdjustment.account} onValueChange={value =>  setAccountAdjustment({ ...accountAdjustment, account: value })}>
                         <SelectTrigger>
                           <SelectValue placeholder="Selecciona mensajero" />
                         </SelectTrigger>
                         <SelectContent>
-                          {moneyReceivers?.map((c, index) => (
-                            <SelectItem key={index} value={c}>
-                              {c}
+                          {dailyCashSettlementData?.map(c => (
+                            <SelectItem key={c.account} value={c.account}>
+                              {ACCOUNT_LABELS[c.account] || c.account}
                             </SelectItem>
                           ))}
                         </SelectContent>
@@ -169,22 +190,22 @@ const DailySettlementCash = () => {
                       <Label>Monto</Label>
                       <Input
                         type="number"
-                        value={moneyIn}
-                        onChange={(e) => setMoneyIn(e.target.value)}
+                        value={accountAdjustment.amount}
+                        onChange={(e) => setAccountAdjustment({ ...accountAdjustment, amount: e.target.value })}
                         placeholder="0"
                       />
                     </div>
                     <div className="space-y-2">
                       <Label>Descripción</Label>
                       <Input
-                        value={moneyInDescription}
-                        onChange={(e) => setMoneyInDescription(e.target.value)}
+                        value={accountAdjustment.description}
+                        onChange={(e) => setAccountAdjustment({ ...accountAdjustment, description: e.target.value })}
                         placeholder="Ej: Se aumenta el dinero en caja"
                       />
                     </div>
                     <Button 
                       className="w-full" 
-                      onClick={handleMoneyIn}
+                      onClick={handleAssignMoney}
                       disabled={isPending}
                     >
                       {isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
@@ -194,7 +215,7 @@ const DailySettlementCash = () => {
                 </DialogContent>
               </Dialog>
               
-              <Dialog open={moneyOutDialog} onOpenChange={setMoneyOutDialog}>
+              <Dialog open={accountAdjustment.moneyOutDialog} onOpenChange={() => setAccountAdjustment({ ...accountAdjustment, moneyOutDialog: !accountAdjustment.moneyOutDialog, type: 'expense' })}>
                 <DialogTrigger asChild>
                   <Button variant="outline" size="sm">
                     <ArrowDownCircle className="w-4 h-4 mr-1" />
@@ -211,14 +232,14 @@ const DailySettlementCash = () => {
                   <div className="space-y-4 py-4">
                     <div className="space-y-2">
                       <Label>Desde</Label>
-                      <Select value={selectedMoneyReceiver} onValueChange={setSelectedMoneyReceiver}>
+                      <Select value={accountAdjustment.account} onValueChange={value =>  setAccountAdjustment({ ...accountAdjustment, account: value })}>
                         <SelectTrigger>
                           <SelectValue placeholder="Selecciona mensajero" />
                         </SelectTrigger>
                         <SelectContent>
-                          {moneyReceivers?.map((c, index) => (
-                            <SelectItem key={index} value={c}>
-                              {c}
+                          {dailyCashSettlementData?.map(c => (
+                            <SelectItem key={c.account} value={c.account}>
+                              {ACCOUNT_LABELS[c.account] || c.account}
                             </SelectItem>
                           ))}
                         </SelectContent>
@@ -228,22 +249,22 @@ const DailySettlementCash = () => {
                       <Label>Monto</Label>
                       <Input
                         type="number"
-                        value={moneyOut}
-                        onChange={(e) => setMoneyOut(e.target.value)}
+                        value={accountAdjustment.amount}
+                        onChange={(e) => setAccountAdjustment({ ...accountAdjustment, amount: e.target.value })}
                         placeholder="0"
                       />
                     </div>
                     <div className="space-y-2">
                       <Label>Descripción</Label>
                       <Input
-                        value={moneyOutDescription}
-                        onChange={(e) => setMoneyOutDescription(e.target.value)}
+                        value={accountAdjustment.description}
+                        onChange={(e) => setAccountAdjustment({ ...accountAdjustment, description: e.target.value })}
                         placeholder="Ej: Se aumenta el dinero en caja"
                       />
                     </div>
                     <Button 
                       className="w-full" 
-                      onClick={handleMoneyIn}
+                      onClick={handleAssignMoney}
                       disabled={isPending}
                     >
                       {isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
@@ -255,7 +276,9 @@ const DailySettlementCash = () => {
             </div>
           </div>
 
-          <CashSettlementCard />
+          <CashSettlementCard 
+          dailyCashSettlementData={dailyCashSettlementData}
+          />
       </div>
   )
 }
