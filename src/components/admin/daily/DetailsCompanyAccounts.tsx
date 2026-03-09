@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -10,6 +10,7 @@ import {
   Eye
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { DailyTransactions } from '@/hooks/useDailyCompanyOperations';
 
 interface DetailsCompanyAccountsProps {
     detailsDialog: boolean;
@@ -32,12 +33,42 @@ interface DetailsCompanyAccountsProps {
         total_income: string;
         total_expense: string;
         balance: string;
-    } 
+    };
+    transactions: DailyTransactions[]
 }
 
-const DetailsCompanyAccounts = ({ detailsDialog, setDetailsDialog, detailsCourier, accountInfo }: DetailsCompanyAccountsProps) => {
+const DetailsCompanyAccounts = ({ detailsDialog, setDetailsDialog, detailsCourier, accountInfo, transactions }: DetailsCompanyAccountsProps) => {
 
-  console.log(accountInfo)
+  const [ openings, setOpenings ] = useState([])
+  const [ incomes, setIncomes ] = useState([])
+  const [ expenses, setExpenses ] = useState([])
+
+  useEffect(() => {
+    const sortTransactions = () => {
+      if(transactions.length > 0){
+        setOpenings(
+          transactions.filter(
+            t => 
+              t.type === 'opening_balance'
+          )
+        )
+        setIncomes(
+          transactions.filter(
+            t => 
+              t.type === 'income'
+          )
+        )
+        setExpenses(
+          transactions.filter(
+            t => 
+              t.type === 'expense'
+          )
+        )
+      }
+    }
+    sortTransactions()
+  }, [transactions])
+  
 
   const formatCurrency = (value: number) =>
     new Intl.NumberFormat('es-CO', {
@@ -101,10 +132,10 @@ const DetailsCompanyAccounts = ({ detailsDialog, setDetailsDialog, detailsCourie
                   </TabsTrigger>
                 </TabsList>
 
-                {/* Opening balance tab 
+                {/* Opening balance tab */}
                 <TabsContent value="opening" className="mt-4">
-                  {detailsCourier.baseAmount === 0 ? (
-                    <p className="text-muted-foreground text-sm text-center py-6">Sin saldo inicial registrado</p>
+                  {openings.length === 0 ? (
+                    <p className="text-muted-foreground text-sm text-center py-6">Sin planete inicial registrado</p>
                   ) : (
                     <div className="flex items-center justify-between p-4 rounded-lg bg-muted/50 border border-border">
                       <div className="flex items-center gap-3">
@@ -116,15 +147,19 @@ const DetailsCompanyAccounts = ({ detailsDialog, setDetailsDialog, detailsCourie
                           <p className="text-muted-foreground text-xs">Saldo inicial del día</p>
                         </div>
                       </div>
-                      <p className="font-semibold text-base">{formatCurrency(detailsCourier.baseAmount)}</p>
+                      { openings.map( o => (
+                        <p className="font-semibold text-base">{formatCurrency(Number(o.amount))}</p>
+                      ))
+                      }
+                      
                     </div>
                   )}
                 </TabsContent>
-                */}
+                
 
-                {/* Incomes tab 
+                {/* Incomes tab */}
                 <TabsContent value="incomes" className="mt-4">
-                  {detailsCourier.deliveries.length === 0 ? (
+                  {incomes.length === 0 ? (
                     <p className="text-muted-foreground text-sm text-center py-6">Sin ingresos registrados</p>
                   ) : (
                     <div className="rounded-md border overflow-hidden">
@@ -139,24 +174,24 @@ const DetailsCompanyAccounts = ({ detailsDialog, setDetailsDialog, detailsCourie
                           </TableRow>
                         </TableHeader>
                         <TableBody>
-                          {detailsCourier.deliveries.map((d: any) => (
-                            <TableRow key={d.id}>
+                          {incomes.map((i: any) => (
+                            <TableRow key={i.id}>
                               <TableCell className="font-medium">
-                                {d.recipient_name || d.client?.name || '—'}
+                                {i.account}
                               </TableCell>
                               <TableCell className="text-right">
-                                {formatCurrency(Number(d.total_to_collect) || 0)}
+                                {formatCurrency(Number(i.amount) || 0)}
                               </TableCell>
                               <TableCell className="text-right text-success">
-                                {d.received_amount != null ? formatCurrency(Number(d.received_amount)) : '—'}
+                                {i.amount != null ? formatCurrency(Number(i.amount)) : '—'}
                               </TableCell>
                               <TableCell className="whitespace-nowrap">
-                                {d.payment_method === 'cash' && 'Efectivo'}
-                                {d.payment_method === 'transfer_to_courier' && 'Transfer. mensajero'}
-                                {d.payment_method === 'transfer_to_client' && 'Transfer. cliente'}
+                                {i.account === 'cash' && 'Efectivo'}
+                                {i.account === 'transfer_to_courier' && 'Transfer. mensajero'}
+                                {i.account === 'transfer_to_client' && 'Transfer. cliente'}
                               </TableCell>
                               <TableCell className="text-muted-foreground text-xs max-w-[160px] truncate">
-                                {d.notes || '—'}
+                                {i.notes || '—'}
                               </TableCell>
                             </TableRow>
                           ))}
@@ -165,34 +200,34 @@ const DetailsCompanyAccounts = ({ detailsDialog, setDetailsDialog, detailsCourie
                     </div>
                   )}
                 </TabsContent>
-                */}
+                
 
-                {/* Expenses tab 
+                {/* Expenses tab */}
                 <TabsContent value="expenses" className="mt-4">
-                  {detailsCourier.partials.length === 0 ? (
+                  {expenses.length === 0 ? (
                     <p className="text-muted-foreground text-sm text-center py-6">Sin egresos registrados</p>
                   ) : (
                     <div className="space-y-2">
-                      {detailsCourier.partials.map((p: any) => (
-                        <div key={p.id} className="flex items-center justify-between p-3 rounded-lg bg-muted/50 border border-border text-sm">
+                      {expenses.map((e: any) => (
+                        <div key={e.id} className="flex items-center justify-between p-3 rounded-lg bg-muted/50 border border-border text-sm">
                           <div className="flex items-center gap-3">
                             <div className="p-2 rounded-full bg-destructive/10">
                               <ArrowDownCircle className="w-4 h-4 text-destructive" />
                             </div>
                             <div>
-                              <p className="font-medium text-destructive">{formatCurrency(Number(p.amount))}</p>
-                              {p.notes && <p className="text-muted-foreground text-xs mt-0.5">{p.notes}</p>}
+                              <p className="font-medium text-destructive">{formatCurrency(Number(e.amount))}</p>
+                              {e.notes && <p className="text-muted-foreground text-xs mt-0.5">{e.notes}</p>}
                             </div>
                           </div>
                           <p className="text-muted-foreground text-xs">
-                            {new Date(p.created_at).toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' })}
+                            {new Date(e.created_at).toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' })}
                           </p>
                         </div>
                       ))}
                     </div>
                   )}
                 </TabsContent>
-                */}
+                
                 
               </Tabs>
             </div>

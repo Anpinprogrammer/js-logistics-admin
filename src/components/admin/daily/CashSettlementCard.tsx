@@ -53,11 +53,6 @@ interface CashSettlementCardProps {
 
 const CashSettlementCard = ({ dailyCashSettlementData }) => {
 
-  //Calculates total per account
-  const dailyCashSummary = dailyCashSettlementData?.map( dailyCash => {
-    
-  }) || [];
-
   const fetchTransactions = useFetchTransactions()
 
 
@@ -82,9 +77,10 @@ const CashSettlementCard = ({ dailyCashSettlementData }) => {
     const fetchAccount = async () => {
       if(accountInfo?.account) {
         try {
-          await fetchTransactions.mutateAsync({
+          const result = await fetchTransactions.mutateAsync({
             account: accountInfo.account
           })
+          setTransactions(result)
         } catch (error) {
           console.log(error)
         }
@@ -303,6 +299,7 @@ const CashSettlementCard = ({ dailyCashSettlementData }) => {
         detailsDialog={detailsDialog}
         setDetailsDialog={setDetailsDialog}
         accountInfo={accountInfo}
+        transactions={transactions}
       />
     </>
   )

@@ -1,4 +1,4 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient, QueryClient } from '@tanstack/react-query';
 import api from '@/services/api';
 import { useAuth } from '@/contexts/AuthContextTest';
 import { toast } from 'sonner';
@@ -15,6 +15,17 @@ export interface CompanyDaily {
 
 export interface CompanyDailyResponse {
     data: CompanyDaily[]
+}
+
+export interface DailyTransactions {
+    id: string;
+    account: string;
+    type: string;
+    amount: string;
+    created_at: string;
+    created_by: string;
+    date: string;
+    notes: string | null;
 }
 
 // Get today's date in YYYY-MM-DD format
@@ -118,12 +129,11 @@ export function useFetchTransactions() {
     return useMutation({
         mutationFn: async ({ account } : { account: string }) => {
             if (!user) throw new Error('No user logged in')
-            
-            const targetDate = getTodayDate()
 
-            const { data } = await api.get(`/daily-settlements/company/transactions/${account}`, { date: targetDate })
-            
-            console.log(data.data)
+            const { data : dailyTransactionsResponse } = await api.get(`/daily-settlements/company/transactions/${account}`)
+            const dailyTransactions = dailyTransactionsResponse.data
+
+            return dailyTransactions
             
         }
     })
