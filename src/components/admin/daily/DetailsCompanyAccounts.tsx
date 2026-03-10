@@ -7,6 +7,7 @@ import {
   TrendingUp,
   TrendingDown,
   ArrowDownCircle,
+  ArrowUpCircle,
   Eye
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -36,6 +37,12 @@ interface DetailsCompanyAccountsProps {
     };
     transactions: DailyTransactions[]
 }
+
+const ACCOUNT_LABELS: Record<string, string> = {
+  cash: 'Caja',
+  bancolombia: 'Bancolombia',
+  nequi: 'Nequi',
+};
 
 const DetailsCompanyAccounts = ({ detailsDialog, setDetailsDialog, detailsCourier, accountInfo, transactions }: DetailsCompanyAccountsProps) => {
 
@@ -84,7 +91,7 @@ const DetailsCompanyAccounts = ({ detailsDialog, setDetailsDialog, detailsCourie
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Eye className="w-5 h-5" />
-              Detalle del día — {detailsCourier?.courier.full_name}
+              Detalle del día — {ACCOUNT_LABELS[accountInfo?.account]}
             </DialogTitle>
             <DialogDescription>
               Todas las transacciones registradas hoy
@@ -162,6 +169,27 @@ const DetailsCompanyAccounts = ({ detailsDialog, setDetailsDialog, detailsCourie
                   {incomes.length === 0 ? (
                     <p className="text-muted-foreground text-sm text-center py-6">Sin ingresos registrados</p>
                   ) : (
+                    <div className="space-y-2">
+                      {incomes.map((i: any) => (
+                        <div key={i.id} className="flex items-center justify-between p-3 rounded-lg bg-muted/50 border border-border text-sm">
+                          <div className="flex items-center gap-3">
+                            <div className="p-2 rounded-full bg-green-100">
+                              <ArrowUpCircle className="w-4 h-4 text-green-600" />
+                            </div>
+                            <div>
+                              <p className="font-medium text-green-600">{formatCurrency(Number(i.amount))}</p>
+                              {i.notes && <p className="text-muted-foreground text-xs mt-0.5">{i.notes}</p>}
+                            </div>
+                          </div>
+                          <p className="text-muted-foreground text-xs">
+                            {new Date(i.created_at).toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' })}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                    )}
+                </TabsContent>
+                    {/** 
                     <div className="rounded-md border overflow-hidden">
                       <Table>
                         <TableHeader>
@@ -198,8 +226,8 @@ const DetailsCompanyAccounts = ({ detailsDialog, setDetailsDialog, detailsCourie
                         </TableBody>
                       </Table>
                     </div>
-                  )}
-                </TabsContent>
+                    */}
+                  
                 
 
                 {/* Expenses tab */}
