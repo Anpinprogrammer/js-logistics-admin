@@ -93,10 +93,12 @@ const Deliveries = ({ courierId, showCourier }: DeliveryListProps) => {
     final_status: 'completed' | 'not_delivered_collected' | 'not_delivered_no_collection';
     received_amount: number;
     payment_method: 'cash' | 'transfer_to_courier' | 'transfer_to_client';
+    subAccount: string;
     notes?: string;
     receipt_photo_url?: string;
   }) => {
     if (!completeDelivery) return;
+    
     await adminComplete.mutateAsync({
       deliveryId: completeDelivery.id,
       courierId: completeDelivery.courier_id,

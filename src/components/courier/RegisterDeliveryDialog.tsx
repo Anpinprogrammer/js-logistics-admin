@@ -14,6 +14,7 @@ import {
 } from '@/components/ui/dialog';
 import { Camera, Loader2, DollarSign, CreditCard, ArrowLeftRight, CheckCircle, AlertTriangle, XCircle, Package } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { SUB_ACCOUNTS } from '@/utils';
 
 type DeliveryFinalStatus = 'completed' | 'not_delivered_collected' | 'not_delivered_no_collection';
 
@@ -24,7 +25,7 @@ const deliveryStatuses = [
 ] as const;
 
 const paymentMethods = [
-  { value: 'cash', label: 'Efectivo', icon: DollarSign, color: 'text-cash' },
+  { value: 'cash', label: 'Efectivo Mensajero', icon: DollarSign, color: 'text-cash' },
   { value: 'transfer_to_courier', label: 'Transferencia a JS', icon: CreditCard, color: 'text-transfer-courier' },
   { value: 'transfer_to_client', label: 'Transferencia Directa', icon: ArrowLeftRight, color: 'text-transfer-client' },
 ] as const;
@@ -37,6 +38,7 @@ interface RegisterDeliveryDialogProps {
     final_status: DeliveryFinalStatus;
     received_amount: number;
     payment_method: 'cash' | 'transfer_to_courier' | 'transfer_to_client';
+    subAccount: string;
     notes?: string;
     receipt_photo_url?: string;
   }) => Promise<void>;
@@ -55,6 +57,7 @@ export function RegisterDeliveryDialog({
     final_status: '' as DeliveryFinalStatus | '',
     received_amount: '',
     payment_method: '' as 'cash' | 'transfer_to_courier' | 'transfer_to_client' | '',
+    subAccount: '',
     notes: '',
   });
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
@@ -68,6 +71,7 @@ export function RegisterDeliveryDialog({
         final_status: '',
         received_amount: '',
         payment_method: '',
+        subAccount: '',
         notes: '',
       });
       setPhotoUrl(null);
@@ -109,25 +113,26 @@ export function RegisterDeliveryDialog({
     if (!formData.final_status) return;
     
     // For statuses that require payment info
-    if (needsPaymentInfo && (!formData.received_amount || !formData.payment_method) && !delivery.advanced_payment) return;
+    if ((needsPaymentInfo && formData.payment_method !== 'transfer_to_client') && (!formData.received_amount || !formData.payment_method) && !delivery.advanced_payment) return;
     
     
     
     await onRegister({
       final_status: formData.final_status,
-      received_amount: delivery.advanced_payment ? delivery.total_to_collect : needsPaymentInfo ? parseFloat(formData.received_amount) : 0,
+      received_amount: delivery.advanced_payment ? delivery.total_to_collect : (needsPaymentInfo && formData.payment_method !== 'transfer_to_client' ) ? parseFloat(formData.received_amount) : 0,
       payment_method: delivery.advanced_payment ? delivery.payment_method : (needsPaymentInfo && formData.payment_method) ? formData.payment_method : 'cash',
+      subAccount: formData.subAccount || '',
       notes: formData.notes || undefined,
       receipt_photo_url: photoUrl || undefined,
     });
     
     // Reset form
-    setFormData({ final_status: '', received_amount: '', payment_method: '', notes: '' });
+    setFormData({ final_status: '', received_amount: '', payment_method: '', subAccount: '', notes: '' });
     setPhotoUrl(null);
   };
 
   const resetForm = () => {
-    setFormData({ final_status: '', received_amount: '', payment_method: '', notes: '' });
+    setFormData({ final_status: '', received_amount: '', payment_method: '', subAccount: '', notes: '' });
     setPhotoUrl(null);
   };
 
@@ -223,7 +228,11 @@ export function RegisterDeliveryDialog({
                     <button
                       key={method.value}
                       type="button"
-                      onClick={() => setFormData({ ...formData, payment_method: method.value })}
+                      onClick={() => setFormData(
+                        method.value === 'transfer_to_courier' 
+                        ? { ...formData, payment_method: method.value }
+                        : { ...formData, payment_method: method.value, subAccount: '' }
+                      )}
                       className={cn(
                         "p-3 rounded-xl border-2 transition-all duration-200 flex items-center gap-3",
                         formData.payment_method === method.value
@@ -235,52 +244,78 @@ export function RegisterDeliveryDialog({
                       <span className="text-sm font-medium">{method.label}</span>
                     </button>
                   ))}
+                  {formData.payment_method === 'transfer_to_courier' && (
+                    <div className='mt-1'>
+                      <Label>Subcuenta: </Label>
+                      {SUB_ACCOUNTS.map((account) => (
+                      <button
+                        key={account.id}
+                        type="button"
+                        onClick={() => setFormData({ ...formData, subAccount: account.id })}
+                        className={cn(
+                          "px-3 py-1 rounded-lg border text-xs font-medium transition-all duration-200",
+                          formData.subAccount === account.id
+                            ? cn(account.colorClass, "border-transparent")
+                            : "border-border text-muted-foreground hover:border-primary/40"
+                        )}
+                      >
+                        {account.label}
+                      </button>
+                     
+                    ))
+
+                      }
+                    </div>
+                  )
+                  }
                 </div>
               </div>
 
               {/* Received Amount */}
-              <div className="space-y-2">
-                <Label htmlFor="received_amount">Valor Recibido en Destino *</Label>
-                <div className="relative">
-                  <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                  <Input
-                    id="received_amount"
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    placeholder="0.00"
-                    className="pl-9"
-                    value={formData.received_amount}
-                    onChange={(e) => setFormData({ ...formData, received_amount: e.target.value })}
-                    required
-                  />
+              {formData.payment_method !== 'transfer_to_client' && (
+                <>
+                <div className="space-y-2">
+                  <Label htmlFor="received_amount">Valor Recibido en Destino *</Label>
+                  <div className="relative">
+                    <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                    <Input
+                      id="received_amount"
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      placeholder="0.00"
+                      className="pl-9"
+                      value={formData.received_amount}
+                      onChange={(e) => setFormData({ ...formData, received_amount: e.target.value })}
+                      required
+                    />
+                  </div>
                 </div>
-              </div>
 
-              {/* Difference Warning */}
-              {formData.payment_method === 'transfer_to_client' ?
-                hasDifferenceDirectTransfer && (
-                  <div className="flex items-center gap-2 p-3 rounded-lg bg-warning/10 border border-warning/30">
-                  <AlertTriangle className="w-5 h-5 text-warning shrink-0" />
-                  <div className="text-sm">
-                    <p className="font-medium text-warning">Faltante detectado: ${differenceDirectTransfer.toFixed(2)}</p>
-                    <p className="text-muted-foreground">Registra unicamente el valor a cobrar por el servicio</p>
-                  </div>
-                </div>
-                )
-                :
-                hasDifference && (
-                <div className="flex items-center gap-2 p-3 rounded-lg bg-warning/10 border border-warning/30">
-                  <AlertTriangle className="w-5 h-5 text-warning shrink-0" />
-                  <div className="text-sm">
-                    <p className="font-medium text-warning">Faltante detectado: ${difference.toFixed(2)}</p>
-                    <p className="text-muted-foreground">Se registrará automáticamente como adelanto de sueldo</p>
-                  </div>
-                </div>
+                {/* Difference Warning */}
+                {formData.payment_method !== 'transfer_to_courier' ?
+                  hasDifferenceDirectTransfer && (
+                    <div className="flex items-center gap-2 p-3 rounded-lg bg-warning/10 border border-warning/30">
+                      <AlertTriangle className="w-5 h-5 text-warning shrink-0" />
+                      <div className="text-sm">
+                        <p className="font-medium text-warning">Faltante detectado: ${differenceDirectTransfer.toFixed(2)}</p>
+                        <p className="text-muted-foreground">Registra unicamente el valor a cobrar por el servicio</p>
+                      </div>
+                    </div>
+                  )
+                  :
+                  hasDifference && (
+                    <div className="flex items-center gap-2 p-3 rounded-lg bg-warning/10 border border-warning/30">
+                      <AlertTriangle className="w-5 h-5 text-warning shrink-0" />
+                      <div className="text-sm">
+                        <p className="font-medium text-warning">Faltante detectado: ${difference.toFixed(2)}</p>
+                        <p className="text-muted-foreground">Se registrará automáticamente como adelanto de sueldo</p>
+                      </div>
+                    </div>
+                  )
+                }
+                </>
               )}
-
-              
-              
             </>
           )}
 
@@ -349,7 +384,7 @@ export function RegisterDeliveryDialog({
           <Button 
             type="submit" 
             className="w-full gradient-primary text-primary-foreground"
-            disabled={loading || !formData.final_status || (needsPaymentInfo && (!formData.received_amount || !formData.payment_method) && !delivery.advanced_payment)}
+            disabled={loading || !formData.final_status || ((needsPaymentInfo && formData.payment_method !== 'transfer_to_client') && (!formData.received_amount || !formData.payment_method) && !delivery.advanced_payment)}
           >
             {loading ? (
               <Loader2 className="w-4 h-4 animate-spin mr-2" />

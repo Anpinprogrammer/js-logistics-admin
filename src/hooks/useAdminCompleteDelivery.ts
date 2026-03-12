@@ -14,6 +14,7 @@ interface AdminCompleteDeliveryData {
   final_status: DeliveryFinalStatus;
   received_amount: number;
   payment_method: 'cash' | 'transfer_to_courier' | 'transfer_to_client';
+  subAccount: string;
   notes?: string;
   receipt_photo_url?: string;
 }
@@ -52,6 +53,22 @@ export function useAdminCompleteDelivery() {
       const { data: newDeliveryResponse } = await api.put(`/deliveries/${data.deliveryId}`, payload)
 
       const newDelivery = newDeliveryResponse.data
+
+      // Administrar ingresos a las cuentas de JS
+      if(data.payment_method === 'transfer_to_courier') {
+        try {
+          if(data.subAccount){
+            const { data: companyMovementResponse } = await api.post('/daily-settlements/company/money-assignment', {
+              account: data.subAccount,
+              type: 'income',
+              amount: data.received_amount,
+              notes: `Transferencia recibida del pedido ${newDelivery.id.substring(0, 8).toUpperCase()}`
+            })
+          }
+        } catch (error) {
+          toast.error('Error: ' + error.message);
+        }
+      }
 
       // Handle client balance updates
       let clientDebtAdded = 0;

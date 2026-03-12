@@ -32,7 +32,6 @@ import { cn } from '@/lib/utils';
 export function DailyClientSettlement() {
   const today = getTodayDate();
   const { data: clients, isLoading: loadingClients } = useClients();
-  console.log(clients)
   const { data: deliveries, isLoading: loadingDeliveries } = useDeliveriesTest();
   const updateBalance = useUpdateClientBalance();
 
@@ -85,7 +84,6 @@ export function DailyClientSettlement() {
   // Build per-client summaries — include clients with activity OR with a non-zero balance
   const clientSummaries = (clients ?? [])
     .map(client => {
-      console.log(client)
       const clientDeliveries = todayDeliveries.filter(d => d.client_id === client.id);
       const currentBalance = Number(client.balance) || 0;
 

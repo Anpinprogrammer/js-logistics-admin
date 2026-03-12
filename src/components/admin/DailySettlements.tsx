@@ -53,6 +53,7 @@ export function DailySettlements() {
   const [baseMoneyAmount, setBaseMoneyAmount] = useState('');
   const [partialAmount, setPartialAmount] = useState('');
   const [partialCourier, setPartialCourier] = useState('');
+  const [partialDesc, setPartialDesc] = useState('');
   const [chargeDesc, setChargeDesc] = useState('');
   const [chargeAmount, setChargeAmount] = useState('70000');
   
@@ -106,7 +107,7 @@ export function DailySettlements() {
     
     let totalCollected = 0;
     courierDeliveries.forEach(d => {
-      if (d.payment_method === 'cash' || d.payment_method === 'transfer_to_courier') {
+      if (d.payment_method === 'cash') {
         totalCollected += Number(d.received_amount) || 0;
       }
     });
@@ -127,6 +128,8 @@ export function DailySettlements() {
       partials: courierPartials,
     };
   }) || [];
+
+  const filteredCouriers = courierSummaries.filter(courier => courier.baseAmount !== 0 || courier.totalCollected !== 0 || courier.partialsSum !== 0) || [];
 
   const totalCharges = charges?.reduce((sum, c) => sum + Number(c.amount), 0) || 0;
 
@@ -288,6 +291,14 @@ export function DailySettlements() {
                     placeholder="0"
                   />
                 </div>
+                <div className="space-y-2">
+                  <Label>Descripción</Label>
+                  <Input
+                    value={partialDesc}
+                    onChange={(e) => setPartialDesc(e.target.value)}
+                    placeholder="Ej: Entrega de la ruta de la mañana"
+                  />
+                </div>
                 <Button 
                   className="w-full" 
                   onClick={handleRegisterPartial}
@@ -369,7 +380,7 @@ export function DailySettlements() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {courierSummaries.map(({ courier, baseAmount, totalCollected, partialsSum, expectedBalance, isSettled }) => (
+                {filteredCouriers?.map(({ courier, baseAmount, totalCollected, partialsSum, expectedBalance, isSettled }) => (
                   <TableRow key={courier.user_id}>
                     <TableCell className="font-medium">{courier.full_name}</TableCell>
                     <TableCell className="text-right">{formatCurrency(baseAmount)}</TableCell>
@@ -434,7 +445,7 @@ export function DailySettlements() {
 
           {/* Mobile cards */}
           <div className="md:hidden space-y-3">
-            {courierSummaries.map(({ courier, baseAmount, totalCollected, partialsSum, expectedBalance, isSettled }) => (
+            {filteredCouriers?.map(({ courier, baseAmount, totalCollected, partialsSum, expectedBalance, isSettled }) => (
               <div key={courier.user_id} className="border rounded-lg p-4 space-y-3">
                 <div className="flex items-center justify-between">
                   <span className="font-semibold">{courier.full_name}</span>
@@ -578,18 +589,21 @@ export function DailySettlements() {
                     <Table>
                       <TableHeader>
                         <TableRow>
-                          <TableHead>Destinatario</TableHead>
+                          <TableHead>Pedido ID</TableHead>
+                          <TableHead>Cliente</TableHead>
                           <TableHead className="text-right">A cobrar</TableHead>
                           <TableHead className="text-right">Recibido</TableHead>
                           <TableHead>Método</TableHead>
-                          <TableHead>Notas</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
                         {detailsCourier.deliveries.map((d: any) => (
                           <TableRow key={d.id}>
+                            <TableCell className="text-muted-foreground text-xs max-w-[160px] truncate">
+                              {d.id.substring(0, 8).toUpperCase() || '—'}
+                            </TableCell>
                             <TableCell className="font-medium">
-                              {d.recipient_name || d.client?.name || '—'}
+                              {d.client?.name || '—'}
                             </TableCell>
                             <TableCell className="text-right">
                               {formatCurrency(Number(d.total_to_collect) || 0)}
@@ -599,11 +613,8 @@ export function DailySettlements() {
                             </TableCell>
                             <TableCell className="whitespace-nowrap">
                               {d.payment_method === 'cash' && 'Efectivo'}
-                              {d.payment_method === 'transfer_to_courier' && 'Transfer. mensajero'}
+                              {d.payment_method === 'transfer_to_courier' && 'Transfer. JS'}
                               {d.payment_method === 'transfer_to_client' && 'Transfer. cliente'}
-                            </TableCell>
-                            <TableCell className="text-muted-foreground text-xs max-w-[160px] truncate">
-                              {d.notes || '—'}
                             </TableCell>
                           </TableRow>
                         ))}

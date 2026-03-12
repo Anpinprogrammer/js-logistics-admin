@@ -46,7 +46,6 @@ const paymentLabels: Record<string, string> = {
 
 export function ClientStatementView({ clientId, open, onOpenChange }: ClientStatementViewProps) {
   const { data: statement, isLoading } = useClientStatement(clientId);
-  console.log(statement)
   const [showPDF, setShowPDF] = useState(false);
   
   const formatCurrency = (value: number) => 
@@ -187,7 +186,6 @@ export function ClientStatementView({ clientId, open, onOpenChange }: ClientStat
                     </TableHeader>
                     <TableBody>
                       {statement.deliveries.map(delivery => {
-                        console.log(delivery.lost_trips)
                         const status = statusLabels[delivery.status] || statusLabels.pending;
                         const StatusIcon = status.icon;
                         
