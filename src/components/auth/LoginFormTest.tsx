@@ -18,9 +18,6 @@ export function LoginFormTest() {
     setLoading(true);
     setError(null);
     
-    console.log('Tipo de usuario:', state);
-    console.log('Usuario:', email);
-    
     // Aquí puedes adaptar la lógica según si es Admin o Mensajero
     const { error } = await signIn(email, password);
     

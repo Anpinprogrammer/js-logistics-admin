@@ -112,8 +112,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(userData);
       
       // Obtener rol del usuario
-      const userRole = await fetchUserRole(userData.id);
-      setRole(userRole);
+      //const userRole = await fetchUserRole(userData.id);
+      setRole(userData.role);
 
       return { error: null };
     } catch (error: any) {
