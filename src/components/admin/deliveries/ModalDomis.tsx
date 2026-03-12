@@ -48,6 +48,7 @@ const ModalDomis = ({ isOpen, onClose }: ModalDomisProps) => {
       serviceValue: '',
       totalToCollect: '',
       inAdvancedPayment: false,
+      inAdvancedPaymentMethod: '',
       paymentMethod: 'cash',
     })
 
@@ -71,6 +72,7 @@ const ModalDomis = ({ isOpen, onClose }: ModalDomisProps) => {
         serviceValue: '',
         totalToCollect: '',
         inAdvancedPayment: false,
+        inAdvancedPaymentMethod: '',
         paymentMethod: 'cash',
       })
     };
@@ -99,6 +101,8 @@ const ModalDomis = ({ isOpen, onClose }: ModalDomisProps) => {
         loan: loanNum,
         amount: totalNum,
         payment_method: deliveryFormData.paymentMethod as 'cash' | 'transfer_to_courier' | 'transfer_to_client',
+        advanced_payment: deliveryFormData.inAdvancedPayment,
+        inAdvancedPaymentMethod : ''
       })
 
 
@@ -109,6 +113,21 @@ const ModalDomis = ({ isOpen, onClose }: ModalDomisProps) => {
             amount: parseFloat(deliveryFormData.loan.amount),
             notes: `Prestamo registrado para el pedido ${delivery.data.id.substring(0, 8).toUpperCase()}`
           })         
+      }
+
+      if(deliveryFormData.inAdvancedPayment){
+        if(deliveryFormData.paymentMethod === 'cash'){
+
+        }
+        if(deliveryFormData.paymentMethod === 'transfer_to_courier'){
+          await assignInitialMoney.mutateAsync({
+          account: deliveryFormData.inAdvancedPaymentMethod,
+          type: 'income',
+          amount: parseFloat(deliveryFormData.totalToCollect),
+          notes: `Pago por adelantado en pedido ${delivery.data.id.substring(0, 8).toUpperCase()}`
+        })
+        }
+        
       }
 
       /**
@@ -177,6 +196,7 @@ const ModalDomis = ({ isOpen, onClose }: ModalDomisProps) => {
   });
 
   const handleSave = () => {
+
     if (!clientFormData.clientId) {
       setAlerta('Selecciona un cliente.');
       return;

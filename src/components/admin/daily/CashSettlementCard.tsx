@@ -241,10 +241,10 @@ const CashSettlementCard = ({ dailyCashSettlementData }) => {
 
           {/* Mobile cards */}
           <div className="md:hidden space-y-3">
-            {dailyCashSettlement.map(({ id, name, initialAmount, moneyIn, moneyOut, balance }) => (
-              <div key={id} className="border rounded-lg p-4 space-y-3">
+            {dailyCashSettlementData?.map(({ account, opening_balance, total_income, total_expense, balance }) => (
+              <div key={account} className="border rounded-lg p-4 space-y-3">
                 <div className="flex items-center justify-between">
-                  <span className="font-semibold">{name}</span>
+                  <span className="font-semibold">{ACCOUNT_LABELS[account] || account}</span>
                   {isSettled ? (
                     <Badge variant="default" className="bg-success">
                       <CheckCircle2 className="w-3 h-3 mr-1" />
@@ -260,15 +260,15 @@ const CashSettlementCard = ({ dailyCashSettlementData }) => {
                 <div className="grid grid-cols-2 gap-2 text-sm">
                   <div className="flex justify-between p-2 bg-muted/50 rounded">
                     <span className="text-muted-foreground">Base</span>
-                    <span>{formatCurrency(Number(initialAmount))}</span>
+                    <span>{formatCurrency(Number(opening_balance))}</span>
                   </div>
                   <div className="flex justify-between p-2 bg-muted/50 rounded">
                     <span className="text-muted-foreground">Ingresos</span>
-                    <span className="text-success">{formatCurrency(Number(moneyIn))}</span>
+                    <span className="text-success">{formatCurrency(Number(total_income))}</span>
                   </div>
                   <div className="flex justify-between p-2 bg-muted/50 rounded">
                     <span className="text-muted-foreground">Salidas</span>
-                    <span className="text-primary">{formatCurrency(Number(moneyOut))}</span>
+                    <span className="text-primary">{formatCurrency(Number(total_expense))}</span>
                   </div>
                   <div className="flex justify-between p-2 bg-muted/50 rounded">
                     <span className="text-muted-foreground">Balance</span>

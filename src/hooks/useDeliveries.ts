@@ -34,6 +34,7 @@ export interface Delivery {
   courier?: {
     full_name: string;
   };
+  advanced_payment: boolean;
 }
 
 export interface CreateDeliveryData {

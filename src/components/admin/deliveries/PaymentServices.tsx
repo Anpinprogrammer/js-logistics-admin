@@ -23,16 +23,11 @@ const SUB_ACCOUNTS = [
 ]
 
 const paymentMethods = [
-  { value: 'cash', label: 'Efectivo', icon: DollarSign, color: 'text-cash' },
-  { value: 'transfer_to_courier', label: 'Transferencia a JS', icon: CreditCard, color: 'text-transfer-courier' },
+  { value: 'cash', label: 'Efectivo Mensajero', icon: DollarSign, color: 'text-cash' },
+  { value: 'transfer_to_courier', label: 'Recibe JS', icon: CreditCard, color: 'text-transfer-courier' },
   { value: 'transfer_to_client', label: 'Transferencia Directa', icon: ArrowLeftRight, color: 'text-transfer-client' },
 ] as const;
 
-const PAYMENT_METHODS = [
-  { value: 'cash',               label: 'Efectivo',              icon: DollarSign,    colorClass: 'text-green-600'  },
-  { value: 'transfer_to_courier', label: 'Transferencia a JS',   icon: CreditCard,    colorClass: 'text-orange-500' },
-  { value: 'transfer_to_client',  label: 'Transferencia Directa', icon: ArrowLeftRight, colorClass: 'text-purple-500' },
-]
 
 interface PaymentServicesProps {
     deliveryFormData: {
@@ -44,6 +39,7 @@ interface PaymentServicesProps {
     serviceValue: string;
     totalToCollect: string;
     inAdvancedPayment: boolean;
+    inAdvancedPaymentMethod: string;
     paymentMethod: string;
   };
   setDeliveryFormData: React.Dispatch<React.SetStateAction<{
@@ -55,6 +51,7 @@ interface PaymentServicesProps {
     serviceValue: string;
     totalToCollect: string;
     inAdvancedPayment: boolean;
+    inAdvancedPaymentMethod: string;
     paymentMethod: string;
   }>>;
 }
@@ -112,8 +109,23 @@ const PaymentServices = ({deliveryFormData, setDeliveryFormData}: PaymentService
 
   const toggleSubAccount = (id: string) => {
     setEnabledSubAccounts(prev =>
-      prev.includes(id) ? prev.filter(s => s !== id) : [...prev, id]
+      prev.includes(id) ? [] : [id]
     )
+  }
+
+  const handleAdvancePayment = (value: boolean) => {
+    if(!value){
+      setDeliveryFormData({
+        ...deliveryFormData,
+        inAdvancedPayment: value,
+        inAdvancedPaymentMethod: ''
+      })
+    } else {
+      setDeliveryFormData({
+        ...deliveryFormData,
+        inAdvancedPayment: value
+      })
+    }
   }
 
   const [paymentMethod, setPaymentMethod] = useState('cash')
@@ -121,7 +133,11 @@ const PaymentServices = ({deliveryFormData, setDeliveryFormData}: PaymentService
   
     const handlePaymentMethod = (value: string) => {
       setPaymentMethod(value)
-      setDeliveryFormData({ ...deliveryFormData, paymentMethod: value })
+      setDeliveryFormData(
+        (value === 'cash' || value === 'transfer_to_client') ?
+        { ...deliveryFormData, paymentMethod: value, inAdvancedPaymentMethod: '' } :
+        { ...deliveryFormData, paymentMethod: value } 
+      )
     }
 
 
@@ -316,7 +332,7 @@ const PaymentServices = ({deliveryFormData, setDeliveryFormData}: PaymentService
           {/* Total to Collect */}
           {(paymentMethod === 'cash' || paymentMethod === 'transfer_to_courier') && (
             <div className="space-y-2">
-            <Label htmlFor="total_to_collect">Valor Total a Cobrar *</Label>
+            <Label htmlFor="total_to_collect">Valor Ingresa a JS *</Label>
             <div className="relative">
               <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <Input
@@ -332,14 +348,39 @@ const PaymentServices = ({deliveryFormData, setDeliveryFormData}: PaymentService
               />
             </div>
             
-            <div className="flex gap-2 pt-2">
+            <div className="flex flex-wrap items-center gap-2 pt-2">
               <Label>Pagó por adelantado</Label>
 
-              <input 
-                type="checkbox" 
+              <input
+                type="checkbox"
                 checked={deliveryFormData.inAdvancedPayment}
-                onChange={e => setDeliveryFormData({ ...deliveryFormData, inAdvancedPayment: e.target.checked })}
+                onChange={e => handleAdvancePayment(e.target.checked)}
               />
+
+              {(deliveryFormData.inAdvancedPayment && deliveryFormData.paymentMethod === 'transfer_to_courier' ) &&
+                SUB_ACCOUNTS.map((account) => {
+                  return (
+                    <button
+                      key={account.id}
+                      type="button"
+                      onClick={() => {
+                        setDeliveryFormData({
+                          ...deliveryFormData,
+                          inAdvancedPaymentMethod : account.id
+                        })
+                      }}
+                      className={cn(
+                        "px-3 py-1 rounded-lg border text-xs font-medium transition-all duration-200",
+                        deliveryFormData.inAdvancedPaymentMethod === account.id
+                          ? cn(account.colorClass, "border-transparent")
+                          : "border-border text-muted-foreground hover:border-primary/40"
+                      )}
+                    >
+                      {account.label}
+                    </button>
+                  )
+                })
+              }
             </div>
             
           </div>

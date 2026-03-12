@@ -109,12 +109,14 @@ export function RegisterDeliveryDialog({
     if (!formData.final_status) return;
     
     // For statuses that require payment info
-    if (needsPaymentInfo && (!formData.received_amount || !formData.payment_method)) return;
+    if (needsPaymentInfo && (!formData.received_amount || !formData.payment_method) && !delivery.advanced_payment) return;
+    
+    
     
     await onRegister({
       final_status: formData.final_status,
-      received_amount: needsPaymentInfo ? parseFloat(formData.received_amount) : 0,
-      payment_method: (needsPaymentInfo && formData.payment_method) ? formData.payment_method : 'cash',
+      received_amount: delivery.advanced_payment ? delivery.total_to_collect : needsPaymentInfo ? parseFloat(formData.received_amount) : 0,
+      payment_method: delivery.advanced_payment ? delivery.payment_method : (needsPaymentInfo && formData.payment_method) ? formData.payment_method : 'cash',
       notes: formData.notes || undefined,
       receipt_photo_url: photoUrl || undefined,
     });
@@ -178,6 +180,13 @@ export function RegisterDeliveryDialog({
                 <span className="font-medium text-primary">${Number(delivery.total_to_collect).toFixed(2)}</span>
               </div>
             )}
+
+            {delivery?.advanced_payment && (
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Pago anticipado a:</span>
+                <span className="font-medium text-green-600">{delivery.payment_method === 'cash' ? 'Mensajero' : 'JS Logistics'} </span>
+              </div>
+            )}
           </div>
 
           {/* Status selection */}
@@ -204,7 +213,7 @@ export function RegisterDeliveryDialog({
           </div>
 
           {/* Payment fields - only show if status requires payment */}
-          {needsPaymentInfo && (
+          {(needsPaymentInfo && !delivery.advanced_payment) && (
             <>
               {/* Payment method */}
               <div className="space-y-3">
@@ -340,7 +349,7 @@ export function RegisterDeliveryDialog({
           <Button 
             type="submit" 
             className="w-full gradient-primary text-primary-foreground"
-            disabled={loading || !formData.final_status || (needsPaymentInfo && (!formData.received_amount || !formData.payment_method))}
+            disabled={loading || !formData.final_status || (needsPaymentInfo && (!formData.received_amount || !formData.payment_method) && !delivery.advanced_payment)}
           >
             {loading ? (
               <Loader2 className="w-4 h-4 animate-spin mr-2" />
