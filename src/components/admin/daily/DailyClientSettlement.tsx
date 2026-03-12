@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { useClients, useUpdateClientBalance } from '@/hooks/useClientsTest';
 import { useDeliveriesTest } from '@/hooks/useDeliveries';
-import { getTodayDate } from '@/hooks/useDailyOperations';
+import { getTodayDate } from '@/utils';
+import { useAssignLoan } from '@/hooks/useDailyClientsOperations';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -24,6 +25,7 @@ import {
   Plus
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { SUB_ACCOUNTS } from '@/utils';
 
 // Sign convention (mirrors user description):
 //   balance > 0  →  we owe the client  (we pay them)
@@ -34,9 +36,19 @@ export function DailyClientSettlement() {
   const { data: clients, isLoading: loadingClients } = useClients();
   const { data: deliveries, isLoading: loadingDeliveries } = useDeliveriesTest();
   const updateBalance = useUpdateClientBalance();
+  const assignLoan = useAssignLoan();
 
   const [detailsDialog, setDetailsDialog] = useState(false);
   const [detailsClient, setDetailsClient] = useState<any>(null);
+
+  const [loanMovements, setLoanMovements] = useState({
+    account: 'cash',
+    client: '',
+    clientName: '',
+    delivery: '',
+    amount: '',
+    notes: '',
+  })
 
   const [loansDialog, setLoansDialog] = useState(false)
   const [loanAmount, setLoanAmount] = useState('')
@@ -71,6 +83,13 @@ export function DailyClientSettlement() {
       </div>
     );
   }
+
+  const allClientDeliveries = deliveries?.filter( d => {
+    const deliveryDate = new Date(d.delivery_date).toISOString().split('T')[0];
+    return (
+      deliveryDate === today
+    )
+  }) || [];
 
   // Only completed or not_delivered_collected deliveries count financially
   const todayDeliveries = deliveries?.filter(d => {
@@ -152,8 +171,28 @@ export function DailyClientSettlement() {
     setPaymentAmount('');
   };
 
-  const handleAssignLoan = () => {
-    console.log('Asignando el prestamo')
+  const handleAssignLoan = async () => {
+    const { account, client, clientName, delivery, amount, notes } = loanMovements
+    try {
+      await assignLoan.mutateAsync({
+        account,
+        clientName,
+        delivery,
+        amount: parseFloat(amount),
+        notes
+      })
+    } catch (error) {
+      console.log(error)
+    }
+    setLoansDialog(!loansDialog)
+    setLoanMovements({
+      account: 'cash',
+      client: '',
+      clientName: '',
+      delivery: '',
+      amount: '',
+      notes: ''
+    })
   }
 
   // Totals for the summary header
@@ -180,7 +219,17 @@ export function DailyClientSettlement() {
         </div>
 
          <div className="flex flex-wrap gap-2">
-                  <Dialog open={loansDialog} onOpenChange={setLoansDialog}>
+                  <Dialog open={loansDialog} onOpenChange={() => {
+                    setLoansDialog(!loansDialog)
+                    setLoanMovements({
+                      account: 'cash',
+                      client: '',
+                      clientName: '',
+                      delivery: '',
+                      amount: '',
+                      notes: ''
+                    })
+                  }}>
                     <DialogTrigger asChild>
                       <Button variant="outline" size="sm">
                         <DollarSign className="w-4 h-4 mr-1" />
@@ -191,15 +240,16 @@ export function DailyClientSettlement() {
                       <DialogHeader>
                         <DialogTitle>Asignar Prestamo</DialogTitle>
                         <DialogDescription>
-                          Asigna el dinero base inicial del día a un mensajero
+                          Asigna dinero prestado a un cliente durante el dia
                         </DialogDescription>
                       </DialogHeader>
                       <div className="space-y-4 py-4">
+                        
                         <div className="space-y-2">
                           <Label>Cliente</Label>
-                          <Select value={selectedClient} onValueChange={setSelectedClient}>
+                          <Select value={loanMovements.client} onValueChange={(value) => setLoanMovements({ ...loanMovements, client: value, clientName: clients.find( c => c.id === value ).name })}>
                             <SelectTrigger>
-                              <SelectValue placeholder="Selecciona mensajero" />
+                              <SelectValue placeholder="Selecciona cliente" />
                             </SelectTrigger>
                             <SelectContent>
                               {clients?.map(c => (
@@ -210,13 +260,68 @@ export function DailyClientSettlement() {
                             </SelectContent>
                           </Select>
                         </div>
+
+                        {loanMovements?.client && (
+
+                        <div className="space-y-2">
+                          <Label>Pedido a asignar prestamo: </Label>
+                          <Select value={loanMovements.delivery} onValueChange={(value) =>  setLoanMovements({ ...loanMovements, delivery: value })}>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Selecciona pedido" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              { allClientDeliveries?.filter( d => d.client_id === loanMovements.client )
+                                .map(c => (
+                                <SelectItem key={c.id} value={c.id}>
+                                  {c.id.substring(0, 8).toUpperCase()}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        )}
+                        
                         <div className="space-y-2">
                           <Label>Monto</Label>
                           <Input
                             type="number"
-                            value={loanAmount}
-                            onChange={(e) => setLoanAmount(e.target.value)}
+                            value={loanMovements.amount}
+                            onChange={(e) => setLoanMovements({ ...loanMovements, amount: e.target.value })}
                             placeholder="0"
+                          />
+                        </div>
+                        <div className='space-y-2'>
+                          <Label>Dinero sale de: </Label>
+                          <div className='flex gap-1'>
+                            {SUB_ACCOUNTS.map((account) => (
+                              <button
+                                key={account.id}
+                                type="button"
+                                onClick={() => setLoanMovements({ ...loanMovements, account: account.id })}
+                                className={cn(
+                                  "px-3 py-1 rounded-lg border text-xs font-medium transition-all duration-200",
+                                  loanMovements.account === account.id
+                                    ? cn(account.colorClass, "border-transparent")
+                                    : "border-border text-muted-foreground hover:border-primary/40"
+                                )}
+                              >
+                                {account.label}
+                              </button>
+                     
+                              ))
+                            }
+                          </div>
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Descripción</Label>
+                          <Input
+                            value={loanMovements.notes}
+                            onChange={(e) => setLoanMovements({
+                              ...loanMovements,
+                              notes: e.target.value
+                            })}
+                            placeholder="Explicar el motivo del prestamo"
                           />
                         </div>
                         <Button 
@@ -346,6 +451,7 @@ export function DailyClientSettlement() {
                                 variant="default"
                                 onClick={() => {
                                   const summary = clientSummaries.find(s => s.client.id === client.id);
+                                  console.log(summary)
                                   setPaymentClient(summary);
                                   setPaymentAmount('');
                                   setPaymentType(currentBalance < 0 ? 'from_client' : 'to_client');
@@ -389,7 +495,7 @@ export function DailyClientSettlement() {
                           <span className="text-success">{formatCurrency(totalCollected)}</span>
                         </div>
                         <div className="flex justify-between p-2 bg-muted/50 rounded">
-                          <span className="text-muted-foreground">Servicio</span>
+                          <span className="text-muted-foreground">Servicios</span>
                           <span className="text-destructive">{formatCurrency(totalServices)}</span>
                         </div>
                         <div className="flex justify-between p-2 bg-muted/50 rounded">
@@ -584,15 +690,21 @@ export function DailyClientSettlement() {
                       <span className="text-success">{formatCurrency(paymentClient.totalCollected)}</span>
                     </div>
                     <div className="flex justify-between">
+                      <span className="text-muted-foreground">Prestamos hoy:</span>
+                      <span className="text-destructive">{formatCurrency(paymentClient.totalLoans)}</span>
+                    </div>
+                    <div className="flex justify-between">
                       <span className="text-muted-foreground">Servicio hoy:</span>
                       <span className="text-destructive">{formatCurrency(paymentClient.totalServices)}</span>
                     </div>
+                    {/** 
                     <div className="flex justify-between font-medium">
                       <span className="text-muted-foreground">Neto del día:</span>
                       <span className={paymentClient.dailyNet >= 0 ? 'text-success' : 'text-destructive'}>
                         {formatCurrency(paymentClient.dailyNet)}
                       </span>
                     </div>
+                    */}
                     <Separator />
                   </>
                 )}

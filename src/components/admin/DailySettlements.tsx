@@ -34,6 +34,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Textarea } from '@/components/ui/textarea';
+import { SUB_ACCOUNTS } from '@/utils';
 
 export function DailySettlements() {
   const today = getTodayDate();
@@ -48,9 +49,19 @@ export function DailySettlements() {
   const registerPartial = useRegisterPartialDelivery();
   const addCharge = useAddOperationalCharge();
   const settleDaily = useSettleDaily();
-  
-  const [selectedCourier, setSelectedCourier] = useState('');
-  const [baseMoneyAmount, setBaseMoneyAmount] = useState('');
+
+  const [baseMovements, setBaseMovements] = useState({
+    account: 'cash',
+    courier: '',
+    courierName: '',
+    amount: '',
+  })
+  const [partialMovements, setPartialMovements] = useState({
+    courier: '',
+    courierName: '',
+    amount: '',
+    description: ''
+  })
   const [partialAmount, setPartialAmount] = useState('');
   const [partialCourier, setPartialCourier] = useState('');
   const [partialDesc, setPartialDesc] = useState('');
@@ -134,21 +145,29 @@ export function DailySettlements() {
   const totalCharges = charges?.reduce((sum, c) => sum + Number(c.amount), 0) || 0;
 
   const handleAssignBaseMoney = async () => {
-    if (!selectedCourier || !baseMoneyAmount) return;
+    if (!baseMovements.courier || !baseMovements.amount) return;
     await assignBaseMoney.mutateAsync({
-      courierId: selectedCourier,
-      amount: parseFloat(baseMoneyAmount),
+      courierId: baseMovements.courier,
+      courierName: baseMovements.courierName,
+      amount: parseFloat(baseMovements.amount),
+      account: baseMovements.account
     });
     setBaseMoneyDialog(false);
-    setSelectedCourier('');
-    setBaseMoneyAmount('');
+    setBaseMovements({
+    account: 'cash',
+    courier: '',
+    courierName: '',
+    amount: '',
+  })
   };
 
   const handleRegisterPartial = async () => {
-    if (!partialCourier || !partialAmount) return;
+    if (!partialMovements.courier || !partialMovements.amount) return;
     await registerPartial.mutateAsync({
-      courierId: partialCourier,
-      amount: parseFloat(partialAmount),
+      courierId: partialMovements.courier,
+      courierName: partialMovements.courierName,
+      amount: parseFloat(partialMovements.amount),
+      notes: partialMovements.description
     });
     setPartialDialog(false);
     setPartialCourier('');
@@ -216,9 +235,32 @@ export function DailySettlements() {
                 </DialogDescription>
               </DialogHeader>
               <div className="space-y-4 py-4">
+                <div className='space-y-2'>
+                  <Label>Dinero sale de: </Label>
+                  <div className='flex gap-1'>
+                    {SUB_ACCOUNTS.map((account) => (
+                      <button
+                        key={account.id}
+                        type="button"
+                        onClick={() => setBaseMovements({ ...baseMovements, account: account.id })}
+                        className={cn(
+                          "px-3 py-1 rounded-lg border text-xs font-medium transition-all duration-200",
+                          baseMovements.account === account.id
+                            ? cn(account.colorClass, "border-transparent")
+                            : "border-border text-muted-foreground hover:border-primary/40"
+                        )}
+                      >
+                        {account.label}
+                      </button>
+                     
+                    ))
+
+                      }
+                  </div>
+                </div>
                 <div className="space-y-2">
                   <Label>Mensajero</Label>
-                  <Select value={selectedCourier} onValueChange={setSelectedCourier}>
+                  <Select value={baseMovements.courier} onValueChange={(value) => setBaseMovements({ ...baseMovements, courier: value, courierName: couriers?.find(u => u.user_id === value).full_name })}>
                     <SelectTrigger>
                       <SelectValue placeholder="Selecciona mensajero" />
                     </SelectTrigger>
@@ -235,8 +277,8 @@ export function DailySettlements() {
                   <Label>Monto</Label>
                   <Input
                     type="number"
-                    value={baseMoneyAmount}
-                    onChange={(e) => setBaseMoneyAmount(e.target.value)}
+                    value={baseMovements.amount}
+                    onChange={(e) => setBaseMovements({ ...baseMovements, amount: e.target.value })}
                     placeholder="0"
                   />
                 </div>
@@ -269,7 +311,11 @@ export function DailySettlements() {
               <div className="space-y-4 py-4">
                 <div className="space-y-2">
                   <Label>Mensajero</Label>
-                  <Select value={partialCourier} onValueChange={setPartialCourier}>
+                  <Select value={partialMovements.courier} onValueChange={(value) => setPartialMovements({
+                    ...partialMovements,
+                    courier: value,
+                    courierName: couriers.find( u => u.user_id === value ).full_name
+                  })}>
                     <SelectTrigger>
                       <SelectValue placeholder="Selecciona mensajero" />
                     </SelectTrigger>
@@ -286,16 +332,16 @@ export function DailySettlements() {
                   <Label>Monto</Label>
                   <Input
                     type="number"
-                    value={partialAmount}
-                    onChange={(e) => setPartialAmount(e.target.value)}
+                    value={partialMovements.amount}
+                    onChange={(e) => setPartialMovements({ ...partialMovements, amount: e.target.value })}
                     placeholder="0"
                   />
                 </div>
                 <div className="space-y-2">
                   <Label>Descripción</Label>
                   <Input
-                    value={partialDesc}
-                    onChange={(e) => setPartialDesc(e.target.value)}
+                    value={partialMovements.description}
+                    onChange={(e) => setPartialMovements({ ...partialMovements, description: e.target.value })}
                     placeholder="Ej: Entrega de la ruta de la mañana"
                   />
                 </div>

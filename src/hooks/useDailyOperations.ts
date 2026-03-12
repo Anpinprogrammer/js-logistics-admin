@@ -142,9 +142,11 @@ export function useAssignBaseMoney() {
   const { user } = useAuth();
   
   return useMutation({
-    mutationFn: async ({ courierId, amount, notes, date }: { 
+    mutationFn: async ({ courierId, courierName, account, amount, notes, date }: { 
       courierId: string; 
+      courierName: string;
       amount: number; 
+      account: string;
       notes?: string;
       date?: string;
     }) => {
@@ -152,14 +154,22 @@ export function useAssignBaseMoney() {
       
       const targetDate = date || getTodayDate();
       
-      const { data } = await api.post('/daily-settlements/base-money', {
+      const { data: dailyBaseMoneyResponse } = await api.post('/daily-settlements/base-money', {
         courier_id: courierId,
           date: targetDate,
           amount,
           assigned_by: user.id,
           notes: notes || null,
       }) 
-      return data;
+
+      const { data: dailyTransactionsResponse } = await api.post('/daily-settlements/company/money-assignment', {
+        account,
+        type: 'expense',
+        amount,
+        notes: `Base para mensajero: ${courierName}`
+      })
+
+      return dailyBaseMoneyResponse;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['daily-base-money'] });
@@ -199,9 +209,10 @@ export function useRegisterPartialDelivery() {
   const { user } = useAuth();
   
   return useMutation({
-    mutationFn: async ({ courierId, amount, notes, date }: { 
+    mutationFn: async ({ courierId, courierName, amount, notes, date }: { 
       courierId: string; 
-      amount: number; 
+      courierName: string;
+      amount: number;
       notes?: string;
       date?: string;
     }) => {
@@ -209,7 +220,7 @@ export function useRegisterPartialDelivery() {
       
       const targetDate = date || getTodayDate();
 
-      const { data } = await api.post('/daily-settlements/partial-delivery', {
+      const { data : partialMovementResponse } = await api.post('/daily-settlements/partial-delivery', {
           courier_id: courierId,
           date: targetDate,
           amount,
@@ -217,8 +228,15 @@ export function useRegisterPartialDelivery() {
           notes: notes || null,
         }
       )
+
+      const { data: partialDailyTransactionResponse } = await api.post('/daily-settlements/company/money-assignment', {
+        account: 'cash',
+        type: 'income',
+        amount,
+        notes: `Entrega parcial de mensajero: ${courierName}`
+      })
       
-      return data;
+      return partialMovementResponse;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['partial-deliveries'] });
