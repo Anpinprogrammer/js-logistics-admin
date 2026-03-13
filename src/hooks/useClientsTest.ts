@@ -52,6 +52,24 @@ export function useClients(page: number = 1, limit: number = 9) {
   });
 }
 
+/*
+* Obtener los clientes y sus daily summaries 
+*/
+export function useClientDailySummary(page = 1, limit = 10, date?: string) {
+  const { user } = useAuth();
+
+  return useQuery({
+    queryKey: ['daily-summary', page, date],
+    queryFn: async () => {
+      const response = await api.get('/clients/summary/daily', {
+        params: { page, limit, date }
+      })
+      return response.data
+    }
+  })
+
+}
+
 /**
  * Obtener clientes con deuda (balance > 0)
  * GET /api/clients/with-debt

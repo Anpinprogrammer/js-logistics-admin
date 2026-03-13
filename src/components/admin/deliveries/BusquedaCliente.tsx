@@ -12,7 +12,7 @@ interface BusquedaClienteProps {
 }
 
 const BusquedaCliente = ({ onClientSelect }: BusquedaClienteProps) => {
-  const { data: clients, isLoading } = useClients();
+  const { data: clients, isLoading } = useClients(1, 9999);
   const createClient = useCreateClient();
   const [busqueda, setBusqueda] = useState('');
   const [showResults, setShowResults] = useState(false);
@@ -32,7 +32,7 @@ const BusquedaCliente = ({ onClientSelect }: BusquedaClienteProps) => {
 
   const clientesFiltrados = busqueda === '' 
     ? [] 
-    : (clients || []).filter(cliente => 
+    : (clients.data || []).filter(cliente => 
       cliente.name.toLowerCase().includes(busqueda.toLowerCase()) || 
       cliente.company?.toLowerCase().includes(busqueda.toLowerCase()) || 
       cliente.identification_number?.toLowerCase().includes(busqueda.toLowerCase()) 

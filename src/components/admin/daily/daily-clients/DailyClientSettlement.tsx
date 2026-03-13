@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useClients, useUpdateClientBalance } from '@/hooks/useClientsTest';
+import { useClients, useUpdateClientBalance, useClientDailySummary } from '@/hooks/useClientsTest';
 import { useDeliveriesTest } from '@/hooks/useDeliveries';
 import { getTodayDate } from '@/utils';
 import { useAssignLoan } from '@/hooks/useDailyClientsOperations';
@@ -21,6 +21,8 @@ import {
   CheckCircle2,
   TrendingDown,
   TrendingUp,
+  ChevronLeft,
+  ChevronRight,
   ArrowDownCircle,
   Plus
 } from 'lucide-react';
@@ -33,7 +35,9 @@ import { SUB_ACCOUNTS } from '@/utils';
 
 export function DailyClientSettlement() {
   const today = getTodayDate();
-  const { data: clients, isLoading: loadingClients } = useClients();
+  const { data: clients, isLoading: loadingClients } = useClients(1, 999);
+  const [ page, setPage ] = useState(1)
+  const { data: clientsSummary, isLoading: loadingClientsSummary } = useClientDailySummary(page, 10)
   const { data: deliveries, isLoading: loadingDeliveries } = useDeliveriesTest();
   const updateBalance = useUpdateClientBalance();
   const assignLoan = useAssignLoan();
@@ -74,7 +78,7 @@ export function DailyClientSettlement() {
       maximumFractionDigits: 0,
     }).format(value);
 
-  const isLoading = loadingClients || loadingDeliveries;
+  const isLoading = loadingClientsSummary || loadingDeliveries;
 
   if (isLoading) {
     return (
@@ -100,8 +104,15 @@ export function DailyClientSettlement() {
     );
   }) || [];
 
+  const clientSummariesTest = clientsSummary?.data ?? [];
+  const totalPages = Number(clientsSummary?.pagination.totalPages);
+  console.log(totalPages)
+
   // Build per-client summaries — include clients with activity OR with a non-zero balance
-  const clientSummaries = (clients ?? [])
+  /**
+   * 
+  
+  const clientSummaries = (clients.data ?? [])
     .map(client => {
       const clientDeliveries = todayDeliveries.filter(d => d.client_id === client.id);
       const currentBalance = Number(client.balance) || 0;
@@ -150,6 +161,7 @@ export function DailyClientSettlement() {
     if (a.hasActivityToday !== b.hasActivityToday) return a.hasActivityToday ? -1 : 1;
     return Math.abs(b.currentBalance) - Math.abs(a.currentBalance);
   });
+   */
 
   const handleRegisterPayment = async () => {
     if (!paymentClient || !paymentAmount) return;
@@ -196,8 +208,10 @@ export function DailyClientSettlement() {
   }
 
   // Totals for the summary header
+  /** 
   const totalNetToday = clientSummaries.reduce((s, c) => s + c.dailyNet, 0);
   const totalOutstanding = clientSummaries.reduce((s, c) => s + c.currentBalance, 0);
+  */
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -247,12 +261,12 @@ export function DailyClientSettlement() {
                         
                         <div className="space-y-2">
                           <Label>Cliente</Label>
-                          <Select value={loanMovements.client} onValueChange={(value) => setLoanMovements({ ...loanMovements, client: value, clientName: clients.find( c => c.id === value ).name })}>
+                          <Select value={loanMovements.client} onValueChange={(value) => setLoanMovements({ ...loanMovements, client: value, clientName: clients.data.find( c => c.id === value ).name })}>
                             <SelectTrigger>
                               <SelectValue placeholder="Selecciona cliente" />
                             </SelectTrigger>
                             <SelectContent>
-                              {clients?.map(c => (
+                              {clients.data?.map(c => (
                                 <SelectItem key={c.id} value={c.id}>
                                   {c.name}
                                 </SelectItem>
@@ -365,7 +379,7 @@ export function DailyClientSettlement() {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          {clients.length === 0 ? (
+          {clientsSummary.data.length === 0 ? (
             <p className="text-center text-muted-foreground py-8">
               Sin actividad de clientes hoy
             </p>
@@ -387,8 +401,8 @@ export function DailyClientSettlement() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {clientSummaries.map(
-                      ({ client, clientDeliveries, totalCollected, totalServices, totalLoans,dailyNet, currentBalance }) => (
+                    {clientSummariesTest.map(
+                      ({ client, deliveries, totalCollected, totalServices, totalLoans,dailyNet, currentBalance }) => (
                         <TableRow key={client.id}>
                           <TableCell>
                             <div>
@@ -399,8 +413,8 @@ export function DailyClientSettlement() {
                             </div>
                           </TableCell>
                           <TableCell className="text-center">
-                            {clientDeliveries.length > 0 ? (
-                              <Badge variant="outline">{clientDeliveries.length}</Badge>
+                            {deliveries.length > 0 ? (
+                              <Badge variant="outline">{deliveries.length}</Badge>
                             ) : (
                               <span className="text-muted-foreground text-sm">—</span>
                             )}
@@ -432,12 +446,12 @@ export function DailyClientSettlement() {
                           </TableCell>
                           <TableCell className="text-center">
                             <div className="flex items-center justify-center gap-2">
-                              {clientDeliveries.length > 0 && (
+                              {deliveries.length > 0 && (
                                 <Button
                                   size="sm"
                                   variant="outline"
                                   onClick={() => {
-                                    const summary = clientSummaries.find(s => s.client.id === client.id);
+                                    const summary = clientSummariesTest.find(s => s.client.id === client.id);
                                     setDetailsClient(summary);
                                     setDetailsDialog(true);
                                   }}
@@ -450,7 +464,7 @@ export function DailyClientSettlement() {
                                 size="sm"
                                 variant="default"
                                 onClick={() => {
-                                  const summary = clientSummaries.find(s => s.client.id === client.id);
+                                  const summary = clientSummariesTest.find(s => s.client.id === client.id);
                                   console.log(summary)
                                   setPaymentClient(summary);
                                   setPaymentAmount('');
@@ -472,8 +486,8 @@ export function DailyClientSettlement() {
 
               {/* ── Mobile cards ── */}
               <div className="md:hidden space-y-3">
-                {clientSummaries.map(
-                  ({ client, clientDeliveries, totalCollected, totalServices, dailyNet, currentBalance }) => (
+                {clientSummariesTest.map(
+                  ({ client, deliveries, totalCollected, totalServices, dailyNet, currentBalance }) => (
                     <div key={client.id} className="border rounded-lg p-4 space-y-3">
                       <div className="flex items-start justify-between gap-2">
                         <div>
@@ -488,7 +502,7 @@ export function DailyClientSettlement() {
                       <div className="grid grid-cols-2 gap-2 text-sm">
                         <div className="flex justify-between p-2 bg-muted/50 rounded">
                           <span className="text-muted-foreground">Entregas</span>
-                          <span>{clientDeliveries.length}</span>
+                          <span>{deliveries.length}</span>
                         </div>
                         <div className="flex justify-between p-2 bg-muted/50 rounded">
                           <span className="text-muted-foreground">Cobrado</span>
@@ -513,13 +527,13 @@ export function DailyClientSettlement() {
                       </div>
 
                       <div className="flex gap-2">
-                        {clientDeliveries.length > 0 && (
+                        {deliveries.length > 0 && (
                           <Button
                             size="sm"
                             variant="outline"
                             className="flex-1"
                             onClick={() => {
-                              const summary = clientSummaries.find(s => s.client.id === client.id);
+                              const summary = clientSummariesTest.find(s => s.client.id === client.id);
                               setDetailsClient(summary);
                               setDetailsDialog(true);
                             }}
@@ -533,7 +547,7 @@ export function DailyClientSettlement() {
                           variant="default"
                           className="flex-1"
                           onClick={() => {
-                            const summary = clientSummaries.find(s => s.client.id === client.id);
+                            const summary = clientSummariesTest.find(s => s.client.id === client.id);
                             setPaymentClient(summary);
                             setPaymentAmount('');
                             setPaymentType(currentBalance < 0 ? 'from_client' : 'to_client');
@@ -550,6 +564,20 @@ export function DailyClientSettlement() {
               </div>
             </>
           )}
+          { totalPages > 1 && (
+            <div className="flex items-center justify-center gap-2 pt-4">
+              <Button variant="outline" size="sm" disabled={page === 1} onClick={() => setPage(p => p - 1)}>
+                  <ChevronLeft className="w-4 h-4" />
+              </Button>
+              <span className="text-sm text-muted-foreground">
+                Página {page} de {totalPages}
+              </span>
+              <Button variant="outline" size="sm" disabled={page >= totalPages} onClick={() =>   setPage(p => p + 1)}>
+                <ChevronRight className="w-4 h-4" />
+              </Button>
+            </div>
+          )
+          }
         </CardContent>
       </Card>
 
@@ -572,7 +600,7 @@ export function DailyClientSettlement() {
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-sm">
                 <div className="p-3 rounded-lg bg-muted/50 border border-border text-center">
                   <p className="text-muted-foreground text-xs mb-1">Entregas</p>
-                  <p className="font-semibold">{detailsClient.clientDeliveries.length}</p>
+                  <p className="font-semibold">{detailsClient.deliveries.length}</p>
                 </div>
                 <div className="p-3 rounded-lg bg-muted/50 border border-border text-center">
                   <p className="text-muted-foreground text-xs mb-1">Cobrado</p>
@@ -611,7 +639,7 @@ export function DailyClientSettlement() {
                   <Truck className="w-4 h-4 text-primary" />
                   Entregas del día
                 </h3>
-                {detailsClient.clientDeliveries.length === 0 ? (
+                {detailsClient.deliveries.length === 0 ? (
                   <p className="text-muted-foreground text-sm text-center py-4">
                     Sin entregas registradas hoy
                   </p>
@@ -630,7 +658,7 @@ export function DailyClientSettlement() {
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {detailsClient.clientDeliveries.map((d: any) => (
+                        {detailsClient.deliveries.map((d: any) => (
                           <TableRow key={d.id}>
                             <TableCell className="font-medium">
                               {d.recipient_name || '—'}
