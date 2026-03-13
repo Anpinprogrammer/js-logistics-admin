@@ -106,7 +106,6 @@ export function DailyClientSettlement() {
 
   const clientSummariesTest = clientsSummary?.data ?? [];
   const totalPages = Number(clientsSummary?.pagination.totalPages);
-  console.log(totalPages)
 
   // Build per-client summaries — include clients with activity OR with a non-zero balance
   /**
@@ -261,12 +260,12 @@ export function DailyClientSettlement() {
                         
                         <div className="space-y-2">
                           <Label>Cliente</Label>
-                          <Select value={loanMovements.client} onValueChange={(value) => setLoanMovements({ ...loanMovements, client: value, clientName: clients.data.find( c => c.id === value ).name })}>
+                          <Select value={loanMovements.client} onValueChange={(value) => setLoanMovements({ ...loanMovements, client: value, clientName: clients?.data.find( c => c.id === value ).name })}>
                             <SelectTrigger>
                               <SelectValue placeholder="Selecciona cliente" />
                             </SelectTrigger>
                             <SelectContent>
-                              {clients.data?.map(c => (
+                              {clients?.data.map(c => (
                                 <SelectItem key={c.id} value={c.id}>
                                   {c.name}
                                 </SelectItem>
@@ -379,7 +378,7 @@ export function DailyClientSettlement() {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          {clientsSummary.data.length === 0 ? (
+          {clientsSummary?.data.length === 0 ? (
             <p className="text-center text-muted-foreground py-8">
               Sin actividad de clientes hoy
             </p>
