@@ -32,6 +32,7 @@ import {
   AlertCircle,
   Eye
 } from 'lucide-react';
+import PartialSettlementsDialog from './PartialSettlementsDialog';
 import { cn } from '@/lib/utils';
 import { Textarea } from '@/components/ui/textarea';
 import { SUB_ACCOUNTS } from '@/utils';
@@ -170,8 +171,12 @@ export function DailySettlements() {
       notes: partialMovements.description
     });
     setPartialDialog(false);
-    setPartialCourier('');
-    setPartialAmount('');
+    setPartialMovements({
+      courier: '',
+      courierName: '',
+      amount: '',
+      description: ''
+    })
   };
 
   const handleAddCharge = async () => {
@@ -294,6 +299,7 @@ export function DailySettlements() {
             </DialogContent>
           </Dialog>
           
+          {/** 
           <Dialog open={partialDialog} onOpenChange={setPartialDialog}>
             <DialogTrigger asChild>
               <Button variant="outline" size="sm">
@@ -356,6 +362,7 @@ export function DailySettlements() {
               </div>
             </DialogContent>
           </Dialog>
+          */}
           
           <Dialog open={chargeDialog} onOpenChange={setChargeDialog}>
             <DialogTrigger asChild>
@@ -465,6 +472,22 @@ export function DailySettlements() {
                           <Eye className="w-4 h-4 mr-1" />
                           Ver
                         </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className='bg-gray-300 hover:bg-gray-200'
+                          onClick={() => {
+                            setPartialDialog(!partialDialog)
+                            setPartialMovements({ 
+                              ...partialMovements, 
+                              courier: courier.user_id, 
+                              courierName: couriers.find( c => c.user_id === courier.user_id ).full_name
+                             })
+                          }}
+                        >
+                          <ArrowDownCircle className="w-4 h-4 mr-1" />
+                          Entrega Parcial
+                        </Button>
                         {!isSettled && (
                           <Button
                             size="sm"
@@ -488,6 +511,15 @@ export function DailySettlements() {
               </TableBody>
             </Table>
           </div>
+
+          <PartialSettlementsDialog 
+            partialDialog={partialDialog}
+            setPartialDialog={setPartialDialog}
+            partialMovements={partialMovements}
+            setPartialMovements={setPartialMovements}
+            handleRegisterPartial={handleRegisterPartial}
+            registerPartial={registerPartial}
+          />
 
           {/* Mobile cards */}
           <div className="md:hidden space-y-3">
@@ -527,7 +559,8 @@ export function DailySettlements() {
                     </span>
                   </div>
                 </div>
-                <div className="flex gap-2">
+                <div className="grid grid-flow-row gap-2">
+                  <div className='flex gap-1 justify-between'>
                   <Button
                     size="sm"
                     variant="outline"
@@ -541,6 +574,23 @@ export function DailySettlements() {
                     <Eye className="w-4 h-4 mr-1" />
                     Ver Detalles
                   </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className='flex-1 bg-gray-300 hover:bg-gray-200'
+                    onClick={() => {
+                      setPartialDialog(!partialDialog)
+                      setPartialMovements({ 
+                        ...partialMovements, 
+                        courier: courier.user_id, 
+                        courierName: couriers.find( c => c.user_id === courier.user_id ).full_name
+                      })
+                    }}
+                  >
+                    <ArrowDownCircle className="w-4 h-4 mr-1" />
+                    Entrega Parcial
+                  </Button>
+                  </div>
                   {!isSettled && (
                     <Button
                       size="sm"

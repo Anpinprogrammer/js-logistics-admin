@@ -19,7 +19,7 @@ import { AuditLog } from '@/components/admin/system/AuditLog';
 import { SettingsPage } from '@/components/admin/system/SettingsPage';
 import RolesSetting from '@/components/admin/system/RolesSetting';
 import { ConsolidatedCash } from '@/components/admin/ConsolidatedCash';
-import { DailySettlements } from '@/components/admin/DailySettlements';
+import { DailySettlements } from '@/components/admin/daily/DailySettlements';
 import {DailyClientSettlement} from '@/components/admin/daily/DailyClientSettlement';
 import DailySettlementCash from '@/components/admin/daily/DailySettlementCash';
 import { WeeklyPayroll } from '@/components/admin/WeeklyPayroll';
