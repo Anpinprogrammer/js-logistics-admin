@@ -32,10 +32,12 @@ import {
   AlertCircle,
   Eye
 } from 'lucide-react';
-import PartialSettlementsDialog from './PartialSettlementsDialog';
+import DetailsCourier from './DetailsCourier';
+import PartialSettlementsDialog from '../daily-accounts/PartialSettlementsDialog';
 import { cn } from '@/lib/utils';
 import { Textarea } from '@/components/ui/textarea';
 import { SUB_ACCOUNTS } from '@/utils';
+import { formatCurrency } from '@/utils';
 
 export function DailySettlements() {
   const today = getTodayDate();
@@ -79,14 +81,6 @@ export function DailySettlements() {
 
   const [detailsDialog, setDetailsDialog] = useState(false);
   const [detailsCourier, setDetailsCourier] = useState<any>(null);
-  
-  const formatCurrency = (value: number) => 
-    new Intl.NumberFormat('es-CO', { 
-      style: 'currency', 
-      currency: 'COP',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    }).format(value);
 
   const isLoading = loadingCouriers || loadingBase || loadingPartials || loadingCharges || loadingSettlements;
 
@@ -464,9 +458,10 @@ export function DailySettlements() {
                           size="sm"
                           variant="outline"
                           onClick={() => {
+                            setDetailsDialog(!detailsDialog)
                             const summary = courierSummaries.find(s => s.courier.user_id === courier.user_id);
                             setDetailsCourier(summary);
-                            setDetailsDialog(true);
+                            
                           }}
                         >
                           <Eye className="w-4 h-4 mr-1" />
@@ -568,7 +563,7 @@ export function DailySettlements() {
                     onClick={() => {
                       const summary = courierSummaries.find(s => s.courier.user_id === courier.user_id);
                       setDetailsCourier(summary);
-                      setDetailsDialog(true);
+                      setDetailsDialog(!detailsDialog);
                     }}
                   >
                     <Eye className="w-4 h-4 mr-1" />
@@ -635,8 +630,15 @@ export function DailySettlements() {
         </Card>
       )}
 
+      {/**Details Dialog */}
+      <DetailsCourier 
+        detailsDialog={detailsDialog}
+        setDetailsDialog={setDetailsDialog}
+        detailsCourier={detailsCourier}
+      />
+
       {/* Details Dialog */}
-      <Dialog open={detailsDialog} onOpenChange={setDetailsDialog}>
+      <Dialog open={false} onOpenChange={() => {}}>
         <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
@@ -647,6 +649,8 @@ export function DailySettlements() {
               Todas las transacciones registradas hoy
             </DialogDescription>
           </DialogHeader>
+
+          
 
           {detailsCourier && (
             <div className="space-y-6 py-2">
@@ -671,6 +675,7 @@ export function DailySettlements() {
                   </p>
                 </div>
               </div>
+              
 
               {/* Deliveries */}
               <div>
@@ -748,6 +753,7 @@ export function DailySettlements() {
           )}
         </DialogContent>
       </Dialog>
+      
 
       {/* Settle Dialog */}
       <Dialog open={settleDialog} onOpenChange={setSettleDialog}>

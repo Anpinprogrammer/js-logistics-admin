@@ -198,7 +198,7 @@ export function ClientStatementView({ clientId, open, onOpenChange }: ClientStat
                                   className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-mono bg-muted text-muted-foreground mx-auto"
                                   title={delivery.id}
                                 >
-                                  #{delivery.id.slice(0, 8)}
+                                  #{delivery.id.slice(0, 8).toUpperCase()}
                                 </span>
                               </div>
                             </TableCell>
