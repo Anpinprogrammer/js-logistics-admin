@@ -22,6 +22,12 @@ export interface Client {
 
 export interface ClientResponse {
     data: Client[];
+    pagination: {
+      page: number;
+      limit: number;
+      total: number;
+      totalPages: number;
+    };
     error: any;
 }
 
@@ -33,14 +39,14 @@ export interface ClientResponse {
  * Obtener todos los clientes
  * GET /api/clients
  */
-export function useClients() {
+export function useClients(page: number = 1, limit: number = 9) {
   const { user } = useAuth();
   
   return useQuery({
-    queryKey: ['clients'],
+    queryKey: ['clients', page, limit],
     queryFn: async () => {
-      const { data } = await api.get<ClientResponse>('/clients');
-      return data.data;
+      const response = await api.get<ClientResponse>('/clients', { params: { page, limit } });
+      return response.data;
     },
     enabled: !!user, // Solo ejecuta si hay usuario autenticado
   });

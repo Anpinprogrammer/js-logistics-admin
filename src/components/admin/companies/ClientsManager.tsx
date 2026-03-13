@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 //import { useClients, useCreateClient, useUpdateClient, useDeleteClient, Client } from '@/hooks/useClients';
 import { useClients, useCreateClient, useUpdateClient, useDeleteClient, Client } from '@/hooks/useClientsTest';
 import { useClientStatement, ClientStatement } from '@/hooks/useClientStatement';
@@ -18,7 +18,6 @@ import ClientDialog from './ClientDialog';
 const PAGE_SIZE = 9;
 
 export function ClientsManager() {
-  const { data: clients, isLoading } = useClients();
   const createClient = useCreateClient();
   const updateClient = useUpdateClient();
   const deleteClient = useDeleteClient();
@@ -39,9 +38,14 @@ export function ClientsManager() {
     email: '',
   });
 
-  const [allPage, setAllPage] = useState(0);
+  const [allPage, setAllPage] = useState(1);
   const [debtPage, setDebtPage] = useState(0);
   const [favorPage, setFavorPage] = useState(0);
+
+  const { data: clients, isLoading } = useClients(allPage, 9);
+  console.log(clients?.pagination)
+
+
 
   const formatCurrency = (value: number) => 
     new Intl.NumberFormat('es-CO', { 
@@ -125,14 +129,14 @@ export function ClientsManager() {
     );
   }
 
-  const clientsWithDebt = clients?.filter(c => Number(c.balance) < 0) || [];
-  const clientsWithFavor = clients?.filter(c => Number(c.balance) > 0) || [];
-  const allClients = clients || [];
+  const clientsWithDebt = clients?.data.filter(c => Number(c.balance) < 0) || [];
+  const clientsWithFavor = clients?.data.filter(c => Number(c.balance) > 0) || [];
+  const allClients = clients?.data || [];
 
-  const allTotalPages = Math.max(1, Math.ceil(allClients.length / PAGE_SIZE));
+  const allTotalPages = Number(clients?.pagination.totalPages);
   const debtTotalPages = Math.max(1, Math.ceil(clientsWithDebt.length / PAGE_SIZE));
   const favorTotalPages = Math.max(1, Math.ceil(clientsWithDebt.length / PAGE_SIZE));
-  const paginatedAll = allClients.slice(allPage * PAGE_SIZE, (allPage + 1) * PAGE_SIZE);
+  const paginatedAll = allClients; // el API ya pagina server-side
   const paginatedDebt = clientsWithDebt.slice(debtPage * PAGE_SIZE, (debtPage + 1) * PAGE_SIZE);
   const paginatedFavor = clientsWithFavor.slice(favorPage * PAGE_SIZE, (favorPage + 1) * PAGE_SIZE);
 
@@ -176,7 +180,7 @@ export function ClientsManager() {
             <TabsTrigger value="all" className="flex items-center gap-2">
               <Users className="w-4 h-4" />
               Todos
-              <Badge variant="secondary">{allClients.length}</Badge>
+              <Badge variant="secondary">{clients?.pagination.total}</Badge>
             </TabsTrigger>
             <TabsTrigger value="payables" className="flex items-center gap-2">
               <TrendingUp className="w-4 h-4" />
@@ -225,13 +229,13 @@ export function ClientsManager() {
               </div>
               {allTotalPages > 1 && (
                 <div className="flex items-center justify-center gap-2 pt-4">
-                  <Button variant="outline" size="sm" disabled={allPage === 0} onClick={() => setAllPage(p => p - 1)}>
+                  <Button variant="outline" size="sm" disabled={allPage === 1} onClick={() => setAllPage(p => p - 1)}>
                     <ChevronLeft className="w-4 h-4" />
                   </Button>
                   <span className="text-sm text-muted-foreground">
-                    Página {allPage + 1} de {allTotalPages}
+                    Página {allPage} de {allTotalPages}
                   </span>
-                  <Button variant="outline" size="sm" disabled={allPage >= allTotalPages - 1} onClick={() => setAllPage(p => p + 1)}>
+                  <Button variant="outline" size="sm" disabled={allPage >= allTotalPages} onClick={() => setAllPage(p => p + 1)}>
                     <ChevronRight className="w-4 h-4" />
                   </Button>
                 </div>
