@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Search, Building2, User, Phone, IdCard, Plus } from "lucide-react";
 //import { useClients, useCreateClient, Client } from "@/hooks/useClients";
 import { useClients, useCreateClient, Client } from "@/hooks/useClientsTest";
@@ -9,10 +9,13 @@ import { MyClient } from "@/types";
 
 interface BusquedaClienteProps {
   onClientSelect?: (client: Client) => void;
+  clients: Client[];
+  isLoading: boolean;
 }
 
-const BusquedaCliente = ({ onClientSelect }: BusquedaClienteProps) => {
-  const { data: clients, isLoading } = useClients(1, 9999);
+const BusquedaCliente = ({ onClientSelect, clients, isLoading }: BusquedaClienteProps) => {
+  
+  //const { data: clients, isLoading } = useClients(1, 9999);
   const createClient = useCreateClient();
   const [busqueda, setBusqueda] = useState('');
   const [showResults, setShowResults] = useState(false);
@@ -28,11 +31,13 @@ const BusquedaCliente = ({ onClientSelect }: BusquedaClienteProps) => {
           identification_number: '',
           email: '',
   });
+
+
   
 
   const clientesFiltrados = busqueda === '' 
     ? [] 
-    : (clients.data || []).filter(cliente => 
+    : (clients|| []).filter(cliente => 
       cliente.name.toLowerCase().includes(busqueda.toLowerCase()) || 
       cliente.company?.toLowerCase().includes(busqueda.toLowerCase()) || 
       cliente.identification_number?.toLowerCase().includes(busqueda.toLowerCase()) 
@@ -86,8 +91,9 @@ const BusquedaCliente = ({ onClientSelect }: BusquedaClienteProps) => {
           className="border-0 focus-visible:ring-0 focus-visible:ring-offset-0"
           placeholder="Buscar por nombre, empresa o identificación..."
           onChange={(e) => {
-            setBusqueda(e.target.value);
-            setFormData({...formData, name: busqueda})
+            const value = e.target.value
+            setBusqueda(value);
+            setFormData({...formData, name: value})
             setShowResults(true);
           }}
           onFocus={() => setShowResults(true)}

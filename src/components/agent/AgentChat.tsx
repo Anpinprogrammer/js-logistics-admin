@@ -55,6 +55,7 @@ export function AgentChat() {
         message: text,
         history: apiHistory,
       });
+      console.log(data)
 
       setMessages((prev) => [...prev, { role: 'assistant', content: data.reply }]);
       // Append new turns to the history

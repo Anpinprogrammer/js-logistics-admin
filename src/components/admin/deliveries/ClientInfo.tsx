@@ -1,4 +1,5 @@
-import { Client } from '@/hooks/useClients';
+//import { Client } from '@/hooks/useClients';
+import { Client, useClients } from '@/hooks/useClientsTest';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
@@ -29,6 +30,10 @@ interface ClientInfoProps {
 
 export function ClientInfo({ clientFormData, setClientFormData }: ClientInfoProps) {
 
+  const { data: clients, isLoading } = useClients(1, 9999);
+
+
+
   const handleClientSelect = (client: Client) => {
     setClientFormData({
       clientId: client.id,
@@ -55,7 +60,11 @@ export function ClientInfo({ clientFormData, setClientFormData }: ClientInfoProp
       <CardContent>
         <form className="space-y-6">
           
-          <BusquedaCliente onClientSelect={handleClientSelect} />
+          <BusquedaCliente 
+            onClientSelect={handleClientSelect} 
+            clients={clients?.data}
+            isLoading={isLoading}
+          />
 
           {/* Client and company name */}
           <div className="space-y-2">
