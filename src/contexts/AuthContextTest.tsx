@@ -17,7 +17,7 @@ interface AuthContextTestType {
   user: User | null;
   role: AppRole | null;
   loading: boolean;
-  signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
+  signIn: (email: string, password: string) => Promise<{ error: Error | null; role?: AppRole }>;
   signUp: (email: string, password: string, fullName: string) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
   isAdmin: boolean;
@@ -115,7 +115,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       //const userRole = await fetchUserRole(userData.id);
       setRole(userData.role);
 
-      return { error: null };
+      return { error: null, role: userData.role };
     } catch (error: any) {
       console.error('Error signing in:', error);
       

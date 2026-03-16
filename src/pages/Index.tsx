@@ -27,6 +27,7 @@ import { CourierSummary } from '@/components/courier/CourierSummary';
 import { CourierTodayDeliveries } from '@/components/courier/CourierTodayDeliveries';
 import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Settings, Loader2 } from 'lucide-react';
+import { AgentChat } from '@/components/agent/AgentChat';
 
 function AppContent() {
   const { user, loading, isAdmin, isCourier } = useAuth();
@@ -136,6 +137,7 @@ function AppContent() {
   return (
     <AppLayout currentPage={page} onNavigate={handleNavigate}>
       {renderPage()}
+      {isAdmin && <AgentChat />}
     </AppLayout>
   );
 }
