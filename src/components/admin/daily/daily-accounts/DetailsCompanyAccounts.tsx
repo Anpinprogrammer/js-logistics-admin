@@ -154,8 +154,10 @@ const DetailsCompanyAccounts = ({ detailsDialog, setDetailsDialog, detailsCourie
                           <p className="text-muted-foreground text-xs">Saldo inicial del día</p>
                         </div>
                       </div>
-                      { openings.map( o => (
-                        <p className="font-semibold text-base">{formatCurrency(Number(o.amount))}</p>
+                      { openings.map( (o, index) => (
+                        <div key={index}>
+                          <p className="font-semibold text-base">{formatCurrency(Number(o.amount))}</p>
+                        </div>
                       ))
                       }
                       

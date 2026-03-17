@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, KeyboardEvent } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Bot, Send, X, Minimize2, Maximize2, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -21,6 +22,7 @@ interface HistoryTurn {
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export function AgentChat() {
+  const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
   const [minimized, setMinimized] = useState(false);
   const [messages, setMessages] = useState<Message[]>([
@@ -55,7 +57,10 @@ export function AgentChat() {
         message: text,
         history: apiHistory,
       });
-      console.log(data)
+      const rawData = data.newTurns.at(-1)
+      const contentObject = JSON.parse(rawData.content)
+      const keyInfo = contentObject.key
+      queryClient.invalidateQueries({ queryKey: [`${keyInfo}`] })
 
       setMessages((prev) => [...prev, { role: 'assistant', content: data.reply }]);
       // Append new turns to the history
