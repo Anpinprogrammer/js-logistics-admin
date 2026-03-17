@@ -8,7 +8,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Wallet, DollarSign, ArrowDownCircle, Plus, Loader2 } from 'lucide-react'
+import { ACCOUNT_LABELS } from '@/utils';
 
 import CashSettlementCard from './CashSettlementCard';
 
@@ -25,12 +27,6 @@ const moneyReceivers = [
   { id: 'bancolombia', label: 'Bancolombia' },
   { id: 'nequi', label: 'Nequi' },
 ]
-
-const ACCOUNT_LABELS: Record<string, string> = {
-  cash: 'Caja',
-  bancolombia: 'Bancolombia',
-  nequi: 'Nequi',
-};
 
 const DailySettlementCash = () => {
 
@@ -279,6 +275,51 @@ const DailySettlementCash = () => {
           <CashSettlementCard 
           dailyCashSettlementData={dailyCashSettlementData}
           />
+
+          {dailyCashSettlementData && (() => {
+            const formatCurrency = (value: number) =>
+              new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(value);
+
+            const totalBase     = dailyCashSettlementData.reduce((sum, d) => sum + Number(d.opening_balance), 0);
+            const totalIngresos = dailyCashSettlementData.reduce((sum, d) => sum + Number(d.total_income), 0);
+            const totalSalidas  = dailyCashSettlementData.reduce((sum, d) => sum + Number(d.total_expense), 0);
+            const totalBalance  = dailyCashSettlementData.reduce((sum, d) => sum + Number(d.balance), 0);
+
+            return (
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="flex items-center gap-2">
+                    <Wallet className="w-5 h-5 text-primary" />
+                    Totales Generales
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div className="rounded-lg border p-4 space-y-1">
+                      <p className="text-sm text-muted-foreground">Base Total</p>
+                      <p className="text-xl font-semibold">{formatCurrency(totalBase)}</p>
+                    </div>
+                    <div className="rounded-lg border p-4 space-y-1">
+                      <p className="text-sm text-muted-foreground">Ingresos Total</p>
+                      <p className="text-xl font-semibold text-success">{formatCurrency(totalIngresos)}</p>
+                    </div>
+                    <div className="rounded-lg border p-4 space-y-1">
+                      <p className="text-sm text-muted-foreground">Salidas Total</p>
+                      <p className="text-xl font-semibold text-primary">{formatCurrency(totalSalidas)}</p>
+                    </div>
+                    <div className="rounded-lg border p-4 space-y-1">
+                      <p className="text-sm text-muted-foreground">Balance Total</p>
+                      <p className={`text-xl font-semibold ${totalBalance >= 0 ? 'text-success' : 'text-destructive'}`}>
+                        {formatCurrency(totalBalance)}
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })()}
+
+
       </div>
   )
 }

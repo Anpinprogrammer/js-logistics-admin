@@ -10,40 +10,7 @@ import { useSearchParams } from 'react-router-dom';
 import { CompanyDailyResponse, useUpdateOpeningBalance, useFetchTransactions } from '@/hooks/useDailyCompanyOperations';
 import { WritableStreamDefaultWriter } from 'node:stream/web';
 import DetailsCompanyAccounts from './DetailsCompanyAccounts';
-
- 
- 
-const dailyCashSettlement = [
-  { 
-    id: '1',
-    name: 'Caja', 
-    initialAmount: '200000',
-    moneyIn: '60000',
-    moneyOut: '50000',
-    balance: '210000'
-  },
-  {
-    id: '2',
-    name: 'Bancolombia', 
-    initialAmount: '200000',
-    moneyIn: '60000',
-    moneyOut: '50000',
-    balance: '210000'},
-  {
-    id: '3',
-    name: 'Nequi', 
-    initialAmount: '200000',
-    moneyIn: '60000',
-    moneyOut: '50000',
-    balance: '210000'
-  }
-]
-
-const ACCOUNT_LABELS: Record<string, string> = {
-  cash: 'Caja',
-  bancolombia: 'Bancolombia',
-  nequi: 'Nequi',
-};
+import { ACCOUNT_LABELS } from '@/utils';
   
 
 interface CashSettlementCardProps {

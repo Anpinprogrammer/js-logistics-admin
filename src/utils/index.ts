@@ -17,3 +17,9 @@ export const SUB_ACCOUNTS = [
   { id: 'nequi',       label: 'Nequi',       colorClass: 'bg-purple-100 text-purple-700' },
 ]
 
+export const ACCOUNT_LABELS: Record<string, string> = {
+  cash: 'Efectivo',
+  bancolombia: 'Bancolombia',
+  nequi: 'Nequi',
+};
+
