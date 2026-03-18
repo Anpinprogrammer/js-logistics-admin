@@ -55,7 +55,9 @@ export function LoginFormTest() {
           }`}
         >
           {isAdmin ? (
-            <ShieldCheck className="w-10 h-10 text-white" />
+
+            <img src="/img/logo.png" alt="" />
+            //<ShieldCheck className="w-10 h-10 text-white" />
           ) : (
             <Truck className="w-10 h-10 text-white" />
           )}

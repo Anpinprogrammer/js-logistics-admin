@@ -163,8 +163,11 @@ export function AppLayout({ children, currentPage, onNavigate }: AppLayoutProps)
         {/* Logo */}
         <div className="p-4 border-b border-sidebar-border">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-sidebar-primary flex items-center justify-center">
+            <div className="w-10 h-10 rounded-xl flex items-center justify-center">
+              <img src="/img/logo_azul.png" alt="" />
+              {/** 
               <Truck className="w-5 h-5 text-sidebar-primary-foreground" />
+              */}
             </div>
             <div>
               <h1 className="font-bold text-lg text-white">JS Logistics</h1>
