@@ -64,6 +64,7 @@ export function useClientDailySummary(page = 1, limit = 10, date?: string) {
       const response = await api.get('/clients/summary/daily', {
         params: { page, limit, date }
       })
+      console.log(response)
       return response.data
     }
   })

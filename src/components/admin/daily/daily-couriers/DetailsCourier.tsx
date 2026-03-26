@@ -81,7 +81,29 @@ const DetailsCourier = (
 
               {/**Base movements */}
               <TabsContent value='base'>
-
+                <div>
+                <h3 className="font-semibold text-sm mb-2 flex items-center gap-2">
+                  <HandCoins className="w-4 h-4 text-primary" />
+                  Todos los movimientos de la base
+                </h3>
+                {detailsCourier.partials.length === 0 ? (
+                  <p className="text-muted-foreground text-sm text-center py-4">Sin entregas parciales</p>
+                ) : (
+                  <div className="space-y-2">
+                    {detailsCourier.partials.map((p: any) => (
+                      <div key={p.id} className="flex items-center justify-between p-3 rounded-lg bg-muted/50 border border-border text-sm">
+                        <div>
+                          <p className="font-medium text-primary">{formatCurrency(Number(p.amount))}</p>
+                          {p.notes && <p className="text-muted-foreground text-xs mt-0.5">{p.notes}</p>}
+                        </div>
+                        <p className="text-muted-foreground text-xs">
+                          {new Date(p.created_at).toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' })}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
               </TabsContent>
 
               {/**Daily deliveries  */}

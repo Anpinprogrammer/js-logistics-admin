@@ -13,6 +13,7 @@ import { ServicesList } from '@/components/admin/options/ServicesList';
 import { AdminNewDeliveryForm } from '@/components/admin/AdminNewDeliveryForm';
 import { CouriersList } from '@/components/admin/CouriersList';
 import AdminsList from '@/components/admin/personel/AdminsList';
+import CollaboratorList from '@/components/admin/personel/collaborators/CollaboratorList';
 import PatinadoresList from '@/components/admin/personel/PatinadoresList';
 import { ClientsManager } from '@/components/admin/companies/ClientsManager';
 import { AuditLog } from '@/components/admin/system/AuditLog';
@@ -91,8 +92,8 @@ function AppContent() {
           return <ServicesList />;
         case 'personal/admins':
           return <AdminsList />;
-        case 'personal/patinadores':
-          return <PatinadoresList />;
+        case 'personal/colaboradores':
+          return <CollaboratorList />;
         case 'personal/mensajeros':
           return <CouriersList />;
         case 'clients':

@@ -58,7 +58,7 @@ export function AppLayout({ children, currentPage, onNavigate }: AppLayoutProps)
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
-    navItems.forEach(item => {
+    navItems.forEach((item : NavItemWithChildren) => {
       if ('children' in item) {
         if (item.children.some(c => c.id === currentPage)) {
           setOpenGroups(prev => ({ ...prev, [item.id]: true }));
@@ -116,7 +116,7 @@ export function AppLayout({ children, currentPage, onNavigate }: AppLayoutProps)
       icon: Building2,
       children: [
         { id: 'personal/admins', label: 'Administradores', icon: User },
-        { id: 'personal/patinadores', label: 'Patinadores', icon: ClipboardList },
+        { id: 'personal/colaboradores', label: 'Colaboradores', icon: Truck },
         { id: 'personal/mensajeros', label: 'Mensajeros', icon: Truck },
       ],
     },

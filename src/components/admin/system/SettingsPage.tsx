@@ -236,13 +236,15 @@ export function SettingsPage() {
 
   // ─── Render ───────────────────────────────────────────────────────────────
   return (
-    <div className="space-y-6 animate-fade-in max-w-3xl">
+    <div className="space-y-6 animate-fade-in w-full">
       <h1 className="text-2xl font-bold flex items-center gap-2">
         <Settings className="w-6 h-6 text-primary" />
         Configuración
       </h1>
 
-      {/* ── Profile ── */}
+      {/* ── Cards grid 2x2 ── */}
+      <div className='grid grid-cols-2 gap-4'>
+
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-lg">
@@ -497,6 +499,8 @@ export function SettingsPage() {
           </AlertDialog>
         </CardContent>
       </Card>
+
+      </div>
     </div>
   );
 }

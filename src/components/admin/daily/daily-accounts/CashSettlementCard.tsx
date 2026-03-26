@@ -68,7 +68,6 @@ const CashSettlementCard = ({ dailyCashSettlementData }) => {
 
   const handleEditConfirm = async (account: string) => {
     // TODO: persist the new opening_balance value for `account`
-    console.log('Updated opening_balance for', account, ':', editValue)
     await updateOpeningBalance.mutateAsync({
       account,
       newAmount: editValue

@@ -23,3 +23,8 @@ export const ACCOUNT_LABELS: Record<string, string> = {
   nequi: 'Nequi',
 };
 
+export const rol = {
+  courier: 'Mensajero',
+  picker: 'Patinador'
+}
+

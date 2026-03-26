@@ -181,6 +181,33 @@ export function useAssignBaseMoney() {
   });
 }
 
+// Hook: update base money
+export function useUpdateBase() {
+  const queryClient = useQueryClient()
+  const { user } = useAuth()
+
+  return useMutation({
+    mutationFn: async ({ courierId, amount } : {
+      courierId: string;
+      amount: string
+    }) => {
+      if(!user) throw new Error('No user logged in')
+      
+      const { data } = await api.put(`/daily-settlements/update-courier-base/${courierId}`, { amount })
+
+      return data
+      
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['daily-base-money'] })
+      toast.success(data.message)
+    },
+    onError: (error) => {
+      toast.error('Error: ' + error.message);
+    }
+  })
+}
+
 // Hook: Partial Deliveries
 export function usePartialDeliveries(date?: string, courierId?: string) {
   const targetDate = date || getTodayDate();

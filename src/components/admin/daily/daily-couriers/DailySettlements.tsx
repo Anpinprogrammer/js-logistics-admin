@@ -6,6 +6,7 @@ import {
   useOperationalCharges,
   useDailySettlements,
   useAssignBaseMoney,
+  useUpdateBase,
   useRegisterPartialDelivery,
   useAddOperationalCharge,
   useSettleDaily,
@@ -30,7 +31,10 @@ import {
   CheckCircle2,
   Loader2,
   AlertCircle,
-  Eye
+  Eye,
+  Pencil,
+  Check,
+  X
 } from 'lucide-react';
 import DetailsCourier from './DetailsCourier';
 import PartialSettlementsDialog from '../daily-accounts/PartialSettlementsDialog';
@@ -49,6 +53,7 @@ export function DailySettlements() {
   const { data: deliveries } = useDeliveriesTest();
   
   const assignBaseMoney = useAssignBaseMoney();
+  const updateBaseMoney = useUpdateBase();
   const registerPartial = useRegisterPartialDelivery();
   const addCharge = useAddOperationalCharge();
   const settleDaily = useSettleDaily();
@@ -65,9 +70,7 @@ export function DailySettlements() {
     amount: '',
     description: ''
   })
-  const [partialAmount, setPartialAmount] = useState('');
-  const [partialCourier, setPartialCourier] = useState('');
-  const [partialDesc, setPartialDesc] = useState('');
+  
   const [chargeDesc, setChargeDesc] = useState('');
   const [chargeAmount, setChargeAmount] = useState('70000');
   
@@ -81,6 +84,9 @@ export function DailySettlements() {
 
   const [detailsDialog, setDetailsDialog] = useState(false);
   const [detailsCourier, setDetailsCourier] = useState<any>(null);
+
+  const [editBase, setEditBase] = useState<string | null>(null)
+  const [baseValue, setBaseValue] = useState('')
 
   const isLoading = loadingCouriers || loadingBase || loadingPartials || loadingCharges || loadingSettlements;
 
@@ -135,8 +141,8 @@ export function DailySettlements() {
     };
   }) || [];
 
+  const filteredBase = courierSummaries.filter(courier => courier.baseAmount === 0) || [];
   const filteredCouriers = courierSummaries.filter(courier => courier.baseAmount !== 0 || courier.totalCollected !== 0 || courier.partialsSum !== 0) || [];
-
   const totalCharges = charges?.reduce((sum, c) => sum + Number(c.amount), 0) || 0;
 
   const handleAssignBaseMoney = async () => {
@@ -155,6 +161,30 @@ export function DailySettlements() {
     amount: '',
   })
   };
+
+  const handleEditBase = (courierId: string, currentValue: string) => {
+    setEditBase(courierId)
+    setBaseValue(currentValue)
+  }
+
+  const handleEditBaseConfirm = async (courier: string) => {
+    if(!courier) return;
+    try {
+      await updateBaseMoney.mutateAsync({
+        courierId: courier,
+        amount: baseValue
+      });
+    } catch (error) {
+      console.log(error)
+    }
+    setEditBase(null)
+    setBaseValue('')
+  }
+
+  const handleEditBaseCancel = () => {
+    setEditBase(null)
+    setBaseValue('')
+  }
 
   const handleRegisterPartial = async () => {
     if (!partialMovements.courier || !partialMovements.amount) return;
@@ -264,9 +294,9 @@ export function DailySettlements() {
                       <SelectValue placeholder="Selecciona mensajero" />
                     </SelectTrigger>
                     <SelectContent>
-                      {couriers?.map(c => (
-                        <SelectItem key={c.user_id} value={c.user_id}>
-                          {c.full_name}
+                      {filteredBase?.map(c => (
+                        <SelectItem key={c.courier.user_id} value={c.courier.user_id}>
+                          {c.courier.full_name}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -292,71 +322,6 @@ export function DailySettlements() {
               </div>
             </DialogContent>
           </Dialog>
-          
-          {/** 
-          <Dialog open={partialDialog} onOpenChange={setPartialDialog}>
-            <DialogTrigger asChild>
-              <Button variant="outline" size="sm">
-                <ArrowDownCircle className="w-4 h-4 mr-1" />
-                Entrega Parcial
-              </Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Registrar Entrega Parcial</DialogTitle>
-                <DialogDescription>
-                  Registra dinero entregado por un mensajero durante el día
-                </DialogDescription>
-              </DialogHeader>
-              <div className="space-y-4 py-4">
-                <div className="space-y-2">
-                  <Label>Mensajero</Label>
-                  <Select value={partialMovements.courier} onValueChange={(value) => setPartialMovements({
-                    ...partialMovements,
-                    courier: value,
-                    courierName: couriers.find( u => u.user_id === value ).full_name
-                  })}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecciona mensajero" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {couriers?.map(c => (
-                        <SelectItem key={c.user_id} value={c.user_id}>
-                          {c.full_name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label>Monto</Label>
-                  <Input
-                    type="number"
-                    value={partialMovements.amount}
-                    onChange={(e) => setPartialMovements({ ...partialMovements, amount: e.target.value })}
-                    placeholder="0"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Descripción</Label>
-                  <Input
-                    value={partialMovements.description}
-                    onChange={(e) => setPartialMovements({ ...partialMovements, description: e.target.value })}
-                    placeholder="Ej: Entrega de la ruta de la mañana"
-                  />
-                </div>
-                <Button 
-                  className="w-full" 
-                  onClick={handleRegisterPartial}
-                  disabled={registerPartial.isPending}
-                >
-                  {registerPartial.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                  Registrar
-                </Button>
-              </div>
-            </DialogContent>
-          </Dialog>
-          */}
           
           <Dialog open={chargeDialog} onOpenChange={setChargeDialog}>
             <DialogTrigger asChild>
@@ -430,7 +395,40 @@ export function DailySettlements() {
                 {filteredCouriers?.map(({ courier, baseAmount, totalCollected, partialsSum, expectedBalance, isSettled }) => (
                   <TableRow key={courier.user_id}>
                     <TableCell className="font-medium">{courier.full_name}</TableCell>
-                    <TableCell className="text-right">{formatCurrency(baseAmount)}</TableCell>
+                    <TableCell className="text-right">
+                      { editBase === courier.user_id ?
+                      (
+                        <div className="flex items-center gap-1 justify-end">
+                          <Input
+                            type="number"
+                            value={baseValue}
+                            onChange={(e) => setBaseValue(e.target.value)}
+                            className="h-7 w-32 text-right"
+                            autoFocus
+                          />
+                          <button onClick={handleEditBaseCancel} className="text-muted-foreground hover:text-destructive transition-colors">
+                            <X className="w-4 h-4" />
+                          </button>
+                          <button onClick={() => handleEditBaseConfirm(courier.user_id)} className="text-muted-foreground hover:text-success transition-colors">
+                            <Check className="w-4 h-4" />
+                          </button>
+                        </div>
+                      ) : (
+                        <div className='flex gap-1 items-center'>
+                        {formatCurrency(baseAmount)}
+                      {Number(baseAmount) !== 0 && 
+                        (
+                          <button
+                            className='text-muted-foreground hover:text-primary transition-colors'
+                            onClick={() => handleEditBase(courier.user_id, baseAmount.toString())}
+                          >
+                            <Pencil className='h-3 w-3 font-normal' />
+                          </button>
+                        )
+                      }
+                      </div>
+                      )}
+                    </TableCell>
                     <TableCell className="text-right text-success">{formatCurrency(totalCollected)}</TableCell>
                     <TableCell className="text-right text-primary">{formatCurrency(partialsSum)}</TableCell>
                     <TableCell className={cn(
