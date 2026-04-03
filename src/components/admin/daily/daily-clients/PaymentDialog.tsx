@@ -1,19 +1,29 @@
-import { useState } from 'react'
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { useState, useEffect } from 'react'
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
+import { Checkbox } from '@/components/ui/checkbox';
 import { formatCurrency } from '@/utils';
 import {
   DollarSign,
   Loader2,
   TrendingDown,
   TrendingUp,
+  CalendarDays,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { useClients, useUpdateClientBalance, useClientDailySummary } from '@/hooks/useClientsTest';
+import { useUpdateClientBalance } from '@/hooks/useClientsTest';
+
+interface DailySummary {
+  date: string;
+  totalCollected: number;
+  totalServices: number;
+  totalLoans: number;
+  net: number;
+}
 
 interface PaymentDialogProps {
     paymentDialog: boolean;
@@ -22,42 +32,85 @@ interface PaymentDialogProps {
     setPaymentClient: React.Dispatch<React.SetStateAction<any>>;
 }
 
+function formatDate(dateStr: string) {
+  const [year, month, day] = dateStr.split('-').map(Number);
+  return new Date(year, month - 1, day).toLocaleDateString('es-CO', {
+    weekday: 'short',
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+  });
+}
+
 const PaymentDialog = ({ paymentDialog, setPaymentDialog, paymentClient, setPaymentClient } : PaymentDialogProps) => {
 
     const updateBalance = useUpdateClientBalance()
+    const [selectedDates, setSelectedDates] = useState<Set<string>>(new Set())
     const [paymentDetail, setPaymentDetail] = useState({
         paymentType: 'to-client',
         amount: '',
         desc: ''
     })
 
+    const dailySummaries: DailySummary[] = paymentClient?.dailySummaries ?? []
+
+    // When the dialog opens, reset selections
+    useEffect(() => {
+      if (paymentDialog) {
+        setSelectedDates(new Set())
+        setPaymentDetail({ paymentType: 'to-client', amount: '', desc: '' })
+      }
+    }, [paymentDialog])
+
+    // Auto-fill amount from selected days
+    useEffect(() => {
+      if (selectedDates.size === 0) {
+        setPaymentDetail(prev => ({ ...prev, amount: '' }))
+      } else {
+        const total = dailySummaries
+          .filter(d => selectedDates.has(d.date))
+          .reduce((sum, d) => sum + d.net, 0)
+        setPaymentDetail(prev => ({ ...prev, amount: String(total) }))
+      }
+    }, [selectedDates])
+
+    const allSelected = dailySummaries.length > 0 && selectedDates.size === dailySummaries.length
+
+    const toggleDate = (date: string) => {
+      setSelectedDates(prev => {
+        const next = new Set(prev)
+        if (next.has(date)) next.delete(date)
+        else next.add(date)
+        return next
+      })
+    }
+
+    const toggleAll = () => {
+      if (allSelected) {
+        setSelectedDates(new Set())
+      } else {
+        setSelectedDates(new Set(dailySummaries.map(d => d.date)))
+      }
+    }
+
   const handleRegisterPayment = async () => {
     if (!paymentClient || !paymentDetail.amount) return;
     const amount = parseFloat(paymentDetail.amount);
     const current = paymentClient.currentBalance;
 
-    // "from_client": client pays us → reduces what they are owed or adds to their debt
-    //   positive balance (we owe them) decreases; negative balance (they owe us) decreases in abs value
-    // "to_client": we pay them → reduces our payable (positive balance decreases)
-    //   or adds to their owed amount if balance was already negative
     const newBalance =
       paymentDetail.paymentType === 'from_client'
-        ? current - amount   // client pays us → we owe them less (or they owe us more)
-        : current + amount;  // we pay them → credit increases / their debt decreases
+        ? current - amount
+        : current + amount;
 
     await updateBalance.mutateAsync({ id: paymentClient.client.id, balance: newBalance });
     setPaymentDialog(false);
     setPaymentClient(null);
-    setPaymentDetail({
-         paymentType: 'to-client',
-        amount: '',
-        desc: ''
-    });
   };
 
   return (
      <Dialog open={paymentDialog} onOpenChange={setPaymentDialog}>
-        <DialogContent>
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Registrar Pago</DialogTitle>
             <DialogDescription>
@@ -67,46 +120,80 @@ const PaymentDialog = ({ paymentDialog, setPaymentDialog, paymentClient, setPaym
 
           {paymentClient && (
             <div className="space-y-4 py-2">
-              {/* Current state summary */}
-              <div className="space-y-2 p-3 rounded-lg bg-muted/50 border border-border text-sm">
-                {paymentClient.hasActivityToday && (
-                  <>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Cobrado hoy:</span>
-                      <span className="text-success">{formatCurrency(paymentClient.totalCollected)}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Prestamos hoy:</span>
-                      <span className="text-destructive">{formatCurrency(paymentClient.totalLoans)}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Servicio hoy:</span>
-                      <span className="text-destructive">{formatCurrency(paymentClient.totalServices)}</span>
-                    </div>
-                    {/** 
-                    <div className="flex justify-between font-medium">
-                      <span className="text-muted-foreground">Neto del día:</span>
-                      <span className={paymentClient.dailyNet >= 0 ? 'text-success' : 'text-destructive'}>
-                        {formatCurrency(paymentClient.dailyNet)}
+              {/* Unpaid days list */}
+              {dailySummaries.length > 0 && (
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <Label className="flex items-center gap-1.5">
+                      <CalendarDays className="w-4 h-4" />
+                      Días sin liquidar ({dailySummaries.length})
+                    </Label>
+                    <button
+                      type="button"
+                      onClick={toggleAll}
+                      className="text-xs text-primary underline-offset-2 hover:underline"
+                    >
+                      {allSelected ? 'Deseleccionar todo' : 'Seleccionar todo'}
+                    </button>
+                  </div>
+
+                  <div className="border rounded-lg divide-y overflow-hidden">
+                    {dailySummaries.map((day) => {
+                      const isChecked = selectedDates.has(day.date)
+                      return (
+                        <label
+                          key={day.date}
+                          className={cn(
+                            'flex items-start gap-3 p-3 cursor-pointer transition-colors text-sm',
+                            isChecked ? 'bg-primary/5' : 'hover:bg-muted/50'
+                          )}
+                        >
+                          <Checkbox
+                            checked={isChecked}
+                            onCheckedChange={() => toggleDate(day.date)}
+                            className="mt-0.5"
+                          />
+                          <div className="flex-1 min-w-0">
+                            <p className="font-medium capitalize">{formatDate(day.date)}</p>
+                            <div className="flex flex-wrap gap-x-4 gap-y-0.5 mt-0.5 text-xs text-muted-foreground">
+                              <span>Cobrado: <span className="text-foreground">{formatCurrency(day.totalCollected)}</span></span>
+                              <span>Servicio: <span className="text-foreground">{formatCurrency(day.totalServices)}</span></span>
+                              {day.totalLoans > 0 && (
+                                <span>Préstamos: <span className="text-foreground">{formatCurrency(day.totalLoans)}</span></span>
+                              )}
+                            </div>
+                          </div>
+                          <span className={cn('font-semibold shrink-0', day.net >= 0 ? 'text-success' : 'text-destructive')}>
+                            {formatCurrency(day.net)}
+                          </span>
+                        </label>
+                      )
+                    })}
+                  </div>
+
+                  {selectedDates.size > 0 && (
+                    <div className="flex justify-between text-sm font-semibold px-1">
+                      <span className="text-muted-foreground">{selectedDates.size} día{selectedDates.size > 1 ? 's' : ''} seleccionado{selectedDates.size > 1 ? 's' : ''}:</span>
+                      <span className="text-primary">
+                        {formatCurrency(
+                          dailySummaries
+                            .filter(d => selectedDates.has(d.date))
+                            .reduce((s, d) => s + d.net, 0)
+                        )}
                       </span>
                     </div>
-                    */}
-                    <Separator />
-                  </>
-                )}
-                <div className="flex justify-between font-semibold">
-                  <span>Saldo acumulado:</span>
-                  <span className={paymentClient.currentBalance >= 0 ? 'text-success' : 'text-destructive'}>
-                    {formatCurrency(paymentClient.currentBalance)}
-                  </span>
+                  )}
                 </div>
-                <div className="text-xs text-muted-foreground">
-                  {paymentClient.currentBalance > 0
-                    ? 'Saldo a favor del cliente (nosotros debemos pagar)'
-                    : paymentClient.currentBalance < 0
-                    ? 'Saldo a cargo del cliente (ellos deben pagar)'
-                    : 'Sin saldo pendiente'}
-                </div>
+              )}
+
+              <Separator />
+
+              {/* Current balance summary */}
+              <div className="flex justify-between items-center p-3 rounded-lg bg-muted/50 border border-border text-sm font-semibold">
+                <span>Saldo acumulado:</span>
+                <span className={paymentClient.currentBalance >= 0 ? 'text-success' : 'text-destructive'}>
+                  {formatCurrency(paymentClient.currentBalance)}
+                </span>
               </div>
 
               {/* Payment type */}
@@ -150,6 +237,9 @@ const PaymentDialog = ({ paymentDialog, setPaymentDialog, paymentClient, setPaym
                     onChange={(e) => setPaymentDetail({ ...paymentDetail, amount: e.target.value })}
                   />
                 </div>
+                {selectedDates.size > 0 && (
+                  <p className="text-xs text-muted-foreground">Monto calculado automáticamente según los días seleccionados. Puedes ajustarlo manualmente.</p>
+                )}
               </div>
 
               {/* Description */}
@@ -157,10 +247,10 @@ const PaymentDialog = ({ paymentDialog, setPaymentDialog, paymentClient, setPaym
                 <Label>Descripción</Label>
                 <Input
                     value={paymentDetail.desc}
-                        onChange={(e) => setPaymentDetail({ ...paymentDetail, desc: e.target.value })}
-                        placeholder="Ej: Se aumenta el dinero en caja"
-                      />
-                </div>
+                    onChange={(e) => setPaymentDetail({ ...paymentDetail, desc: e.target.value })}
+                    placeholder="Ej: Se aumenta el dinero en caja"
+                  />
+              </div>
 
               {/* Preview new balance */}
               {paymentDetail.amount !== '' && (() => {

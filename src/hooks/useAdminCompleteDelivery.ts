@@ -4,6 +4,7 @@ import api from '@/services/api';
 //import { useAuth } from '@/contexts/AuthContext';
 import { useAuth } from '@/contexts/AuthContextTest';
 import { getCurrentWeekDates } from '@/hooks/useDeliveries';
+import { getTodayDate } from '@/utils';
 import { toast } from 'sonner';
 
 type DeliveryFinalStatus = 'completed' | 'not_delivered_collected' | 'not_delivered_no_collection';
@@ -47,7 +48,7 @@ export function useAdminCompleteDelivery() {
         receipt_photo_url: data.receipt_photo_url || null,
         status: data.final_status,
         lost_trips: data.final_status === 'not_delivered_collected' ? Number(oldDelivery.lost_trips || 0 ) + 1 : oldDelivery.lost_trips,
-        delivery_date: new Date().toISOString().split('T')[0],
+        delivery_date: getTodayDate(),
       }
 
       const { data: newDeliveryResponse } = await api.put(`/deliveries/${data.deliveryId}`, payload)

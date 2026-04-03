@@ -4,6 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useClients } from '@/hooks/useClients';
 import { useCouriers } from '@/hooks/useCouriers';
 import { getCurrentWeekDates } from '@/hooks/useDeliveries';
+import { getTodayDate } from '@/utils';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -66,7 +67,7 @@ export function AdminNewDeliveryForm({ onSuccess }: AdminNewDeliveryFormProps) {
           created_by: user.id,
           week_start: weekStart,
           week_end: weekEnd,
-          delivery_date: new Date().toISOString().split('T')[0],
+          delivery_date: getTodayDate(),
           status: 'pending',
           service_value: data.service_value,
           total_to_collect: data.total_to_collect,

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { X, RefreshCw, Calendar, UserCheck } from 'lucide-react';
 import { Delivery, useReassignDelivery } from '@/hooks/useDeliveries';
+import { getTodayDate } from '@/utils';
 import { useCouriersTest } from '@/hooks/useCouriers';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -27,7 +28,7 @@ const ReassignDeliveryModal = ({ delivery, isOpen, onClose }: ReassignDeliveryMo
   useEffect(() => {
     if (delivery) {
       setCourierId(delivery.courier_id);
-      setDeliveryDate(new Date().toISOString().split('T')[0]);
+      setDeliveryDate(getTodayDate());
       setNotes(delivery.notes || '');
     }
   }, [delivery]);

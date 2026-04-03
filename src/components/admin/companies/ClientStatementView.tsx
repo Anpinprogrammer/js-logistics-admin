@@ -72,6 +72,7 @@ export function ClientStatementView({ clientId, open, onOpenChange }: ClientStat
                 </DialogDescription>
               </div>
               {statement && (
+                <div className='flex'>
                 <Button 
                   variant="outline" 
                   size="sm" 
@@ -81,6 +82,17 @@ export function ClientStatementView({ clientId, open, onOpenChange }: ClientStat
                   <Printer className="w-4 h-4" />
                   Imprimir
                 </Button>
+
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={() => setShowPDF(true)}
+                  className="flex items-center gap-2"
+                >
+                  <Printer className="w-4 h-4" />
+                  Liquidar
+                </Button>
+                </div>
               )}
             </div>
           </DialogHeader>

@@ -76,16 +76,15 @@ const CollaboratorsDialog = ({ openDialog, setOpenDialog, mode, collaborator } :
       return;
     }
 
-    if(roles.length) {
-      console.log('los roles del colaborador son; ', roles)
+    if(!roles.length) {
+      toast.error('No ha seleccionado ningun rol')
       return
     }
 
     setSaving(true);
     try {
       if (mode === 'create') {
-        const { data } = await api.post('/couriers', { email, password, full_name: fullName, phone })
-        console.log(data)
+        const { data } = await api.post('/collaborators', { email, password, full_name: fullName, phone, roles })
         
         toast.success(`Mensajero "${fullName}" creado exitosamente`);
       } else {

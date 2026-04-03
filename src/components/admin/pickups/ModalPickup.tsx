@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { X, Package, User, Phone, MapPin, FileText, Calendar, Truck } from 'lucide-react';
 import { useCreatePickup } from '@/hooks/usePickups';
+import { getTodayDate } from '@/utils';
 import { useCouriers } from '@/hooks/useCouriers';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -26,7 +27,7 @@ const ModalPickup = ({ isOpen, onClose }: ModalPickupProps) => {
   const [contactName, setContactName] = useState('');
   const [contactPhone, setContactPhone] = useState('');
   const [address, setAddress] = useState('');
-  const [pickupDate, setPickupDate] = useState(new Date().toISOString().split('T')[0]);
+  const [pickupDate, setPickupDate] = useState(getTodayDate());
   const [notes, setNotes] = useState('');
   const [alerta, setAlerta] = useState('');
 
@@ -36,7 +37,7 @@ const ModalPickup = ({ isOpen, onClose }: ModalPickupProps) => {
     setContactName('');
     setContactPhone('');
     setAddress('');
-    setPickupDate(new Date().toISOString().split('T')[0]);
+    setPickupDate(getTodayDate());
     setNotes('');
     setAlerta('');
   };

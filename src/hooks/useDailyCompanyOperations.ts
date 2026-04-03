@@ -28,9 +28,14 @@ export interface DailyTransactions {
     notes: string | null;
 }
 
-// Get today's date in YYYY-MM-DD format
+// Get today's date in YYYY-MM-DD format, always in Colombia time (America/Bogota, UTC-5, no DST)
 export function getTodayDate(): string {
-  return new Date().toISOString().split('T')[0];
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/Bogota',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(new Date());
 }
 
 export function useDailyCompany(date?: string) {

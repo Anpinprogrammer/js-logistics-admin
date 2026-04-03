@@ -6,6 +6,7 @@ import { useCouriers } from '@/hooks/useCouriers';
 import { useAuth } from '@/contexts/AuthContextTest';
 import { useQueryClient } from '@tanstack/react-query';
 import { getCurrentWeekDates } from '@/hooks/useDeliveries';
+import { getTodayDate } from '@/utils';
 import api from '@/services/api';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -92,7 +93,7 @@ const AssignToDeliveryModal = ({ pickup, isOpen, onClose }: AssignToDeliveryModa
         notes: notes || pickup.notes || null,
         week_start: weekStart,
         week_end: weekEnd,
-        delivery_date: new Date().toISOString().split('T')[0],
+        delivery_date: getTodayDate(),
         status: 'pending',
         service_value: serviceNum,
         total_to_collect: totalNum,

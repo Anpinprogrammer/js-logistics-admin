@@ -59,25 +59,38 @@ export interface AuditLogEntry {
   admin_name?: string;
 }
 
-// Get the current week dates (Saturday to Friday)
+// Get the current week dates (Saturday to Friday) in Colombia time (America/Bogota)
 export function getCurrentWeekDates() {
-  const today = new Date();
-  const dayOfWeek = today.getDay();
-  
-  // Calculate days to last Saturday (if today is Saturday, use today)
+  // Get today's date in Bogota to avoid UTC offset bugs from toISOString()
+  const todayStr = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/Bogota',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(new Date());
+
+  const [year, month, day] = todayStr.split('-').map(Number);
+  // Construct at local noon to avoid any edge-cases near midnight
+  const date = new Date(year, month - 1, day, 12, 0, 0);
+  const dayOfWeek = date.getDay();
+
+  // Week starts on Saturday (6)
   const daysToLastSaturday = dayOfWeek === 6 ? 0 : dayOfWeek + 1;
-  const weekStart = new Date(today);
-  weekStart.setDate(today.getDate() - daysToLastSaturday);
-  weekStart.setHours(0, 0, 0, 0);
-  
+  const weekStart = new Date(date);
+  weekStart.setDate(date.getDate() - daysToLastSaturday);
+
   // Friday is 6 days after Saturday
   const weekEnd = new Date(weekStart);
   weekEnd.setDate(weekStart.getDate() + 6);
-  
-  return {
-    weekStart: weekStart.toISOString().split('T')[0],
-    weekEnd: weekEnd.toISOString().split('T')[0],
+
+  const fmt = (d: Date) => {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const dd = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${dd}`;
   };
+
+  return { weekStart: fmt(weekStart), weekEnd: fmt(weekEnd) };
 }
 
 export function useDeliveries(courierId?: string) {
@@ -175,7 +188,7 @@ export function useCreateDelivery() {
           receipt_photo_url: data.receipt_photo_url || null,
           week_start: weekStart,
           week_end: weekEnd,
-          delivery_date: new Date().toISOString().split('T')[0],
+          delivery_date: new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Bogota', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date()),
           status: 'completed', // Couriers create completed deliveries
         })
         .select()

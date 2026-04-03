@@ -217,8 +217,8 @@ export function SettingsPage() {
       await api.delete('/deliveries');
       await api.delete('/daily-settlements');
       await api.post('/daily-settlements/company/reset');
-      await supabase.from('weekly_settlements').delete().neq('id', dummy);
-      await supabase.from('salary_advances').delete().neq('id', dummy);
+      //await supabase.from('weekly_settlements').delete().neq('id', dummy);
+      //await supabase.from('salary_advances').delete().neq('id', dummy);
       await api.put('/clients', { balance: 0, service_lost_trips: 0 });
       toast({ title: 'Sistema reiniciado correctamente', description: 'Todas las entregas y saldos han sido eliminados.' });
     } catch (err: any) {

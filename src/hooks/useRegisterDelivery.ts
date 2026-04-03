@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 //import { useAuth } from '@/contexts/AuthContext';
 import { useAuth } from '@/contexts/AuthContextTest';
 import { getCurrentWeekDates } from '@/hooks/useDeliveries';
+import { getTodayDate } from '@/utils';
 import { toast } from 'sonner';
 
 type DeliveryFinalStatus = 'completed' | 'not_delivered_collected' | 'not_delivered_no_collection';
@@ -63,7 +64,7 @@ export function useRegisterDelivery() {
           notes: data.notes || null,
           receipt_photo_url: data.receipt_photo_url || null,
           status: data.final_status as any,
-          delivery_date: new Date().toISOString().split('T')[0],
+          delivery_date: getTodayDate(),
         })
         .eq('id', data.deliveryId)
         .select()

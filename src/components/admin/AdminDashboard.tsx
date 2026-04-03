@@ -136,7 +136,7 @@ export function AdminDashboard() {
   // ── Deliveries this week (completed + ida perdida) ──
   const weeklyDeliveries =
     deliveries?.filter((d) => {
-      const ws = new Date(d.week_start).toISOString().split('T')[0];
+      const ws = d.week_start;
       return (
         (d.status === 'completed' || d.status === 'not_delivered_collected') &&
         ws === weekStart
@@ -146,7 +146,7 @@ export function AdminDashboard() {
   // ── All deliveries this week (any status) ──
   const allWeekDeliveries =
     deliveries?.filter((d) => {
-      const ws = new Date(d.week_start).toISOString().split('T')[0];
+      const ws = d.week_start;
       return ws === weekStart;
     }) ?? [];
 

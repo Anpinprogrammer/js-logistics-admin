@@ -7,6 +7,7 @@ import api from '@/services/api';
 //import { useAuth } from '@/contexts/AuthContext';
 import { useAuth } from '@/contexts/AuthContextTest';
 import { getCurrentWeekDates } from '@/hooks/useDeliveries';
+import { getTodayDate } from '@/utils';
 import { reopenDailySettlement } from '@/hooks/useDailyOperations';
 import { X } from 'lucide-react';
 import { DeliveryInfo } from './DeliveryInfo';
@@ -94,7 +95,7 @@ const ModalDomis = ({ isOpen, onClose }: ModalDomisProps) => {
         notes: clientFormData.notes || null,
         week_start: weekStart,
         week_end: weekEnd,
-        delivery_date: new Date().toISOString().split('T')[0],
+        delivery_date: getTodayDate(),
         status: 'pending' as const,
         service_value: serviceNum,
         total_to_collect: totalNum,
@@ -143,7 +144,7 @@ const ModalDomis = ({ isOpen, onClose }: ModalDomisProps) => {
           notes: deliveryFormData.notes || null,
           week_start: weekStart,
           week_end: weekEnd,
-          delivery_date: new Date().toISOString().split('T')[0],
+          delivery_date: getTodayDate(),
           status: 'pending' as const,
           service_value: serviceNum,
           total_to_collect: totalNum,

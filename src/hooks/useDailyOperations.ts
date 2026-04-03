@@ -91,9 +91,14 @@ export async function reopenDailySettlement(courierId: string, date?: string) {
   }
 }
 
-// Get today's date in YYYY-MM-DD format
+// Get today's date in YYYY-MM-DD format, always in Colombia time (America/Bogota, UTC-5, no DST)
 export function getTodayDate(): string {
-  return new Date().toISOString().split('T')[0];
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/Bogota',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(new Date());
 }
 
 // Hook: System Settings
@@ -403,17 +408,22 @@ export function useSettleDaily() {
       let advanceCreated = 0;
       if (difference < 0) {
         const shortfall = Math.abs(difference);
-        // Get current week dates for the advance
-        const now = new Date();
-        const dayOfWeek = now.getDay();
-        // Week: Saturday to Friday
-        const satOffset = dayOfWeek === 6 ? 0 : -(dayOfWeek + 1);
-        const weekStart = new Date(now);
-        weekStart.setDate(now.getDate() + satOffset);
-        const weekEnd = new Date(weekStart);
-        weekEnd.setDate(weekStart.getDate() + 6);
-        
-        const formatDate = (d: Date) => d.toISOString().split('T')[0];
+        // Get current week dates for the advance using Bogota-aware calculation
+        const todayStr = getTodayDate();
+        const [wy, wm, wd] = todayStr.split('-').map(Number);
+        const dateObj = new Date(wy, wm - 1, wd, 12, 0, 0);
+        const dayOfWeek = dateObj.getDay();
+        const daysToLastSaturday = dayOfWeek === 6 ? 0 : dayOfWeek + 1;
+        const weekStartDate = new Date(dateObj);
+        weekStartDate.setDate(dateObj.getDate() - daysToLastSaturday);
+        const weekEndDate = new Date(weekStartDate);
+        weekEndDate.setDate(weekStartDate.getDate() + 6);
+        const fmtWeek = (dt: Date) => {
+          const y = dt.getFullYear();
+          const m = String(dt.getMonth() + 1).padStart(2, '0');
+          const d = String(dt.getDate()).padStart(2, '0');
+          return `${y}-${m}-${d}`;
+        };
 
         const { error: advanceError } = await supabase
           .from('salary_advances')
@@ -422,8 +432,8 @@ export function useSettleDaily() {
             amount: shortfall,
             reason: `Faltante cuadre diario ${targetDate}`,
             created_by: user.id,
-            week_start: formatDate(weekStart),
-            week_end: formatDate(weekEnd),
+            week_start: fmtWeek(weekStartDate),
+            week_end: fmtWeek(weekEndDate),
           });
 
         if (advanceError) {
