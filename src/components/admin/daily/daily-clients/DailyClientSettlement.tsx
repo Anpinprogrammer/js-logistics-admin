@@ -427,11 +427,12 @@ export function DailyClientSettlement() {
         </div>
       </div>
 
-      {/* ─── Mock data notice ─── */}
+      {/* ─── Mock data notice ─── 
       <div className="flex items-center gap-2 px-3 py-2 rounded-lg border border-yellow-400/40 bg-yellow-400/10 text-yellow-700 dark:text-yellow-300 text-xs">
         <FlaskConical className="w-4 h-4 shrink-0" />
         Mostrando datos de ejemplo — se conectará a datos reales cuando el backend esté listo.
       </div>
+      */}
 
       {/* ─── Client list table ─── */}
       <Card>
@@ -457,10 +458,27 @@ export function DailyClientSettlement() {
               </TableHeader>
               <TableBody>
                 {clientsWithDeliveries.map((client) => {
-                  console.log(client)
                    const totalDeliveries = deliveries?.filter( (d) =>  d.client_id === client.id ) || []
-                   console.log(totalDeliveries)
-                  //const totalDeliveries = client.dailySummaries.reduce((s, d) => s + d.deliveries.length, 0);
+                   const grouped = totalDeliveries?.reduce((acc, d) => {
+                        const date = d.delivery_date;
+
+                        if(!acc[date]) {
+                          acc[date] = 0
+                        }
+
+                        acc[date]++
+
+                        return acc
+
+                      }, {})
+
+                      let result = []
+                      if(grouped) {
+                        result = Object.entries(grouped).map(([date, total]) => ({
+                        date,
+                        total
+                      }))
+                      }
                   return (
                     <TableRow key={client.id}>
                       <TableCell>
@@ -472,7 +490,7 @@ export function DailyClientSettlement() {
                         </div>
                       </TableCell>
                       <TableCell className="text-center">
-                        <Badge variant="outline">1</Badge>
+                        <Badge variant="outline">{result?.length} </Badge>
                       </TableCell>
                       <TableCell className="text-center">
                         <Badge variant="secondary">{totalDeliveries?.length}</Badge>
