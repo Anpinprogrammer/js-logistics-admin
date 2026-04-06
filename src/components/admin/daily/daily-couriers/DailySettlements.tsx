@@ -40,8 +40,7 @@ import DetailsCourier from './DetailsCourier';
 import PartialSettlementsDialog from '../daily-accounts/PartialSettlementsDialog';
 import { cn } from '@/lib/utils';
 import { Textarea } from '@/components/ui/textarea';
-import { SUB_ACCOUNTS } from '@/utils';
-import { formatCurrency } from '@/utils';
+import { formatCurrency, SUB_ACCOUNTS  } from '@/utils';
 
 export function DailySettlements() {
   const today = getTodayDate();

@@ -1,6 +1,8 @@
 import { useState } from 'react';
+import { type Client } from '@/hooks/useClientsTest';
 import { useClientStatement } from '@/hooks/useClientStatement';
 import { ClientReportPDF } from './ClientReportPDF';
+import PaymentDialog from '../daily/daily-clients/PaymentDialog';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -20,11 +22,13 @@ import {
   AlertTriangle,
   CheckCircle2,
   XCircle,
-  Printer
+  Printer,
+  BadgeCheck
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface ClientStatementViewProps {
+  client: Client;
   clientId: string;
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -44,9 +48,12 @@ const paymentLabels: Record<string, string> = {
   transfer_to_client: 'Trans. Directa',
 };
 
-export function ClientStatementView({ clientId, open, onOpenChange }: ClientStatementViewProps) {
+export function ClientStatementView({ client, clientId, open, onOpenChange }: ClientStatementViewProps) {
+  console.log(client)
   const { data: statement, isLoading } = useClientStatement(clientId);
   const [showPDF, setShowPDF] = useState(false);
+  const [showPaymentDialog, setShowPaymentDialog] = useState(false);
+  const [paymentClient, setPaymentClient] = useState<any>(null);
   
   const formatCurrency = (value: number) => 
     new Intl.NumberFormat('es-CO', { 
@@ -72,7 +79,7 @@ export function ClientStatementView({ clientId, open, onOpenChange }: ClientStat
                 </DialogDescription>
               </div>
               {statement && (
-                <div className='flex'>
+                <div className='flex gap-1'>
                 <Button 
                   variant="outline" 
                   size="sm" 
@@ -86,10 +93,21 @@ export function ClientStatementView({ clientId, open, onOpenChange }: ClientStat
                 <Button 
                   variant="outline" 
                   size="sm" 
-                  onClick={() => setShowPDF(true)}
+                  onClick={() => {
+                    setShowPaymentDialog(true)
+                    setPaymentClient({
+                      client: { id: client.id, name: client.name },
+                      currentBalance: client.balance,
+                      totalCollected: /**client.dailySummaries[0]?.totalCollected ??*/ 0,
+                      totalLoans: /**client.dailySummaries[0]?.totalLoans ??*/ 0,
+                      totalServices: /**client.dailySummaries[0]?.totalServices ??*/ 0,
+                      hasActivityToday: true/**client.dailySummaries[0]?.date === today*/,
+                      //dailySummaries: client.dailySummaries,
+                    });
+                  }}
                   className="flex items-center gap-2"
                 >
-                  <Printer className="w-4 h-4" />
+                  <BadgeCheck className="w-4 h-4" />
                   Liquidar
                 </Button>
                 </div>
@@ -270,6 +288,14 @@ export function ClientStatementView({ clientId, open, onOpenChange }: ClientStat
         clientId={clientId}
         open={showPDF}
         onOpenChange={setShowPDF}
+      />
+
+      {/**Payment Dialog */}
+      <PaymentDialog 
+        paymentDialog={showPaymentDialog}
+        setPaymentDialog={setShowPaymentDialog}
+        paymentClient={paymentClient}
+        setPaymentClient={setPaymentClient}
       />
     </>
   );

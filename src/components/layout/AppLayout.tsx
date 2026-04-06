@@ -85,7 +85,11 @@ export function AppLayout({ children, currentPage, onNavigate }: AppLayoutProps)
       icon: Package,
       children: [
         { id: 'deliveries_pickups/deliveries', label: 'Entregas', icon: ArrowRightCircle },
+        /**
+         * 
+        
         { id: 'deliveries_pickups/pickups', label: 'Recogidas', icon: ArrowDownCircle }
+          */
       ]
     },
     {
@@ -94,10 +98,13 @@ export function AppLayout({ children, currentPage, onNavigate }: AppLayoutProps)
       icon: ClipboardList,
       children: [
         { id: 'daily/mensajeros', label: 'Cuadre Mensajeros', icon: Truck },
-        { id:'daily/clientes', label: 'Cuadre Clientes', icon: Users },
+        //{ id:'daily/clientes', label: 'Cuadre Clientes', icon: Users },
         { id: 'daily/caja', label: 'Cuadre Caja', icon: Wallet },
       ]
     },
+    /**
+     * 
+     
     {
       id: 'weekly',
       label: 'Cuadre Semanal',
@@ -106,7 +113,7 @@ export function AppLayout({ children, currentPage, onNavigate }: AppLayoutProps)
         { id: 'weekly/cash', label: 'Caja Consolidada', icon: Wallet },
         { id: 'weekly/payroll', label: 'Nómina Semanal', icon: Calendar },
       ]
-    },
+    },*/
     //{ id: 'cash', label: 'Caja Consolidada', icon: Wallet },
     //{ id: 'payroll', label: 'Nómina Semanal', icon: Calendar },
     //{ id: 'services', label: 'Servicios', icon: DollarSign },
@@ -116,7 +123,7 @@ export function AppLayout({ children, currentPage, onNavigate }: AppLayoutProps)
       icon: Building2,
       children: [
         { id: 'personal/admins', label: 'Administradores', icon: User },
-        { id: 'personal/colaboradores', label: 'Colaboradores', icon: Truck },
+        //{ id: 'personal/colaboradores', label: 'Colaboradores', icon: Truck },
         { id: 'personal/mensajeros', label: 'Mensajeros', icon: Truck },
       ],
     },
@@ -125,9 +132,9 @@ export function AppLayout({ children, currentPage, onNavigate }: AppLayoutProps)
       label: 'Sistema',
       icon: Settings2,
       children: [
-        { id: 'system/audit', label: 'Auditoría', icon: History },
+        //{ id: 'system/audit', label: 'Auditoría', icon: History },
         { id: 'system/settings', label: 'Configuración', icon: Settings },
-        { id: 'system/roles', label: 'Roles', icon: UserRoundCog }
+        //{ id: 'system/roles', label: 'Roles', icon: UserRoundCog }
       ]
      },
   ];

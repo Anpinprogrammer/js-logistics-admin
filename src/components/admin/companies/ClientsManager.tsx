@@ -26,6 +26,19 @@ export function ClientsManager() {
   const [editing, setEditing] = useState(false)
   const [editingClient, setEditingClient] = useState<Client | null>(null);
   const [statementClientId, setStatementClientId] = useState<string | null>(null);
+  const [client, setClient] = useState<Client>({
+     id: '',
+    name: '',
+    phone: '',
+    address: '',
+    notes: '',
+    balance: 0,
+    company: '',
+    identification_number: '',
+    email: '',
+    created_at: '',
+    updated_at: ''
+  })
   const [deleteTarget, setDeleteTarget] = useState<Client | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [formData, setFormData] = useState({
@@ -43,7 +56,6 @@ export function ClientsManager() {
   const [favorPage, setFavorPage] = useState(0);
 
   const { data: clients, isLoading } = useClients(allPage, 9);
-  console.log(clients?.pagination)
 
 
 
@@ -222,7 +234,10 @@ export function ClientsManager() {
                     client={client} 
                     onEdit={openEditDialog}
                     onDelete={setDeleteTarget}
-                    onViewStatement={() => setStatementClientId(client.id)}
+                    onViewStatement={() => {
+                      setStatementClientId(client.id)
+                      setClient(client)
+                    }}
                     formatCurrency={formatCurrency}
                   />
                 ))}
@@ -274,7 +289,10 @@ export function ClientsManager() {
                     client={client} 
                     onEdit={openEditDialog}
                     onDelete={setDeleteTarget}
-                    onViewStatement={() => setStatementClientId(client.id)}
+                    onViewStatement={() => {
+                      setStatementClientId(client.id)
+                      setClient(client)
+                    }}
                     formatCurrency={formatCurrency}
 
                   />
@@ -327,7 +345,10 @@ export function ClientsManager() {
                     client={client} 
                     onEdit={openEditDialog}
                     onDelete={setDeleteTarget}
-                    onViewStatement={() => setStatementClientId(client.id)}
+                    onViewStatement={() => {
+                      setStatementClientId(client.id)
+                      setClient(client)
+                    }}
                     formatCurrency={formatCurrency}
 
                   />
@@ -352,6 +373,7 @@ export function ClientsManager() {
       </Tabs>
       
       <ClientStatementView
+        client={client}
         clientId={statementClientId || ''}
         open={!!statementClientId}
         onOpenChange={(open) => !open && setStatementClientId(null)}

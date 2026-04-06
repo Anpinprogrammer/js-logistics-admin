@@ -531,12 +531,12 @@ export function DailyClientSettlement() {
                             size="sm"
                             variant="default"
                             onClick={() => {
-                              /**
-                               * 
-                               
+                               /**
+                                * 
+                                
                               setPaymentClient({
                                 client: { id: client.id, name: client.name },
-                                currentBalance: client.currentBalance,
+                                currentBalance: client.balance,
                                 totalCollected: client.dailySummaries[0]?.totalCollected ?? 0,
                                 totalLoans: client.dailySummaries[0]?.totalLoans ?? 0,
                                 totalServices: client.dailySummaries[0]?.totalServices ?? 0,
@@ -545,6 +545,7 @@ export function DailyClientSettlement() {
                               });
                               setPaymentDialog(true);
                               */
+                              
                             }}
                           >
                             <DollarSign className="w-4 h-4 mr-1" />

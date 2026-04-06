@@ -62,8 +62,6 @@ function AppContent() {
       switch (page) {
         case 'dashboard':
           return <AdminDashboard />;
-        case 'new-delivery':
-          return <AdminNewDeliveryForm />;
         case 'deliveries_pickups/deliveries':
           return (
             <div className="space-y-4 animate-fade-in">

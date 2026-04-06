@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
 import { Checkbox } from '@/components/ui/checkbox';
-import { formatCurrency } from '@/utils';
+import { formatCurrency, SUB_ACCOUNTS } from '@/utils';
 import {
   DollarSign,
   Loader2,
@@ -29,7 +29,7 @@ interface PaymentDialogProps {
     paymentDialog: boolean;
     setPaymentDialog: React.Dispatch<React.SetStateAction<boolean>>;
     paymentClient: any;
-    setPaymentClient: React.Dispatch<React.SetStateAction<any>>;
+    setPaymentClient?: React.Dispatch<React.SetStateAction<any>>;
 }
 
 function formatDate(dateStr: string) {
@@ -47,7 +47,8 @@ const PaymentDialog = ({ paymentDialog, setPaymentDialog, paymentClient, setPaym
     const updateBalance = useUpdateClientBalance()
     const [selectedDates, setSelectedDates] = useState<Set<string>>(new Set())
     const [paymentDetail, setPaymentDetail] = useState({
-        paymentType: 'to-client',
+        paymentType: paymentClient?.currentBalance > 0 ? 'to_client' : 'from_client',
+        account: 'cash',
         amount: '',
         desc: ''
     })
@@ -58,7 +59,7 @@ const PaymentDialog = ({ paymentDialog, setPaymentDialog, paymentClient, setPaym
     useEffect(() => {
       if (paymentDialog) {
         setSelectedDates(new Set())
-        setPaymentDetail({ paymentType: 'to-client', amount: '', desc: '' })
+        setPaymentDetail({ paymentType: paymentClient?.currentBalance > 0 ? 'to_client' : 'from_client', account: 'cash', amount: '', desc: '' })
       }
     }, [paymentDialog])
 
@@ -192,7 +193,7 @@ const PaymentDialog = ({ paymentDialog, setPaymentDialog, paymentClient, setPaym
               <div className="flex justify-between items-center p-3 rounded-lg bg-muted/50 border border-border text-sm font-semibold">
                 <span>Saldo acumulado:</span>
                 <span className={paymentClient.currentBalance >= 0 ? 'text-success' : 'text-destructive'}>
-                  {formatCurrency(paymentClient.currentBalance)}
+                  {formatCurrency(Math.abs(paymentClient.currentBalance))}
                 </span>
               </div>
 
@@ -221,6 +222,28 @@ const PaymentDialog = ({ paymentDialog, setPaymentDialog, paymentClient, setPaym
                     </SelectItem>
                   </SelectContent>
                 </Select>
+              </div>
+
+              {/**Account where money comes in and out */}
+              <div className='space-y-2'>
+                <Label>Dinero { paymentDetail.paymentType === 'from_client' ? 'ingresa a: ' : 'sale de:' } </Label>
+                <div className='flex gap-1'>
+                  {SUB_ACCOUNTS.map((account) => (
+                    <button
+                      key={account.id}
+                      type="button"
+                      onClick={() => setPaymentDetail({ ...paymentDetail, account: account.id })}
+                      className={cn(
+                        "px-3 py-1 rounded-lg border text-xs font-medium transition-all duration-200",
+                        paymentDetail.account === account.id
+                        ? cn(account.colorClass, "border-transparent")
+                        : "border-border text-muted-foreground hover:border-primary/40"
+                      )}
+                    >
+                      {account.label}
+                    </button>
+                  ))}
+                </div>
               </div>
 
               {/* Amount */}
@@ -257,8 +280,8 @@ const PaymentDialog = ({ paymentDialog, setPaymentDialog, paymentClient, setPaym
                 const amount = parseFloat(paymentDetail.amount) || 0;
                 const newBalance =
                   paymentDetail.paymentType === 'from_client'
-                    ? paymentClient.currentBalance - amount
-                    : paymentClient.currentBalance + amount;
+                    ? Number(paymentClient.currentBalance) + amount
+                    : Number(paymentClient.currentBalance) - amount;
                 return (
                   <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50 border border-border text-sm">
                     <span className="text-muted-foreground">Nuevo saldo:</span>
