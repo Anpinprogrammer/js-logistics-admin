@@ -1,6 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Settings, RotateCcw, Loader2, User, Lock, Shield, Eye, EyeOff, Check, Camera, X } from 'lucide-react';
-import { Card, CardDescription, CardHeader, CardTitle, CardContent, CardFooter } from '@/components/ui/card';
+import { Settings, RotateCcw, Loader2, User, Lock, Shield, Eye, EyeOff, Check, Camera, X, AlertTriangle, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -34,9 +33,20 @@ const AVATAR_COLORS = [
   { id: 'bg-teal-500',    hex: '#14b8a6' },
 ];
 
+type Section = 'profile' | 'account' | 'password' | 'danger';
+
+const NAV_ITEMS: { id: Section; label: string; icon: React.ElementType; description: string }[] = [
+  { id: 'profile',  label: 'Perfil',               icon: User,          description: 'Foto y datos personales' },
+  { id: 'account',  label: 'Cuenta',                icon: Shield,        description: 'Email, rol y membresía' },
+  { id: 'password', label: 'Contraseña',            icon: Lock,          description: 'Actualizar credenciales' },
+  { id: 'danger',   label: 'Zona de peligro',       icon: AlertTriangle, description: 'Acciones irreversibles' },
+];
+
 export function SettingsPage() {
   const { user } = useAuth();
   const { toast } = useToast();
+
+  const [activeSection, setActiveSection] = useState<Section>('profile');
 
   // ─── Danger zone ──────────────────────────────────────────────────────────
   const [resetting, setResetting] = useState(false);
@@ -57,9 +67,8 @@ export function SettingsPage() {
   const [profilePhoto, setProfilePhoto] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
-  const [photoUrl, setPhotoUrl] = useState<string | null>(null)
+  const [photoUrl, setPhotoUrl] = useState<string | null>(null);
 
-  // Load photo once user id is known
   useEffect(() => {
     if (user?.id) {
       setProfilePhoto(localStorage.getItem(`avatarPhoto_${user.id}`) ?? null);
@@ -115,39 +124,19 @@ export function SettingsPage() {
       const { error: uploadError } = await supabase.storage
         .from('profile-pictures')
         .upload(filePath, file);
-      
-        if(uploadError) throw uploadError;
+
+      if (uploadError) throw uploadError;
 
       const { data: { publicUrl } } = supabase.storage
         .from('profile-pictures')
         .getPublicUrl(filePath);
-    
-      setPhotoUrl(publicUrl)
 
-
+      setPhotoUrl(publicUrl);
     } catch (error) {
-      console.log(error)
+      console.log(error);
     } finally {
-      setUploading(false)
+      setUploading(false);
     }
-
-    /**
-     * 
-     
-    if (file.size > 2 * 1024 * 1024) {
-      toast({ title: 'Error', description: 'La imagen no puede superar 2 MB', variant: 'destructive' });
-      return;
-    }
-    const reader = new FileReader();
-    reader.onload = (ev) => {
-      const base64 = ev.target?.result as string;
-      setProfilePhoto(base64);
-      localStorage.setItem(`avatarPhoto_${user!.id}`, base64);
-      toast({ title: 'Foto actualizada', description: 'Tu foto de perfil ha sido guardada.' });
-    };
-    reader.readAsDataURL(file);
-    e.target.value = '';
-    */
   };
 
   const handlePhotoRemove = () => {
@@ -213,12 +202,9 @@ export function SettingsPage() {
   const handleReset = async () => {
     setResetting(true);
     try {
-      const dummy = '00000000-0000-0000-0000-000000000000';
       await api.delete('/deliveries');
       await api.delete('/daily-settlements');
       await api.post('/daily-settlements/company/reset');
-      //await supabase.from('weekly_settlements').delete().neq('id', dummy);
-      //await supabase.from('salary_advances').delete().neq('id', dummy);
       await api.put('/clients', { balance: 0, service_lost_trips: 0 });
       toast({ title: 'Sistema reiniciado correctamente', description: 'Todas las entregas y saldos han sido eliminados.' });
     } catch (err: any) {
@@ -234,79 +220,129 @@ export function SettingsPage() {
     passwordForm.confirmPassword.length > 0 &&
     passwordForm.newPassword !== passwordForm.confirmPassword;
 
+  const activeNav = NAV_ITEMS.find(n => n.id === activeSection)!;
+
   // ─── Render ───────────────────────────────────────────────────────────────
   return (
-    <div className="space-y-6 animate-fade-in w-full">
-      <h1 className="text-2xl font-bold flex items-center gap-2">
-        <Settings className="w-6 h-6 text-primary" />
-        Configuración
-      </h1>
+    <div className="animate-fade-in w-full min-h-full">
+      {/* Page header */}
+      <div className="mb-8">
+        <div className="flex items-center gap-3 mb-1">
+          <div className="p-2 rounded-lg bg-primary/10">
+            <Settings className="w-5 h-5 text-primary" />
+          </div>
+          <h1 className="text-2xl font-bold tracking-tight">Configuración</h1>
+        </div>
+        <p className="text-sm text-muted-foreground ml-12">
+          Administra tu cuenta y preferencias del sistema
+        </p>
+      </div>
 
-      {/* ── Cards grid 2x2 ── */}
-      <div className='grid grid-cols-2 gap-4'>
+      <div className="flex gap-6 items-start">
+        {/* ── Sidebar nav ── */}
+        <aside className="w-56 flex-shrink-0 sticky top-0">
+          <nav className="space-y-1">
+            {NAV_ITEMS.map(({ id, label, icon: Icon, description }) => {
+              const isActive = activeSection === id;
+              const isDanger = id === 'danger';
+              return (
+                <button
+                  key={id}
+                  type="button"
+                  onClick={() => setActiveSection(id)}
+                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left transition-all group ${
+                    isActive
+                      ? isDanger
+                        ? 'bg-destructive/10 text-destructive'
+                        : 'bg-primary/10 text-primary'
+                      : 'hover:bg-muted text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  <Icon className={`w-4 h-4 flex-shrink-0 ${isActive && isDanger ? 'text-destructive' : isActive ? 'text-primary' : ''}`} />
+                  <div className="flex-1 min-w-0">
+                    <p className={`text-sm font-medium ${isActive ? '' : ''}`}>{label}</p>
+                    <p className="text-xs opacity-60 truncate">{description}</p>
+                  </div>
+                  {isActive && <ChevronRight className="w-3.5 h-3.5 flex-shrink-0 opacity-60" />}
+                </button>
+              );
+            })}
+          </nav>
+        </aside>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-lg">
-            <User className="w-5 h-5" />
-            Perfil
-          </CardTitle>
-          <CardDescription>Actualiza tu información personal.</CardDescription>
-        </CardHeader>
-
-        <CardContent className="space-y-6">
-          {/* Avatar + photo controls */}
-          <div className="flex items-start gap-5">
-            {/* Avatar with camera overlay */}
-            <div className="relative flex-shrink-0">
-              {profilePhoto ? (
-                <img
-                  src={profilePhoto}
-                  alt="Foto de perfil"
-                  className="w-20 h-20 rounded-full object-cover"
-                />
-              ) : (
-                <div className={`w-20 h-20 rounded-full ${avatarColor} flex items-center justify-center text-white text-2xl font-bold select-none`}>
-                  {initials}
-                </div>
-              )}
-              <button
-                type="button"
-                onClick={() => fileInputRef.current?.click()}
-                className="absolute bottom-0 right-0 w-7 h-7 rounded-full bg-background border-2 border-border flex items-center justify-center hover:bg-muted transition-colors"
-                title="Cambiar foto"
-              >
-                <Camera className="w-3.5 h-3.5" />
-              </button>
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/png, image/jpeg, image/gif, image/webp"
-                className="hidden"
-                onChange={handlePhotoSelect}
-              />
+        {/* ── Content panel ── */}
+        <div className="flex-1 min-w-0">
+          {/* Section header */}
+          <div className="flex items-center gap-3 mb-6 pb-4 border-b">
+            <div className={`p-2 rounded-lg ${activeSection === 'danger' ? 'bg-destructive/10' : 'bg-muted'}`}>
+              <activeNav.icon className={`w-4 h-4 ${activeSection === 'danger' ? 'text-destructive' : 'text-foreground'}`} />
             </div>
+            <div>
+              <h2 className="font-semibold text-base">{activeNav.label}</h2>
+              <p className="text-xs text-muted-foreground">{activeNav.description}</p>
+            </div>
+          </div>
 
-            {/* Controls */}
-            <div className="space-y-3 pt-1">
-              <div className="flex items-center gap-2">
-                <Button type="button" variant="outline" size="sm" onClick={() => fileInputRef.current?.click()}>
-                  <Camera className="w-3.5 h-3.5 mr-1.5" />
-                  {profilePhoto ? 'Cambiar foto' : 'Subir foto'}
-                </Button>
-                {profilePhoto && (
-                  <Button type="button" variant="ghost" size="sm" onClick={handlePhotoRemove} className="text-muted-foreground hover:text-destructive">
-                    <X className="w-3.5 h-3.5 mr-1.5" />
-                    Quitar foto
-                  </Button>
-                )}
+          {/* ── Profile section ── */}
+          {activeSection === 'profile' && (
+            <div className="space-y-6">
+              {/* Avatar row */}
+              <div className="flex items-center gap-6 p-5 rounded-xl bg-muted/40 border">
+                <div className="relative flex-shrink-0">
+                  {profilePhoto ? (
+                    <img
+                      src={profilePhoto}
+                      alt="Foto de perfil"
+                      className="w-20 h-20 rounded-full object-cover ring-2 ring-border"
+                    />
+                  ) : (
+                    <div className={`w-20 h-20 rounded-full ${avatarColor} flex items-center justify-center text-white text-2xl font-bold select-none ring-2 ring-border`}>
+                      {initials}
+                    </div>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="absolute bottom-0 right-0 w-7 h-7 rounded-full bg-background border-2 border-border flex items-center justify-center hover:bg-muted transition-colors shadow-sm"
+                    title="Cambiar foto"
+                  >
+                    <Camera className="w-3.5 h-3.5" />
+                  </button>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/png, image/jpeg, image/gif, image/webp"
+                    className="hidden"
+                    onChange={handlePhotoSelect}
+                  />
+                </div>
+
+                <div className="space-y-3">
+                  <div>
+                    <p className="text-sm font-semibold">{profileForm.full_name || user?.full_name || '—'}</p>
+                    <p className="text-xs text-muted-foreground">{user?.email}</p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Button type="button" variant="outline" size="sm" onClick={() => fileInputRef.current?.click()} disabled={uploading}>
+                      {uploading ? <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" /> : <Camera className="w-3.5 h-3.5 mr-1.5" />}
+                      {profilePhoto ? 'Cambiar foto' : 'Subir foto'}
+                    </Button>
+                    {profilePhoto && (
+                      <Button type="button" variant="ghost" size="sm" onClick={handlePhotoRemove} className="text-muted-foreground hover:text-destructive">
+                        <X className="w-3.5 h-3.5 mr-1.5" />
+                        Quitar
+                      </Button>
+                    )}
+                  </div>
+                  <p className="text-xs text-muted-foreground">JPG, PNG, GIF o WebP · Máx. 2 MB</p>
+                </div>
               </div>
-              <p className="text-xs text-muted-foreground">JPG, PNG, GIF o WebP · Máx. 2 MB</p>
 
-              {/* Color picker — shown always so user can pre-pick before removing photo */}
-              <div className="space-y-1.5">
-                <p className="text-xs font-medium text-muted-foreground">Color del avatar</p>
-                <div className="flex gap-2 flex-wrap">
+              {/* Color picker */}
+              <div className="space-y-2">
+                <Label className="text-sm">Color del avatar</Label>
+                <p className="text-xs text-muted-foreground">Se muestra cuando no hay foto de perfil</p>
+                <div className="flex gap-2 flex-wrap pt-1">
                   {AVATAR_COLORS.map(({ id, hex }) => (
                     <button
                       key={id}
@@ -314,192 +350,192 @@ export function SettingsPage() {
                       title={id}
                       onClick={() => handleAvatarColor(id)}
                       style={{ background: hex }}
-                      className={`w-6 h-6 rounded-full flex items-center justify-center transition-transform hover:scale-110 focus:outline-none ${
-                        avatarColor === id ? 'ring-2 ring-offset-2 ring-foreground/40' : ''
+                      className={`w-7 h-7 rounded-full flex items-center justify-center transition-all hover:scale-110 focus:outline-none shadow-sm ${
+                        avatarColor === id ? 'ring-2 ring-offset-2 ring-foreground/40 scale-110' : ''
                       }`}
                     >
-                      {avatarColor === id && <Check className="w-3 h-3 text-white" />}
+                      {avatarColor === id && <Check className="w-3.5 h-3.5 text-white drop-shadow" />}
                     </button>
                   ))}
                 </div>
               </div>
-            </div>
-          </div>
 
-          <div className="border-t" />
+              <div className="border-t" />
 
-          {/* Name + phone form */}
-          {profileFetching ? (
-            <div className="flex items-center justify-center py-6">
-              <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
-            </div>
-          ) : (
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-2">
-                <Label htmlFor="full_name">Nombre completo</Label>
-                <Input
-                  id="full_name"
-                  value={profileForm.full_name}
-                  onChange={e => setProfileForm(p => ({ ...p, full_name: e.target.value }))}
-                  placeholder="Tu nombre completo"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="phone">Teléfono</Label>
-                <Input
-                  id="phone"
-                  value={profileForm.phone}
-                  onChange={e => setProfileForm(p => ({ ...p, phone: e.target.value }))}
-                  placeholder="Número de teléfono"
-                />
+              {/* Name + phone */}
+              {profileFetching ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+                </div>
+              ) : (
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="full_name">Nombre completo</Label>
+                    <Input
+                      id="full_name"
+                      value={profileForm.full_name}
+                      onChange={e => setProfileForm(p => ({ ...p, full_name: e.target.value }))}
+                      placeholder="Tu nombre completo"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="phone">Teléfono</Label>
+                    <Input
+                      id="phone"
+                      value={profileForm.phone}
+                      onChange={e => setProfileForm(p => ({ ...p, phone: e.target.value }))}
+                      placeholder="Número de teléfono"
+                    />
+                  </div>
+                </div>
+              )}
+
+              <div className="flex justify-end pt-2">
+                <Button onClick={handleProfileSave} disabled={profileLoading || profileFetching}>
+                  {profileLoading && <Loader2 className="w-4 h-4 animate-spin mr-2" />}
+                  {profileLoading ? 'Guardando...' : 'Guardar cambios'}
+                </Button>
               </div>
             </div>
           )}
-        </CardContent>
 
-        <CardFooter>
-          <Button onClick={handleProfileSave} disabled={profileLoading || profileFetching}>
-            {profileLoading && <Loader2 className="w-4 h-4 animate-spin mr-2" />}
-            {profileLoading ? 'Guardando...' : 'Guardar cambios'}
-          </Button>
-        </CardFooter>
-      </Card>
-
-      {/* ── Account info ── */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-lg">
-            <Shield className="w-5 h-5" />
-            Información de cuenta
-          </CardTitle>
-          <CardDescription>Datos de tu cuenta en el sistema.</CardDescription>
-        </CardHeader>
-
-        <CardContent className="divide-y">
-          <div className="flex items-center justify-between py-3">
-            <span className="text-sm text-muted-foreground">Correo electrónico</span>
-            <span className="text-sm font-medium">{user?.email}</span>
-          </div>
-          <div className="flex items-center justify-between py-3">
-            <span className="text-sm text-muted-foreground">Rol</span>
-            <Badge variant="secondary">Administrador</Badge>
-          </div>
-          {memberSince && (
-            <div className="flex items-center justify-between py-3">
-              <span className="text-sm text-muted-foreground">Miembro desde</span>
-              <span className="text-sm font-medium">
-                {format(new Date(memberSince), "d 'de' MMMM, yyyy", { locale: es })}
-              </span>
+          {/* ── Account section ── */}
+          {activeSection === 'account' && (
+            <div className="space-y-3">
+              {[
+                { label: 'Correo electrónico', value: user?.email },
+                { label: 'Rol', value: <Badge variant="secondary" className="font-medium">Administrador</Badge> },
+                ...(memberSince
+                  ? [{ label: 'Miembro desde', value: format(new Date(memberSince), "d 'de' MMMM, yyyy", { locale: es }) }]
+                  : []),
+              ].map((row, i) => (
+                <div
+                  key={i}
+                  className="flex items-center justify-between px-4 py-3.5 rounded-lg bg-muted/40 border hover:bg-muted/60 transition-colors"
+                >
+                  <span className="text-sm text-muted-foreground">{row.label}</span>
+                  <span className="text-sm font-medium">{row.value}</span>
+                </div>
+              ))}
             </div>
           )}
-        </CardContent>
-      </Card>
 
-      {/* ── Change password ── */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-lg">
-            <Lock className="w-5 h-5" />
-            Cambiar contraseña
-          </CardTitle>
-          <CardDescription>Elige una contraseña segura de al menos 6 caracteres.</CardDescription>
-        </CardHeader>
+          {/* ── Password section ── */}
+          {activeSection === 'password' && (
+            <div className="space-y-6">
+              <div className="p-4 rounded-lg bg-muted/40 border text-sm text-muted-foreground">
+                Elige una contraseña segura de al menos <strong>6 caracteres</strong>. No compartas tu contraseña con nadie.
+              </div>
 
-        <CardContent className="space-y-4">
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="space-y-2">
-              <Label htmlFor="newPassword">Nueva contraseña</Label>
-              <div className="relative">
-                <Input
-                  id="newPassword"
-                  type={showPasswords ? 'text' : 'password'}
-                  value={passwordForm.newPassword}
-                  onChange={e => setPasswordForm(p => ({ ...p, newPassword: e.target.value }))}
-                  placeholder="Mínimo 6 caracteres"
-                  className="pr-9"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPasswords(v => !v)}
-                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                >
-                  {showPasswords ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                </button>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="newPassword">Nueva contraseña</Label>
+                  <div className="relative">
+                    <Input
+                      id="newPassword"
+                      type={showPasswords ? 'text' : 'password'}
+                      value={passwordForm.newPassword}
+                      onChange={e => setPasswordForm(p => ({ ...p, newPassword: e.target.value }))}
+                      placeholder="Mínimo 6 caracteres"
+                      className="pr-9"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPasswords(v => !v)}
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                    >
+                      {showPasswords ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="confirmPassword">Confirmar contraseña</Label>
+                  <div className="relative">
+                    <Input
+                      id="confirmPassword"
+                      type={showPasswords ? 'text' : 'password'}
+                      value={passwordForm.confirmPassword}
+                      onChange={e => setPasswordForm(p => ({ ...p, confirmPassword: e.target.value }))}
+                      placeholder="Repite la contraseña"
+                      className={`pr-9 ${passwordMismatch ? 'border-destructive focus-visible:ring-destructive' : ''}`}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPasswords(v => !v)}
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                    >
+                      {showPasswords ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {passwordMismatch && (
+                <p className="text-xs text-destructive flex items-center gap-1">
+                  <X className="w-3 h-3" /> Las contraseñas no coinciden
+                </p>
+              )}
+
+              <div className="flex justify-end pt-2">
+                <Button onClick={handlePasswordSave} disabled={passwordLoading || passwordMismatch}>
+                  {passwordLoading && <Loader2 className="w-4 h-4 animate-spin mr-2" />}
+                  {passwordLoading ? 'Actualizando...' : 'Actualizar contraseña'}
+                </Button>
               </div>
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="confirmPassword">Confirmar contraseña</Label>
-              <div className="relative">
-                <Input
-                  id="confirmPassword"
-                  type={showPasswords ? 'text' : 'password'}
-                  value={passwordForm.confirmPassword}
-                  onChange={e => setPasswordForm(p => ({ ...p, confirmPassword: e.target.value }))}
-                  placeholder="Repite la contraseña"
-                  className={`pr-9 ${passwordMismatch ? 'border-destructive focus-visible:ring-destructive' : ''}`}
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPasswords(v => !v)}
-                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                >
-                  {showPasswords ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                </button>
-              </div>
-            </div>
-          </div>
-          {passwordMismatch && (
-            <p className="text-xs text-destructive">Las contraseñas no coinciden</p>
           )}
-        </CardContent>
 
-        <CardFooter>
-          <Button onClick={handlePasswordSave} disabled={passwordLoading}>
-            {passwordLoading && <Loader2 className="w-4 h-4 animate-spin mr-2" />}
-            {passwordLoading ? 'Actualizando...' : 'Actualizar contraseña'}
-          </Button>
-        </CardFooter>
-      </Card>
-
-      {/* ── Danger zone ── */}
-      <Card className="border-destructive/30">
-        <CardHeader>
-          <CardTitle className="text-destructive">Zona de peligro</CardTitle>
-          <CardDescription>
-            Acciones irreversibles que afectan los datos del sistema.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <AlertDialog open={open} onOpenChange={setOpen}>
-            <AlertDialogTrigger asChild>
-              <Button variant="destructive" className="gap-2">
-                <RotateCcw className="w-4 h-4" />
-                Reiniciar sistema
-              </Button>
-            </AlertDialogTrigger>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>¿Seguro que deseas borrar todas las entregas?</AlertDialogTitle>
-                <AlertDialogDescription>
-                  Esta acción no se puede deshacer. Se eliminarán todos los registros de entregas y su historial de auditoría. Los usuarios, configuraciones y mensajeros se mantendrán intactos.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel disabled={resetting}>Cancelar</AlertDialogCancel>
-                <AlertDialogAction
-                  onClick={handleReset}
-                  disabled={resetting}
-                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                >
-                  {resetting && <Loader2 className="w-4 h-4 animate-spin mr-2" />}
-                  {resetting ? 'Reiniciando...' : 'Sí, reiniciar'}
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
-        </CardContent>
-      </Card>
-
+          {/* ── Danger zone section ── */}
+          {activeSection === 'danger' && (
+            <div className="space-y-4">
+              <div className="rounded-xl border border-destructive/30 bg-destructive/5 overflow-hidden">
+                <div className="px-5 py-4 border-b border-destructive/20">
+                  <div className="flex items-start gap-3">
+                    <AlertTriangle className="w-5 h-5 text-destructive mt-0.5 flex-shrink-0" />
+                    <div>
+                      <p className="text-sm font-semibold text-destructive">Reiniciar sistema</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        Elimina todas las entregas, liquidaciones y saldos de clientes. Los usuarios, mensajeros y configuraciones se mantienen intactos.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+                <div className="px-5 py-4">
+                  <p className="text-xs text-muted-foreground mb-4">
+                    Esta acción <strong>no se puede deshacer</strong>. Asegúrate de exportar cualquier dato que necesites antes de continuar.
+                  </p>
+                  <AlertDialog open={open} onOpenChange={setOpen}>
+                    <AlertDialogTrigger asChild>
+                      <Button variant="destructive" size="sm" className="gap-2">
+                        <RotateCcw className="w-4 h-4" />
+                        Reiniciar sistema
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>¿Seguro que deseas borrar todas las entregas?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          Esta acción no se puede deshacer. Se eliminarán todos los registros de entregas y su historial de auditoría. Los usuarios, configuraciones y mensajeros se mantendrán intactos.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel disabled={resetting}>Cancelar</AlertDialogCancel>
+                        <AlertDialogAction
+                          onClick={handleReset}
+                          disabled={resetting}
+                          className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                        >
+                          {resetting && <Loader2 className="w-4 h-4 animate-spin mr-2" />}
+                          {resetting ? 'Reiniciando...' : 'Sí, reiniciar'}
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
