@@ -140,7 +140,7 @@ export function AppLayout({ children, currentPage, onNavigate }: AppLayoutProps)
   ];
 
   const courierNavItems = [
-    { id: 'summary', label: 'Mi Resumen', icon: TrendingUp },
+    //{ id: 'summary', label: 'Mi Resumen', icon: TrendingUp },
     { id: 'deliveries', label: 'Entregas Pendientes', icon: ClipboardList },
     { id: 'today', label: 'Entregas del Día', icon: Package },
   ];

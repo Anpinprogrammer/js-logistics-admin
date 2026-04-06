@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useDeliveries, Delivery, useUpdateDelivery, useCancelDelivery } from '@/hooks/useDeliveries';
+import { useDeliveries, Delivery, useUpdateDelivery, useCancelDelivery, useDeliveriesTest } from '@/hooks/useDeliveries';
 import { useRegisterDelivery } from '@/hooks/useRegisterDelivery';
 import { DeliveryCard } from './DeliveryCard';
 import { EditDeliveryDialog } from './EditDeliveryDialog';
@@ -17,7 +17,7 @@ interface DeliveryListProps {
 }
 
 export function DeliveryList({ courierId, showCourier }: DeliveryListProps) {
-  const { data: deliveries, isLoading, error } = useDeliveries(courierId);
+  const { data: deliveries, isLoading, error } = useDeliveriesTest(courierId);
   const { isAdmin, isCourier } = useAuth();
   const [search, setSearch] = useState('');
   const [editingDelivery, setEditingDelivery] = useState<Delivery | null>(null);
@@ -171,6 +171,7 @@ export function DeliveryList({ courierId, showCourier }: DeliveryListProps) {
             final_status: data.final_status,
             received_amount: data.received_amount,
             payment_method: data.payment_method,
+            subAccount: data.subAccount,
             notes: data.notes,
             receipt_photo_url: data.receipt_photo_url,
           });

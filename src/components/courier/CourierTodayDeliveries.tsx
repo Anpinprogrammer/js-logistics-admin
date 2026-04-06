@@ -1,5 +1,5 @@
-import { useDeliveries } from '@/hooks/useDeliveries';
-import { useAuth } from '@/contexts/AuthContext';
+import { useDeliveries, useDeliveriesTest } from '@/hooks/useDeliveries';
+import { useAuth } from '@/contexts/AuthContextTest';
 import { DeliveryCard } from '@/components/delivery/DeliveryCard';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -9,7 +9,7 @@ import { getTodayDate } from '@/hooks/useDailyOperations';
 
 export function CourierTodayDeliveries() {
   const { user } = useAuth();
-  const { data: deliveries, isLoading } = useDeliveries(user?.id);
+  const { data: deliveries, isLoading } = useDeliveriesTest(user?.id);
   const today = getTodayDate();
   
   if (isLoading) {
@@ -20,7 +20,12 @@ export function CourierTodayDeliveries() {
     );
   }
   
-  const todayDeliveries = deliveries?.filter(d => d.delivery_date === today) || [];
+  const todayDeliveries = deliveries?. 
+    filter(d =>
+      {
+        const date = new Date(d.delivery_date).toISOString().split('T')[0]
+        return date === today
+      }) || [];
   const completedToday = todayDeliveries.filter(d => 
     d.status === 'completed' || 
     d.status === 'not_delivered_collected' ||

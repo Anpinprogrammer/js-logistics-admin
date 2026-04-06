@@ -1,5 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import api from '@/services/api';
 //import { useAuth } from '@/contexts/AuthContext';
 import { useAuth } from '@/contexts/AuthContextTest';
 import { getCurrentWeekDates } from '@/hooks/useDeliveries';
@@ -14,6 +15,7 @@ interface RegisterDeliveryData {
   final_status: DeliveryFinalStatus;
   received_amount: number;
   payment_method: 'cash' | 'transfer_to_courier' | 'transfer_to_client';
+  subAccount: string;
   notes?: string;
   receipt_photo_url?: string;
 }
@@ -27,14 +29,13 @@ export function useRegisterDelivery() {
       if (!user) throw new Error('No user logged in');
 
       // Get old values for audit
-      const { data: oldDelivery, error: fetchError } = await supabase
-        .from('deliveries')
-        .select('*')
-        .eq('id', data.deliveryId)
-        .single();
-
-      if (fetchError) throw fetchError;
-
+      const { data: oldDeliveryResponse } = await api.get(`/deliveries/${data.deliveryId}`)
+      const oldDelivery = oldDeliveryResponse.data
+      
+      if (oldDelivery.status !== 'pending') {
+        throw new Error('Esta entrega ya fue registrada');
+      }
+      
       // Verify it's the courier's own pending delivery
       if (oldDelivery.courier_id !== user.id) {
         throw new Error('No tienes permiso para registrar esta entrega');
@@ -42,6 +43,80 @@ export function useRegisterDelivery() {
       if (oldDelivery.status !== 'pending') {
         throw new Error('Esta entrega ya fue registrada');
       }
+
+      const totalToCollect = Number(oldDelivery.total_to_collect) || 0;
+            const serviceValue = Number(oldDelivery.service_value) || 0;
+            const hasCollection = data.final_status === 'completed' || data.final_status === 'not_delivered_collected';
+            const isCompleted = data.final_status === 'completed';
+            const difference = isCompleted ? totalToCollect - data.received_amount : 0;
+      
+            const payload = {
+              received_amount: hasCollection ? data.received_amount : 0,
+              payment_method: data.payment_method,
+              notes: data.notes || null,
+              receipt_photo_url: data.receipt_photo_url || null,
+              status: data.final_status,
+              lost_trips: data.final_status === 'not_delivered_collected' ? Number(oldDelivery.lost_trips || 0 ) + 1 : oldDelivery.lost_trips,
+              delivery_date: getTodayDate(),
+            }
+      
+            const { data: newDeliveryResponse } = await api.put(`/deliveries/${data.deliveryId}`, payload)
+      
+            const newDelivery = newDeliveryResponse.data
+      
+            // Administrar ingresos a las cuentas de JS
+            if(data.payment_method === 'transfer_to_courier') {
+              try {
+                if(data.subAccount){
+                  const { data: companyMovementResponse } = await api.post('/daily-settlements/company/money-assignment', {
+                    account: data.subAccount,
+                    type: 'income',
+                    amount: data.received_amount,
+                    notes: `Transferencia recibida del pedido ${newDelivery.id.substring(0, 8).toUpperCase()}`
+                  })
+                }
+              } catch (error) {
+                toast.error('Error: ' + error.message);
+              }
+            }
+      
+            // Handle client balance updates
+            let clientDebtAdded = 0;
+      
+            const { data: currentClientResponse } = await api.get(`/clients/${oldDelivery.client_id}`)
+            const currentClient = currentClientResponse.data
+      
+            if(data.final_status === 'completed' || data.final_status === 'not_delivered_collected') {
+              if(currentClient){
+                const newBalance = data.received_amount - newDelivery.service_value - newDelivery.loan + Number(currentClient.balance || 0) 
+                if(newBalance < 0){
+                  clientDebtAdded = Number(newBalance)
+                }
+                await api.put(`/clients/${oldDelivery.client_id}`, { balance: newBalance })
+              }
+            }
+      
+            /**
+             * 
+             
+      
+            if(data.final_status === 'not_delivered_collected'){
+      
+              if(currentClient){
+                const newBalance = data.received_amount - newDelivery.service_value + Number(currentClient.balance || 0)
+                if(newBalance < 0){
+                  clientDebtAdded = Number(newBalance)
+                }
+                await api.put(`/clients/${oldDelivery.client_id}`, { balance: newBalance })
+              }
+            }
+              */
+      
+            return { delivery: newDelivery, advance: 0, status: data.final_status, clientDebtAdded };
+
+            /**
+             * 
+             
 
       // Use the total_to_collect from the original delivery (set by admin)
       const totalToCollect = oldDelivery.total_to_collect || 0;
@@ -168,6 +243,7 @@ export function useRegisterDelivery() {
         status: data.final_status,
         clientDebtAdded,
       };
+      */
     },
     onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey: ['deliveries'] });
