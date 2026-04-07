@@ -75,11 +75,23 @@ export function ClientReportPDF({ clientId, open, onOpenChange, startDate, endDa
   const periodLabel =
     startDate && endDate ? `${fmtDate(startDate)} — ${fmtDate(endDate)}` : 'Período completo';
 
-  const net =
-    (statement?.totalCollected ?? 0) -
-    (statement?.totalServices ?? 0) -
-    (statement?.totalLostTrips ?? 0) -
-    (statement?.totalLoans ?? 0);
+  const unsettledDeliveries = statement?.deliveries.filter(d => !d.is_settled) ?? [];
+
+  // Recalculate totals from unsettled deliveries only (same logic as hook)
+  let unsettledCollected = 0;
+  let unsettledServices = 0;
+  let unsettledLoans = 0;
+  for (const d of unsettledDeliveries) {
+    if (d.status === 'completed' || d.status === 'not_delivered_collected') {
+      unsettledServices += d.service_value;
+      unsettledLoans += d.loan ?? 0;
+      if (d.payment_method === 'cash' || d.payment_method === 'transfer_to_courier') {
+        unsettledCollected += d.received_amount ?? 0;
+      }
+    }
+  }
+
+  const net = unsettledCollected - unsettledServices - (statement?.totalLostTrips ?? 0) - unsettledLoans;
   const isDebt = net < 0;
   const balanceLabel = isDebt ? 'Saldo en Contra' : 'Saldo a Favor';
   const balanceAmount = Math.abs(net);
@@ -95,7 +107,7 @@ export function ClientReportPDF({ clientId, open, onOpenChange, startDate, endDa
     const badge = (bg: string, text: string, border: string, label: string) =>
       `<span style="display:inline-block;padding:2px 8px;border-radius:9999px;font-size:10px;font-weight:600;border:1px solid ${border};background:${bg};color:${text};">${label}</span>`;
 
-    const rows = statement.deliveries
+    const rows = unsettledDeliveries
       .map((d) => {
         const sp = STATUS_PRINT[d.status] ?? STATUS_PRINT.cancelled;
         const pp = PAYMENT_PRINT[d.payment_method] ?? PAYMENT_PRINT.cash;
@@ -196,15 +208,15 @@ export function ClientReportPDF({ clientId, open, onOpenChange, startDate, endDa
       <div class="client-name">${statement.name}</div>
       <div class="client-meta">${[statement.phone ? `Tel: ${statement.phone}` : '', statement.address ?? ''].filter(Boolean).join('  ·  ')}</div>
     </div>
-    <div class="count-info"><strong>${statement.deliveries.length}</strong> pedidos en el período</div>
+    <div class="count-info"><strong>${unsettledDeliveries.length}</strong> pedidos sin liquidar</div>
   </div>
 
   <div class="content">
     <div class="cards">
-      <div class="card card-green"><span class="lbl">Total Recaudado</span><span class="val">${formatCurrency(statement.totalCollected)}</span></div>
-      <div class="card card-blue"><span class="lbl">Total Servicios</span><span class="val">${formatCurrency(statement.totalServices)}</span></div>
+      <div class="card card-green"><span class="lbl">Total Recaudado</span><span class="val">${formatCurrency(unsettledCollected)}</span></div>
+      <div class="card card-blue"><span class="lbl">Total Servicios</span><span class="val">${formatCurrency(unsettledServices)}</span></div>
       <div class="card card-amber"><span class="lbl">Idas Perdidas</span><span class="val">${formatCurrency(statement.totalLostTrips)}</span></div>
-      <div class="card card-purple"><span class="lbl">Préstamos JS</span><span class="val">${formatCurrency(statement.totalLoans)}</span></div>
+      <div class="card card-purple"><span class="lbl">Préstamos JS</span><span class="val">${formatCurrency(unsettledLoans)}</span></div>
       <div class="card ${isDebt ? 'card-debt' : 'card-credit'}"><span class="lbl">${balanceLabel}</span><span class="val">${formatCurrency(balanceAmount)}</span></div>
     </div>
 
@@ -212,11 +224,11 @@ export function ClientReportPDF({ clientId, open, onOpenChange, startDate, endDa
       <div class="balance-title">Resumen del Balance</div>
       <div class="brow">
         <span><span class="sign-p">+</span>Total Recaudado por JS Logística</span>
-        <span style="color:#15803d;font-weight:600;">${formatCurrency(statement.totalCollected)}</span>
+        <span style="color:#15803d;font-weight:600;">${formatCurrency(unsettledCollected)}</span>
       </div>
       <div class="brow">
         <span><span class="sign-m">−</span>Servicios de Mensajería</span>
-        <span style="color:#dc2626;">(${formatCurrency(statement.totalServices)})</span>
+        <span style="color:#dc2626;">(${formatCurrency(unsettledServices)})</span>
       </div>
       <div class="brow">
         <span><span class="sign-m">−</span>Idas Perdidas (Devoluciones)</span>
@@ -224,7 +236,7 @@ export function ClientReportPDF({ clientId, open, onOpenChange, startDate, endDa
       </div>
       <div class="brow">
         <span><span class="sign-m">−</span>Préstamos JS</span>
-        <span style="color:#dc2626;">(${formatCurrency(statement.totalLoans)})</span>
+        <span style="color:#dc2626;">(${formatCurrency(unsettledLoans)})</span>
       </div>
       <div class="brow total">
         <span>${balanceLabel}</span>
@@ -232,7 +244,7 @@ export function ClientReportPDF({ clientId, open, onOpenChange, startDate, endDa
       </div>
     </div>
 
-    <div class="section-title">Detalle de Pedidos (${statement.deliveries.length})</div>
+    <div class="section-title">Detalle de Pedidos Sin Liquidar (${unsettledDeliveries.length})</div>
     <table>
       <thead>
         <tr>
@@ -321,7 +333,7 @@ export function ClientReportPDF({ clientId, open, onOpenChange, startDate, endDa
                   </div>
                 </div>
                 <div className="text-sm text-slate-500 sm:text-right">
-                  <span className="font-bold text-slate-700">{statement.deliveries.length}</span> pedidos
+                  <span className="font-bold text-slate-700">{unsettledDeliveries.length}</span> pedidos sin liquidar
                 </div>
               </div>
 
@@ -331,11 +343,11 @@ export function ClientReportPDF({ clientId, open, onOpenChange, startDate, endDa
                 <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 mb-6">
                   <div className="bg-green-50 border border-green-200 rounded-lg p-3 text-center">
                     <div className="text-[9px] font-bold text-green-700 uppercase tracking-wide mb-1">Total Recaudado</div>
-                    <div className="text-sm font-black text-green-700">{formatCurrency(statement.totalCollected)}</div>
+                    <div className="text-sm font-black text-green-700">{formatCurrency(unsettledCollected)}</div>
                   </div>
                   <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-center">
                     <div className="text-[9px] font-bold text-blue-700 uppercase tracking-wide mb-1">Total Servicios</div>
-                    <div className="text-sm font-black text-blue-700">{formatCurrency(statement.totalServices)}</div>
+                    <div className="text-sm font-black text-blue-700">{formatCurrency(unsettledServices)}</div>
                   </div>
                   <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-center">
                     <div className="text-[9px] font-bold text-amber-700 uppercase tracking-wide mb-1">Idas Perdidas</div>
@@ -343,7 +355,7 @@ export function ClientReportPDF({ clientId, open, onOpenChange, startDate, endDa
                   </div>
                   <div className="bg-purple-50 border border-purple-200 rounded-lg p-3 text-center">
                     <div className="text-[9px] font-bold text-purple-700 uppercase tracking-wide mb-1">Préstamos JS</div>
-                    <div className="text-sm font-black text-purple-700">{formatCurrency(statement.totalLoans)}</div>
+                    <div className="text-sm font-black text-purple-700">{formatCurrency(unsettledLoans)}</div>
                   </div>
                   <div
                     className={`col-span-2 sm:col-span-1 rounded-lg p-3 text-center border-2 ${
@@ -368,10 +380,10 @@ export function ClientReportPDF({ clientId, open, onOpenChange, startDate, endDa
                   </div>
                   <div className="space-y-0">
                     {[
-                      { sign: '+', color: 'text-green-600', label: 'Total Recaudado', labelFull: 'Total Recaudado por JS Logística', valueColor: 'text-green-700 font-semibold', display: formatCurrency(statement.totalCollected) },
-                      { sign: '−', color: 'text-red-500', label: 'Servicios', labelFull: 'Servicios de Mensajería', valueColor: 'text-red-600', display: `(${formatCurrency(statement.totalServices)})` },
+                      { sign: '+', color: 'text-green-600', label: 'Total Recaudado', labelFull: 'Total Recaudado por JS Logística', valueColor: 'text-green-700 font-semibold', display: formatCurrency(unsettledCollected) },
+                      { sign: '−', color: 'text-red-500', label: 'Servicios', labelFull: 'Servicios de Mensajería', valueColor: 'text-red-600', display: `(${formatCurrency(unsettledServices)})` },
                       { sign: '−', color: 'text-red-500', label: 'Idas Perdidas', labelFull: 'Idas Perdidas (Devoluciones)', valueColor: 'text-red-600', display: `(${formatCurrency(statement.totalLostTrips)})` },
-                      { sign: '−', color: 'text-red-500', label: 'Préstamos JS', labelFull: 'Préstamos JS', valueColor: 'text-red-600', display: `(${formatCurrency(statement.totalLoans)})` },
+                      { sign: '−', color: 'text-red-500', label: 'Préstamos JS', labelFull: 'Préstamos JS', valueColor: 'text-red-600', display: `(${formatCurrency(unsettledLoans)})` },
                     ].map((row) => (
                       <div key={row.label} className="flex justify-between items-center gap-2 text-sm py-2 border-b border-dashed border-slate-200">
                         <span className="text-slate-600 min-w-0">
@@ -401,7 +413,7 @@ export function ClientReportPDF({ clientId, open, onOpenChange, startDate, endDa
                     className="text-[10px] font-black text-slate-700 uppercase tracking-[1.5px] mb-3 pb-2 border-b-2"
                     style={{ borderColor: BRAND }}
                   >
-                    Detalle de Pedidos ({statement.deliveries.length})
+                    Detalle de Pedidos Sin Liquidar ({unsettledDeliveries.length})
                   </div>
                   <div className="overflow-x-auto rounded-lg border border-slate-200">
                     <table className="w-full text-xs border-collapse">
@@ -419,7 +431,7 @@ export function ClientReportPDF({ clientId, open, onOpenChange, startDate, endDa
                         </tr>
                       </thead>
                       <tbody>
-                        {statement.deliveries.map((delivery, idx) => (
+                        {unsettledDeliveries.map((delivery, idx) => (
                           <tr key={delivery.id} className={idx % 2 === 0 ? 'bg-white' : 'bg-slate-50'}>
                             <td className="px-3 py-2 border-b border-slate-100">
                               <div className="text-slate-700">{fmtDate(delivery.delivery_date)}</div>

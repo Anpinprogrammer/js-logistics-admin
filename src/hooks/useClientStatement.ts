@@ -31,6 +31,7 @@ export interface ClientDelivery {
   notes: string | null;
   courier_id: string;
   courier_name?: string;
+  is_settled: boolean;
 }
 
 export function useClientStatement(clientId: string, startDate?: string, endDate?: string) {
@@ -71,22 +72,25 @@ export function useClientStatement(clientId: string, startDate?: string, endDate
       
       const enrichedDeliveries: ClientDelivery[] = (deliveries || [])
       .map(d => {
-        // Only count completed deliveries and lost trips with collection
-        if (d.status === 'completed' || d.status === 'not_delivered_collected') {
-          totalServices += Number(d.service_value) || 0;
-          totalLoans += Number(d.loan) || 0;
 
-          /**
-           * if (d.status === 'not_delivered_collected') {
-            totalLostTrips += Number(d.total_to_collect) || 0;
-          }
-           */
+        if(!d.is_settled) {
+          // Only count completed deliveries and lost trips with collection
+          if (d.status === 'completed' || d.status === 'not_delivered_collected') {
+            totalServices += Number(d.service_value) || 0;
+            totalLoans += Number(d.loan) || 0;
+
+            /**
+            * if (d.status === 'not_delivered_collected') {
+              totalLostTrips += Number(d.total_to_collect) || 0;
+            }
+            */
           
           
           
-          // Collected amount (cash or transfer to courier)
-          if (d.payment_method === 'cash' || d.payment_method === 'transfer_to_courier') {
-            totalCollected += Number(d.received_amount) || 0;
+            // Collected amount (cash or transfer to courier)
+            if (d.payment_method === 'cash' || d.payment_method === 'transfer_to_courier')   {
+              totalCollected += Number(d.received_amount) || 0;
+            }
           }
         }
         
@@ -104,6 +108,7 @@ export function useClientStatement(clientId: string, startDate?: string, endDate
           notes: d.notes,
           courier_id: d.courier_id,
           courier_name: courierMap.get(d.courier_id) || 'Desconocido',
+          is_settled: d.is_settled ?? false,
         };
       });
       

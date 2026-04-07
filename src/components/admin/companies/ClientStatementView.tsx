@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { 
   User, 
   Phone, 
@@ -49,7 +50,6 @@ const paymentLabels: Record<string, string> = {
 };
 
 export function ClientStatementView({ client, clientId, open, onOpenChange }: ClientStatementViewProps) {
-  console.log(client)
   const { data: statement, isLoading } = useClientStatement(clientId);
   const [showPDF, setShowPDF] = useState(false);
   const [showPaymentDialog, setShowPaymentDialog] = useState(false);
@@ -193,87 +193,122 @@ export function ClientStatementView({ client, clientId, open, onOpenChange }: Cl
             </div>
             
             {/* Deliveries Table */}
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-lg">Historial de Pedidos</CardTitle>
-                <CardDescription>
-                  {statement.deliveries.length} pedidos registrados
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="overflow-x-auto">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead className='text-center'>Fecha</TableHead>
-                        <TableHead>Destinatario</TableHead>
-                        <TableHead>Estado</TableHead>
-                        <TableHead>Pago</TableHead>
-                        <TableHead className="text-right">Servicios</TableHead>
-                        <TableHead className="text-right">Prestamos</TableHead>
-                        <TableHead className="text-right">Recibido</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {statement.deliveries.map(delivery => {
-                        const status = statusLabels[delivery.status] || statusLabels.pending;
-                        const StatusIcon = status.icon;
-                        
-                        return (
-                          <TableRow key={delivery.id}>
-                            <TableCell className="whitespace-nowrap">
-                              <div className='flex flex-col items-center gap-1'>
-                                {new Date(delivery.delivery_date).toLocaleDateString('es-CO')}
-                                <span
-                                  className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-mono bg-muted text-muted-foreground mx-auto"
-                                  title={delivery.id}
-                                >
-                                  #{delivery.id.slice(0, 8).toUpperCase()}
-                                </span>
-                              </div>
-                            </TableCell>
-                            <TableCell>
-                              <div className='flex flex-col text-center gap-1'>
-                                <p>
-                                  {delivery.recipient_name || '-'}
-                                </p>
-                                { delivery.lost_trips > 0 &&
-                                  <span className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium bg-red-100 text-red-700">
-                                    Devolucion: {delivery.lost_trips}
-                                  </span>
-                                }
-                              </div>
-                            </TableCell>
-                            <TableCell>
-                              <div className={cn("flex items-center gap-1", status.color)}>
-                                <StatusIcon className="w-4 h-4" />
-                                <span className="text-xs">{status.label}</span>
-                              </div>
-                            </TableCell>
-                            <TableCell>
-                              <Badge variant="outline" className="text-xs">
-                                {paymentLabels[delivery.payment_method] || delivery.payment_method}
-                              </Badge>
-                            </TableCell>
-                            <TableCell className="text-right">
-                              {formatCurrency(delivery.service_value)}
-                            </TableCell>
-                            <TableCell className="text-right">
-                              {formatCurrency(delivery.loan)}
-                            </TableCell>
-                            <TableCell className="text-right">
-                              {delivery.received_amount !== null 
-                                ? formatCurrency(delivery.received_amount)
-                                : '-'}
-                            </TableCell>
-                          </TableRow>
-                        );
-                      })}
-                    </TableBody>
-                  </Table>
-                </div>
-              </CardContent>
-            </Card>
+            {(() => {
+              const settled = statement.deliveries.filter(d => d.is_settled);
+              const unsettled = statement.deliveries.filter(d => !d.is_settled);
+
+              const renderRows = (deliveries: typeof statement.deliveries) =>
+                deliveries.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={7} className="text-center text-muted-foreground py-6">
+                      No hay pedidos
+                    </TableCell>
+                  </TableRow>
+                ) : deliveries.map(delivery => {
+                  const status = statusLabels[delivery.status] || statusLabels.pending;
+                  const StatusIcon = status.icon;
+                  return (
+                    <TableRow key={delivery.id}>
+                      <TableCell className="whitespace-nowrap">
+                        <div className='flex flex-col items-center gap-1'>
+                          {new Date(delivery.delivery_date).toLocaleDateString('es-CO')}
+                          <span
+                            className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-mono bg-muted text-muted-foreground mx-auto"
+                            title={delivery.id}
+                          >
+                            #{delivery.id.slice(0, 8).toUpperCase()}
+                          </span>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className='flex flex-col text-center gap-1'>
+                          <p>{delivery.recipient_name || '-'}</p>
+                          {delivery.lost_trips > 0 &&
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium bg-red-100 text-red-700">
+                              Devolucion: {delivery.lost_trips}
+                            </span>
+                          }
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className={cn("flex items-center gap-1", status.color)}>
+                          <StatusIcon className="w-4 h-4" />
+                          <span className="text-xs">{status.label}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="outline" className="text-xs">
+                          {paymentLabels[delivery.payment_method] || delivery.payment_method}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {formatCurrency(delivery.service_value)}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {formatCurrency(delivery.loan)}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {delivery.received_amount !== null
+                          ? formatCurrency(delivery.received_amount)
+                          : '-'}
+                      </TableCell>
+                    </TableRow>
+                  );
+                });
+
+              const tableHeader = (
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className='text-center'>Fecha</TableHead>
+                    <TableHead>Destinatario</TableHead>
+                    <TableHead>Estado</TableHead>
+                    <TableHead>Pago</TableHead>
+                    <TableHead className="text-right">Servicios</TableHead>
+                    <TableHead className="text-right">Prestamos</TableHead>
+                    <TableHead className="text-right">Recibido</TableHead>
+                  </TableRow>
+                </TableHeader>
+              );
+
+              return (
+                <Card>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-lg">Historial de Pedidos</CardTitle>
+                    <CardDescription>
+                      {statement.deliveries.length} pedidos registrados
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <Tabs defaultValue="unsettled">
+                      <TabsList className="mb-3">
+                        <TabsTrigger value="unsettled">
+                          Sin Liquidar ({unsettled.length})
+                        </TabsTrigger>
+                        <TabsTrigger value="settled">
+                          Liquidados ({settled.length})
+                        </TabsTrigger>
+                      </TabsList>
+                      <TabsContent value="unsettled">
+                        <div className="overflow-x-auto">
+                          <Table>
+                            {tableHeader}
+                            <TableBody>{renderRows(unsettled)}</TableBody>
+                          </Table>
+                        </div>
+                      </TabsContent>
+                      <TabsContent value="settled">
+                        <div className="overflow-x-auto">
+                          <Table>
+                            {tableHeader}
+                            <TableBody>{renderRows(settled)}</TableBody>
+                          </Table>
+                        </div>
+                      </TabsContent>
+                    </Tabs>
+                  </CardContent>
+                </Card>
+              );
+            })()}
           </div>
         ) : (
           <div className="text-center py-12 text-muted-foreground">

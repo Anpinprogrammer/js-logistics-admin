@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import api from '@/services/api';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -16,6 +17,8 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useUpdateClientBalance } from '@/hooks/useClientsTest';
+import { getTodayDate } from '@/utils';
+import { toast } from 'sonner';
 
 interface DailySummary {
   date: string;
@@ -95,16 +98,29 @@ const PaymentDialog = ({ paymentDialog, setPaymentDialog, paymentClient, setPaym
     }
 
   const handleRegisterPayment = async () => {
+    const { client } = paymentClient
     if (!paymentClient || !paymentDetail.amount) return;
     const amount = parseFloat(paymentDetail.amount);
-    const current = paymentClient.currentBalance;
+    const current = parseFloat(paymentClient.currentBalance);
 
     const newBalance =
       paymentDetail.paymentType === 'from_client'
-        ? current - amount
-        : current + amount;
+        ? amount + current
+        : current - amount;
 
-    await updateBalance.mutateAsync({ id: paymentClient.client.id, balance: newBalance });
+    try {
+      //Liquidar al cliente
+      await api.post(`/daily-settlements/client/${client.id}`, {
+        paymentMethod: paymentDetail.account,
+        type: paymentDetail.paymentType === 'from_client' 
+              ? 'income' : 'expense',
+        amount,
+        notes: paymentDetail.desc,
+      })   
+      
+    } catch (error) {
+      console.log(error)
+    }
     setPaymentDialog(false);
     setPaymentClient(null);
   };
