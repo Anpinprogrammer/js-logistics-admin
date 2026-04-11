@@ -7,7 +7,16 @@ import { PrivacyPolicy } from "./pages/PrivacyPolicy";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 5 * 60 * 1000,       // Data is fresh for 5 min — no refetch on re-mount
+      gcTime: 10 * 60 * 1000,          // Keep unused data in cache for 10 min
+      retry: 1,                         // Only retry once on failure
+      refetchOnWindowFocus: false,      // Don't refetch every time the tab is focused
+    },
+  },
+});
 
 const App = () => (
   <QueryClientProvider client={queryClient}>

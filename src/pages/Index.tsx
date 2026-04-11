@@ -1,37 +1,43 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useCallback, lazy, Suspense } from 'react';
 import { useSearchParams } from 'react-router-dom';
 //import { AuthProvider, useAuth } from '@/contexts/AuthContext';
 import { AuthProvider, useAuth } from '@/contexts/AuthContextTest';
-import { LoginForm } from '@/components/auth/LoginForm';
 import { LoginFormTest } from '@/components/auth/LoginFormTest';
 import { AppLayout } from '@/components/layout/AppLayout';
-import { AdminDashboard } from '@/components/admin/AdminDashboard';
-import { DeliveryList } from '@/components/delivery/DeliveryList';
-import Deliveries from '@/components/admin/deliveries/Deliveries';
-import PickUps from '@/components/admin/pickups/PickUps';
-import { ServicesList } from '@/components/admin/options/ServicesList';
-import { AdminNewDeliveryForm } from '@/components/admin/AdminNewDeliveryForm';
-import { CouriersList } from '@/components/admin/CouriersList';
-import AdminsList from '@/components/admin/personel/AdminsList';
-import CollaboratorList from '@/components/admin/personel/collaborators/CollaboratorList';
-import PatinadoresList from '@/components/admin/personel/PatinadoresList';
-import { ClientsManager } from '@/components/admin/companies/ClientsManager';
-import { AuditLog } from '@/components/admin/system/AuditLog';
-import { SettingsPage } from '@/components/admin/system/SettingsPage';
-import RolesSetting from '@/components/admin/system/RolesSetting';
-import { ConsolidatedCash } from '@/components/admin/ConsolidatedCash';
-import { DailySettlements } from '@/components/admin/daily/daily-couriers/DailySettlements';
-import {DailyClientSettlement} from '@/components/admin/daily/daily-clients/DailyClientSettlement';
-import DailySettlementCash from '@/components/admin/daily/daily-accounts/DailySettlementCash';
-import { WeeklyPayroll } from '@/components/admin/WeeklyPayroll';
-import { CourierSummary } from '@/components/courier/CourierSummary';
-import { CourierTodayDeliveries } from '@/components/courier/CourierTodayDeliveries';
-import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Settings, Loader2 } from 'lucide-react';
-import { AgentChat } from '@/components/agent/AgentChat';
+import { Loader2 } from 'lucide-react';
+
+// Lazy-loaded admin pages — each loads only when first visited
+const AdminDashboard = lazy(() => import('@/components/admin/AdminDashboard').then(m => ({ default: m.AdminDashboard })));
+const Deliveries = lazy(() => import('@/components/admin/deliveries/Deliveries'));
+const PickUps = lazy(() => import('@/components/admin/pickups/PickUps'));
+const ServicesList = lazy(() => import('@/components/admin/options/ServicesList').then(m => ({ default: m.ServicesList })));
+const CouriersList = lazy(() => import('@/components/admin/CouriersList').then(m => ({ default: m.CouriersList })));
+const AdminsList = lazy(() => import('@/components/admin/personel/AdminsList'));
+const CollaboratorList = lazy(() => import('@/components/admin/personel/collaborators/CollaboratorList'));
+const ClientsManager = lazy(() => import('@/components/admin/companies/ClientsManager').then(m => ({ default: m.ClientsManager })));
+const AuditLog = lazy(() => import('@/components/admin/system/AuditLog').then(m => ({ default: m.AuditLog })));
+const SettingsPage = lazy(() => import('@/components/admin/system/SettingsPage').then(m => ({ default: m.SettingsPage })));
+const RolesSetting = lazy(() => import('@/components/admin/system/RolesSetting'));
+const ConsolidatedCash = lazy(() => import('@/components/admin/ConsolidatedCash').then(m => ({ default: m.ConsolidatedCash })));
+const DailySettlements = lazy(() => import('@/components/admin/daily/daily-couriers/DailySettlements').then(m => ({ default: m.DailySettlements })));
+const DailyClientSettlement = lazy(() => import('@/components/admin/daily/daily-clients/DailyClientSettlement').then(m => ({ default: m.DailyClientSettlement })));
+const DailySettlementCash = lazy(() => import('@/components/admin/daily/daily-accounts/DailySettlementCash'));
+const WeeklyPayroll = lazy(() => import('@/components/admin/WeeklyPayroll').then(m => ({ default: m.WeeklyPayroll })));
+const AgentChat = lazy(() => import('@/components/agent/AgentChat').then(m => ({ default: m.AgentChat })));
+
+// Lazy-loaded courier pages
+const DeliveryList = lazy(() => import('@/components/delivery/DeliveryList').then(m => ({ default: m.DeliveryList })));
+const CourierSummary = lazy(() => import('@/components/courier/CourierSummary').then(m => ({ default: m.CourierSummary })));
+const CourierTodayDeliveries = lazy(() => import('@/components/courier/CourierTodayDeliveries').then(m => ({ default: m.CourierTodayDeliveries })));
+
+const PageLoader = () => (
+  <div className="min-h-[200px] flex items-center justify-center">
+    <Loader2 className="w-8 h-8 animate-spin text-primary" />
+  </div>
+);
 
 function AppContent() {
-  const { user, loading, isAdmin, isCourier } = useAuth();
+  const { user, loading, isAdmin } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
 
   const defaultPage = isAdmin ? 'dashboard' : 'summary';
@@ -135,8 +141,10 @@ function AppContent() {
 
   return (
     <AppLayout currentPage={page} onNavigate={handleNavigate}>
-      {renderPage()}
-      {isAdmin && <AgentChat />}
+      <Suspense fallback={<PageLoader />}>
+        {renderPage()}
+        {isAdmin && <AgentChat />}
+      </Suspense>
     </AppLayout>
   );
 }
