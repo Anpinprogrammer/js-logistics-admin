@@ -142,7 +142,7 @@ export function useDeliveriesTest(courierId?: string) {
   const { user, isAdmin } = useAuth();
 
   return useQuery({
-    queryKey: ['deliveries', courierId || user?.id],
+    queryKey: ['deliveries', { courierId: courierId || user?.id || null }],
     queryFn: async () => {
       const params: Record<string, string> = {};
 
@@ -160,6 +160,7 @@ export function useDeliveriesTest(courierId?: string) {
       return data.data;
     },
     enabled: !!user,
+    refetchInterval: 5000,
   });
 }
 

@@ -117,9 +117,6 @@ const ModalDomis = ({ isOpen, onClose }: ModalDomisProps) => {
       }
 
       if(deliveryFormData.inAdvancedPayment){
-        if(deliveryFormData.paymentMethod === 'cash'){
-
-        }
         if(deliveryFormData.paymentMethod === 'transfer_to_courier'){
           await assignInitialMoney.mutateAsync({
           account: deliveryFormData.inAdvancedPaymentMethod,
@@ -159,7 +156,7 @@ const ModalDomis = ({ isOpen, onClose }: ModalDomisProps) => {
       */
 
       // Reopen daily settlement if it was already closed
-      await reopenDailySettlement(deliveryFormData.courierId);
+      //await reopenDailySettlement(deliveryFormData.courierId);
 
       // Audit log
       /**
@@ -174,8 +171,8 @@ const ModalDomis = ({ isOpen, onClose }: ModalDomisProps) => {
 
       return delivery;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['deliveries'] });
+    onSuccess: async () => {
+      queryClient.invalidateQueries({ queryKey: ['deliveries']});
       queryClient.invalidateQueries({ queryKey: ['daily-settlements'] });
       Swal.fire({
         title: 'Éxito',

@@ -1,15 +1,16 @@
-import { useDeliveries, useDeliveriesTest } from '@/hooks/useDeliveries';
+import { useDeliveriesTest } from '@/hooks/useDeliveries';
 import { useAuth } from '@/contexts/AuthContextTest';
 import { DeliveryCard } from '@/components/delivery/DeliveryCard';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Package, CheckCircle2, Clock, Loader2 } from 'lucide-react';
+import { Package, CheckCircle2, Clock, Loader2, RefreshCw } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import { getTodayDate } from '@/hooks/useDailyOperations';
 
 export function CourierTodayDeliveries() {
   const { user } = useAuth();
-  const { data: deliveries, isLoading } = useDeliveriesTest(user?.id);
+  const { data: deliveries, isLoading, isFetching, refetch } = useDeliveriesTest(user?.id);
   const today = getTodayDate();
   
   if (isLoading) {
@@ -36,9 +37,14 @@ export function CourierTodayDeliveries() {
   return (
     <Card className="glass-card">
       <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Package className="w-5 h-5 text-primary" />
-          Entregas de Hoy
+        <CardTitle className="flex items-center justify-between gap-2">
+          <span className="flex items-center gap-2">
+            <Package className="w-5 h-5 text-primary" />
+            Entregas de Hoy
+          </span>
+          <Button variant="ghost" size="icon" onClick={() => refetch()} disabled={isFetching}>
+            <RefreshCw className={`w-4 h-4 ${isFetching ? 'animate-spin' : ''}`} />
+          </Button>
         </CardTitle>
         <CardDescription>
           {new Date().toLocaleDateString('es-CO', { 

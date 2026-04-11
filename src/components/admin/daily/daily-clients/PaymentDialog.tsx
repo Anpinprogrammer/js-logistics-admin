@@ -13,19 +13,19 @@ import {
   Loader2,
   TrendingDown,
   TrendingUp,
-  CalendarDays,
+  Receipt,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { useUpdateClientBalance } from '@/hooks/useClientsTest';
-import { getTodayDate } from '@/utils';
 import { toast } from 'sonner';
 
-interface DailySummary {
+interface PendingSummary {
+  id: string;
   date: string;
-  totalCollected: number;
-  totalServices: number;
-  totalLoans: number;
+  total_collected: number;
+  total_services: number;
+  total_loans: number;
   net: number;
+  created_at: string;
 }
 
 interface PaymentDialogProps {
@@ -47,8 +47,10 @@ function formatDate(dateStr: string) {
 
 const PaymentDialog = ({ paymentDialog, setPaymentDialog, paymentClient, setPaymentClient } : PaymentDialogProps) => {
 
-    const updateBalance = useUpdateClientBalance()
-    const [selectedDates, setSelectedDates] = useState<Set<string>>(new Set())
+    const [summaries, setSummaries] = useState<PendingSummary[]>([])
+    const [loadingSummaries, setLoadingSummaries] = useState(false)
+    const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+    const [submitting, setSubmitting] = useState(false)
     const [paymentDetail, setPaymentDetail] = useState({
         paymentType: paymentClient?.currentBalance > 0 ? 'to_client' : 'from_client',
         account: 'cash',
@@ -56,73 +58,98 @@ const PaymentDialog = ({ paymentDialog, setPaymentDialog, paymentClient, setPaym
         desc: ''
     })
 
-    const dailySummaries: DailySummary[] = paymentClient?.dailySummaries ?? []
-
-    // When the dialog opens, reset selections
+    // Fetch unsettled summaries whenever the dialog opens
     useEffect(() => {
-      if (paymentDialog) {
-        setSelectedDates(new Set())
-        setPaymentDetail({ paymentType: paymentClient?.currentBalance > 0 ? 'to_client' : 'from_client', account: 'cash', amount: '', desc: '' })
+      if (!paymentDialog || !paymentClient?.client?.id) return;
+
+      setSelectedIds(new Set())
+      setPaymentDetail({
+        paymentType: paymentClient?.currentBalance > 0 ? 'to_client' : 'from_client',
+        account: 'cash',
+        amount: '',
+        desc: ''
+      })
+
+      const fetchSummaries = async () => {
+        setLoadingSummaries(true)
+        try {
+          const res = await api.get(`/daily-settlements/client/${paymentClient.client.id}/unsettled`)
+          console.log(res.data)
+          setSummaries(res.data)
+        } catch {
+          setSummaries([])
+          toast.error('No se pudieron cargar los períodos pendientes')
+        } finally {
+          setLoadingSummaries(false)
+        }
       }
-    }, [paymentDialog])
 
-    // Auto-fill amount from selected days
+      fetchSummaries()
+    }, [paymentDialog, paymentClient?.client?.id])
+
+    // Auto-fill amount from selected summaries
     useEffect(() => {
-      if (selectedDates.size === 0) {
+      if (selectedIds.size === 0) {
         setPaymentDetail(prev => ({ ...prev, amount: '' }))
       } else {
-        const total = dailySummaries
-          .filter(d => selectedDates.has(d.date))
-          .reduce((sum, d) => sum + d.net, 0)
-        setPaymentDetail(prev => ({ ...prev, amount: String(total) }))
+        const total = summaries
+          .filter(s => selectedIds.has(s.id))
+          .reduce((sum, s) => sum + Number(s.net), 0)
+        setPaymentDetail(prev => ({ ...prev, amount: String(Math.abs(total)) }))
       }
-    }, [selectedDates])
+    }, [selectedIds, summaries])
 
-    const allSelected = dailySummaries.length > 0 && selectedDates.size === dailySummaries.length
+    const allSelected = summaries.length > 0 && selectedIds.size === summaries.length
 
-    const toggleDate = (date: string) => {
-      setSelectedDates(prev => {
+    const toggleSummary = (id: string) => {
+      setSelectedIds(prev => {
         const next = new Set(prev)
-        if (next.has(date)) next.delete(date)
-        else next.add(date)
+        if (next.has(id)) next.delete(id)
+        else next.add(id)
         return next
       })
     }
 
     const toggleAll = () => {
       if (allSelected) {
-        setSelectedDates(new Set())
+        setSelectedIds(new Set())
       } else {
-        setSelectedDates(new Set(dailySummaries.map(d => d.date)))
+        setSelectedIds(new Set(summaries.map(s => s.id)))
       }
     }
 
+    // Build a label for a summary — if multiple summaries share the same date,
+    // append an index so the user can distinguish them.
+    const buildLabel = (summary: PendingSummary, index: number) => {
+      const transformedDate = new Date(summary.date).toISOString().split('T')[0]
+      const sameDayCount = summaries.filter(s => s.date === summary.date).length
+      if (sameDayCount <= 1) return transformedDate
+      const dayIndex = summaries.filter(s => s.date === summary.date && summaries.indexOf(s) < index).length + 1
+      return `${formatDate(summary.date)} — Cuadre ${dayIndex}`
+    }
+
   const handleRegisterPayment = async () => {
-    const { client } = paymentClient
     if (!paymentClient || !paymentDetail.amount) return;
     const amount = parseFloat(paymentDetail.amount);
-    const current = parseFloat(paymentClient.currentBalance);
 
-    const newBalance =
-      paymentDetail.paymentType === 'from_client'
-        ? amount + current
-        : current - amount;
-
+    setSubmitting(true)
     try {
-      //Liquidar al cliente
-      await api.post(`/daily-settlements/client/${client.id}`, {
+      await api.post(`/daily-settlements/client/${paymentClient.client.id}`, {
         paymentMethod: paymentDetail.account,
-        type: paymentDetail.paymentType === 'from_client' 
-              ? 'income' : 'expense',
+        type: paymentDetail.paymentType === 'from_client' ? 'income' : 'expense',
         amount,
         notes: paymentDetail.desc,
-      })   
-      
+        summaryIds: Array.from(selectedIds),
+      })
+      toast.success('Pago registrado correctamente')
     } catch (error) {
+      toast.error('Error al registrar el pago')
       console.log(error)
+    } finally {
+      setSubmitting(false)
     }
     setPaymentDialog(false);
-    setPaymentClient(null);
+    if (setPaymentClient) setPaymentClient(null);
   };
 
   return (
@@ -137,13 +164,18 @@ const PaymentDialog = ({ paymentDialog, setPaymentDialog, paymentClient, setPaym
 
           {paymentClient && (
             <div className="space-y-4 py-2">
-              {/* Unpaid days list */}
-              {dailySummaries.length > 0 && (
+              {/* Pending summaries list */}
+              {loadingSummaries ? (
+                <div className="flex items-center justify-center py-6 text-muted-foreground text-sm gap-2">
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Cargando períodos pendientes…
+                </div>
+              ) : summaries.length > 0 ? (
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
                     <Label className="flex items-center gap-1.5">
-                      <CalendarDays className="w-4 h-4" />
-                      Días sin liquidar ({dailySummaries.length})
+                      <Receipt className="w-4 h-4" />
+                      Períodos pendientes ({summaries.length})
                     </Label>
                     <button
                       type="button"
@@ -155,11 +187,11 @@ const PaymentDialog = ({ paymentDialog, setPaymentDialog, paymentClient, setPaym
                   </div>
 
                   <div className="border rounded-lg divide-y overflow-hidden">
-                    {dailySummaries.map((day) => {
-                      const isChecked = selectedDates.has(day.date)
+                    {summaries.map((summary, index) => {
+                      const isChecked = selectedIds.has(summary.id)
                       return (
                         <label
-                          key={day.date}
+                          key={summary.id}
                           className={cn(
                             'flex items-start gap-3 p-3 cursor-pointer transition-colors text-sm',
                             isChecked ? 'bg-primary/5' : 'hover:bg-muted/50'
@@ -167,41 +199,45 @@ const PaymentDialog = ({ paymentDialog, setPaymentDialog, paymentClient, setPaym
                         >
                           <Checkbox
                             checked={isChecked}
-                            onCheckedChange={() => toggleDate(day.date)}
+                            onCheckedChange={() => toggleSummary(summary.id)}
                             className="mt-0.5"
                           />
                           <div className="flex-1 min-w-0">
-                            <p className="font-medium capitalize">{formatDate(day.date)}</p>
+                            <p className="font-medium capitalize">{buildLabel(summary, index)}</p>
                             <div className="flex flex-wrap gap-x-4 gap-y-0.5 mt-0.5 text-xs text-muted-foreground">
-                              <span>Cobrado: <span className="text-foreground">{formatCurrency(day.totalCollected)}</span></span>
-                              <span>Servicio: <span className="text-foreground">{formatCurrency(day.totalServices)}</span></span>
-                              {day.totalLoans > 0 && (
-                                <span>Préstamos: <span className="text-foreground">{formatCurrency(day.totalLoans)}</span></span>
+                              <span>Cobrado: <span className="text-foreground">{formatCurrency(summary.total_collected)}</span></span>
+                              <span>Servicio: <span className="text-foreground">{formatCurrency(summary.total_services)}</span></span>
+                              {summary.total_loans > 0 && (
+                                <span>Préstamos: <span className="text-foreground">{formatCurrency(summary.total_loans)}</span></span>
                               )}
                             </div>
                           </div>
-                          <span className={cn('font-semibold shrink-0', day.net >= 0 ? 'text-success' : 'text-destructive')}>
-                            {formatCurrency(day.net)}
+                          <span className={cn('font-semibold shrink-0', Number(summary.net) >= 0 ? 'text-success' : 'text-destructive')}>
+                            {formatCurrency(Number(Math.abs(summary.net)))}
                           </span>
                         </label>
                       )
                     })}
                   </div>
 
-                  {selectedDates.size > 0 && (
+                  {selectedIds.size > 0 && (
                     <div className="flex justify-between text-sm font-semibold px-1">
-                      <span className="text-muted-foreground">{selectedDates.size} día{selectedDates.size > 1 ? 's' : ''} seleccionado{selectedDates.size > 1 ? 's' : ''}:</span>
+                      <span className="text-muted-foreground">
+                        {selectedIds.size} período{selectedIds.size > 1 ? 's' : ''} seleccionado{selectedIds.size > 1 ? 's' : ''}:
+                      </span>
                       <span className="text-primary">
                         {formatCurrency(
-                          dailySummaries
-                            .filter(d => selectedDates.has(d.date))
-                            .reduce((s, d) => s + d.net, 0)
+                          Math.abs(
+                            summaries
+                            .filter(s => selectedIds.has(s.id))
+                            .reduce((sum, s) => sum + Number(s.net), 0)
+                          )
                         )}
                       </span>
                     </div>
                   )}
                 </div>
-              )}
+              ) : null}
 
               <Separator />
 
@@ -276,8 +312,8 @@ const PaymentDialog = ({ paymentDialog, setPaymentDialog, paymentClient, setPaym
                     onChange={(e) => setPaymentDetail({ ...paymentDetail, amount: e.target.value })}
                   />
                 </div>
-                {selectedDates.size > 0 && (
-                  <p className="text-xs text-muted-foreground">Monto calculado automáticamente según los días seleccionados. Puedes ajustarlo manualmente.</p>
+                {selectedIds.size > 0 && (
+                  <p className="text-xs text-muted-foreground">Monto calculado automáticamente. Puedes ajustarlo manualmente.</p>
                 )}
               </div>
 
@@ -287,7 +323,7 @@ const PaymentDialog = ({ paymentDialog, setPaymentDialog, paymentClient, setPaym
                 <Input
                     value={paymentDetail.desc}
                     onChange={(e) => setPaymentDetail({ ...paymentDetail, desc: e.target.value })}
-                    placeholder="Ej: Se aumenta el dinero en caja"
+                    placeholder="Ej: Cuadre de la mañana"
                   />
               </div>
 
@@ -311,9 +347,9 @@ const PaymentDialog = ({ paymentDialog, setPaymentDialog, paymentClient, setPaym
               <Button
                 className="w-full"
                 onClick={handleRegisterPayment}
-                disabled={updateBalance.isPending || paymentDetail.amount === ''}
+                disabled={submitting || paymentDetail.amount === ''}
               >
-                {updateBalance.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                {submitting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
                 Registrar Pago
               </Button>
             </div>

@@ -246,7 +246,7 @@ export function useRegisterDelivery() {
       */
     },
     onSuccess: (result) => {
-      queryClient.invalidateQueries({ queryKey: ['deliveries'] });
+      queryClient.invalidateQueries({ queryKey: ['deliveries'], exact: false });
       queryClient.invalidateQueries({ queryKey: ['audit-log'] });
       queryClient.invalidateQueries({ queryKey: ['salary-advances'] });
       queryClient.invalidateQueries({ queryKey: ['clients'] });

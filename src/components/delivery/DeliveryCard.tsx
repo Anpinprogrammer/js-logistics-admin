@@ -95,6 +95,10 @@ export function DeliveryCard({ delivery, onEdit, onCancel, onRegister, showCouri
                   {status.label}
                 </Badge>
               </div>
+              
+              <p className="text-sm text-muted-foreground">
+                <span className="font-medium">Código:</span> {delivery.id.substring(0, 8).toUpperCase()}
+              </p>
 
               {/* Recipient name if different from client */}
               {delivery.recipient_name && (
