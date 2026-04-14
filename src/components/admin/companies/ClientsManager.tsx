@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 //import { useClients, useCreateClient, useUpdateClient, useDeleteClient, Client } from '@/hooks/useClients';
-import { useClients, useCreateClient, useUpdateClient, useDeleteClient, Client } from '@/hooks/useClientsTest';
+import { useClients, useClientsInFavor, useClientsWithdebt, useCreateClient, useUpdateClient, useDeleteClient, Client } from '@/hooks/useClientsTest';
 import { useClientStatement, ClientStatement } from '@/hooks/useClientStatement';
 import { ClientStatementView } from './ClientStatementView';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -52,10 +52,12 @@ export function ClientsManager() {
   });
 
   const [allPage, setAllPage] = useState(1);
-  const [debtPage, setDebtPage] = useState(0);
-  const [favorPage, setFavorPage] = useState(0);
+  const [debtPage, setDebtPage] = useState(1);
+  const [favorPage, setFavorPage] = useState(1);
 
   const { data: clients, isLoading } = useClients(allPage, 9);
+  const { data: clientsInFavor, isLoading: isLoadingInFavor } = useClientsInFavor(favorPage, 9);
+  const { data: clientsWithDebt, isLoading: isLoadingWithDebt } = useClientsWithdebt(debtPage, 9);
 
 
 
@@ -141,16 +143,25 @@ export function ClientsManager() {
     );
   }
 
-  const clientsWithDebt = clients?.data.filter(c => Number(c.balance) < 0) || [];
-  const clientsWithFavor = clients?.data.filter(c => Number(c.balance) > 0) || [];
+  //const clientsWithDebt = clients?.data.filter(c => Number(c.balance) < 0) || [];
   const allClients = clients?.data || [];
 
+  // "A Favor" uses its own server-side query
+  const paginatedFavor = clientsInFavor?.data || [];
+  const favorTotalPages = Number(clientsInFavor?.pagination.totalPages) || 1;
+  const favorTotal = Number(clientsInFavor?.pagination.total) || 0;
+  const favorSum = paginatedFavor.reduce((sum, c) => sum + Number(c.balance), 0);
+
+  // Clients with debt 
+  const paginatedDebt = clientsWithDebt?.data || [];
+  const debtTotalPages = Number(clientsWithDebt?.pagination.totalPages) || 1;
+  const debtTotal = Number(clientsWithDebt?.pagination.total) || 0;
+  const debtSum = paginatedDebt.reduce((sum, c) => sum + Number(c.balance), 0);
+
   const allTotalPages = Number(clients?.pagination.totalPages);
-  const debtTotalPages = Math.max(1, Math.ceil(clientsWithDebt.length / PAGE_SIZE));
-  const favorTotalPages = Math.max(1, Math.ceil(clientsWithDebt.length / PAGE_SIZE));
+  //const debtTotalPages = Math.max(1, Math.ceil(clientsWithDebt.length / PAGE_SIZE));
   const paginatedAll = allClients; // el API ya pagina server-side
-  const paginatedDebt = clientsWithDebt.slice(debtPage * PAGE_SIZE, (debtPage + 1) * PAGE_SIZE);
-  const paginatedFavor = clientsWithFavor.slice(favorPage * PAGE_SIZE, (favorPage + 1) * PAGE_SIZE);
+  //const paginatedDebt = clientsWithDebt.slice(debtPage * PAGE_SIZE, (debtPage + 1) * PAGE_SIZE);
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -189,7 +200,7 @@ export function ClientsManager() {
 
         
           <TabsList>
-            <TabsTrigger value="all" className="flex items-center gap-2">
+            <TabsTrigger value="all" className="flex items-center gap-2"  >
               <Users className="w-4 h-4" />
               Todos
               <Badge variant="secondary">{clients?.pagination.total}</Badge>
@@ -197,12 +208,12 @@ export function ClientsManager() {
             <TabsTrigger value="payables" className="flex items-center gap-2">
               <TrendingUp className="w-4 h-4" />
               A Favor
-              <Badge variant="destructive" className='bg-green-800 hover:bg-green-600'>{clientsWithFavor.length}</Badge>
+              <Badge variant="destructive" className='bg-green-800 hover:bg-green-600'>{favorTotal}</Badge>
             </TabsTrigger>
             <TabsTrigger value="debtors" className="flex items-center gap-2">
               <AlertTriangle className="w-4 h-4" />
               Con Deuda
-              <Badge variant="destructive">{clientsWithDebt.length}</Badge>
+              <Badge variant="destructive">{debtTotal}</Badge>
             </TabsTrigger>
           </TabsList>
 
@@ -260,7 +271,11 @@ export function ClientsManager() {
         </TabsContent>
 
         <TabsContent value="payables" className="mt-4">
-          {clientsWithFavor.length === 0 ? (
+          {isLoadingInFavor ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="w-8 h-8 animate-spin text-primary" />
+            </div>
+          ) : paginatedFavor.length === 0 ? (
             <Card>
               <CardContent className="py-12 text-center text-muted-foreground">
                 No tienes deudas con los clientes 🎉
@@ -277,7 +292,7 @@ export function ClientsManager() {
                 </CardHeader>
                 <CardContent>
                   <div className="text-3xl font-bold text-green-800">
-                    {formatCurrency(clientsWithFavor.reduce((sum, c) => sum + Number(c.balance), 0))}
+                    {formatCurrency(favorSum)}
                   </div>
                 </CardContent>
               </Card>
@@ -300,13 +315,13 @@ export function ClientsManager() {
               </div>
               {favorTotalPages > 1 && (
                 <div className="flex items-center justify-center gap-2 pt-4">
-                  <Button variant="outline" size="sm" disabled={favorPage === 0} onClick={() => setFavorPage(p => p - 1)}>
+                  <Button variant="outline" size="sm" disabled={favorPage === 1} onClick={() => setFavorPage(p => p - 1)}>
                     <ChevronLeft className="w-4 h-4" />
                   </Button>
                   <span className="text-sm text-muted-foreground">
-                    Página {favorPage + 1} de {favorTotalPages}
+                    Página {favorPage} de {favorTotalPages}
                   </span>
-                  <Button variant="outline" size="sm" disabled={favorPage >= favorTotalPages - 1} onClick={() => setFavorPage(p => p + 1)}>
+                  <Button variant="outline" size="sm" disabled={favorPage >= favorTotalPages} onClick={() => setFavorPage(p => p + 1)}>
                     <ChevronRight className="w-4 h-4" />
                   </Button>
                 </div>
@@ -316,7 +331,11 @@ export function ClientsManager() {
         </TabsContent>
         
         <TabsContent value="debtors" className="mt-4">
-          {clientsWithDebt.length === 0 ? (
+          { isLoadingWithDebt ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="w-8 h-8 animate-spin text-primary" />
+            </div>
+          ) : paginatedDebt.length === 0 ? (
             <Card>
               <CardContent className="py-12 text-center text-muted-foreground">
                 No hay clientes con deudas pendientes 🎉
@@ -333,7 +352,7 @@ export function ClientsManager() {
                 </CardHeader>
                 <CardContent>
                   <div className="text-3xl font-bold text-destructive">
-                    {formatCurrency(Math.abs(clientsWithDebt.reduce((sum, c) => sum + Number(c.balance), 0)))}
+                    {formatCurrency(Math.abs(debtSum))}
                   </div>
                 </CardContent>
               </Card>
@@ -368,7 +387,9 @@ export function ClientsManager() {
                 </div>
               )}
             </div>
-          )}
+          )
+
+          }
         </TabsContent>
       </Tabs>
       

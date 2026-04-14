@@ -1,4 +1,5 @@
-import { useState, useEffect} from 'react';
+import { useState, useEffect } from 'react';
+import { Delivery } from '@/hooks/useDeliveries';
 import { createPortal } from 'react-dom';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAssignInitialMoney } from '@/hooks/useDailyCompanyOperations';
@@ -19,14 +20,16 @@ import Swal from 'sweetalert2';
 interface ModalDomisProps {
   isOpen: boolean;
   onClose: () => void;
+  /** When provided the modal opens in edit mode with this delivery pre-populated */
+  delivery?: Delivery | null;
 }
 
-const ModalDomis = ({ isOpen, onClose }: ModalDomisProps) => {
+const ModalDomis = ({ isOpen, onClose, delivery }: ModalDomisProps) => {
 
     const { user } = useAuth();
     const queryClient = useQueryClient();
     const assignInitialMoney = useAssignInitialMoney();
-    const [editar, setEditar] = useState<boolean>(false)
+    const editar = !!delivery;
     
     const [alerta, setAlerta] = useState('');
 
@@ -78,6 +81,32 @@ const ModalDomis = ({ isOpen, onClose }: ModalDomisProps) => {
       })
     };
 
+    // Pre-populate when opening in edit mode
+    useEffect(() => {
+      if (delivery && isOpen) {
+        setClientFormData({
+          clientId: delivery.client_id,
+          clientName: delivery.client?.name || '',
+          clientCompany: (delivery.client as any)?.company || '',
+          clientPhone: delivery.client?.phone || '',
+          clientAddress: '',
+          recipientName: delivery.recipient_name || '',
+          notes: delivery.notes || '',
+        });
+        setDeliveryFormData({
+          courierId: delivery.courier_id,
+          loan: { subAccount: '', amount: String(delivery.loan || '') },
+          serviceValue: String(delivery.service_value || ''),
+          totalToCollect: String(delivery.total_to_collect || ''),
+          inAdvancedPayment: delivery.advanced_payment || false,
+          inAdvancedPaymentMethod: '',
+          paymentMethod: delivery.payment_method || 'cash',
+        });
+      } else if (!delivery && isOpen) {
+        resetForm();
+      }
+    }, [delivery, isOpen]);
+
     const createDelivery = useMutation({
     mutationFn: async () => {
       if (!user) throw new Error('No user logged in');
@@ -87,96 +116,73 @@ const ModalDomis = ({ isOpen, onClose }: ModalDomisProps) => {
       const serviceNum = parseFloat(deliveryFormData.serviceValue) || 0;
       const loanNum = parseFloat(deliveryFormData.loan.amount) || 0;
 
-      const { data: delivery } = await api.post("/deliveries", {
-        client_id: clientFormData.clientId,
-        courier_id: deliveryFormData.courierId,
-        created_by: user.id,
-        recipient_name: clientFormData.recipientName || null,
-        notes: clientFormData.notes || null,
-        week_start: weekStart,
-        week_end: weekEnd,
-        delivery_date: getTodayDate(),
-        status: 'pending' as const,
-        service_value: serviceNum,
-        total_to_collect: totalNum,
-        loan: loanNum,
-        amount: totalNum,
-        payment_method: deliveryFormData.paymentMethod as 'cash' | 'transfer_to_courier' | 'transfer_to_client',
-        advanced_payment: deliveryFormData.inAdvancedPayment,
-        inAdvancedPaymentMethod : ''
-      })
+      let savedDelivery: any;
 
-
-      if(deliveryFormData.loan.subAccount) {
-          await assignInitialMoney.mutateAsync({
-            account: deliveryFormData.loan.subAccount,
-            type: 'expense',
-            amount: parseFloat(deliveryFormData.loan.amount),
-            notes: `Prestamo registrado para el pedido ${delivery.data.id.substring(0, 8).toUpperCase()}`
-          })         
-      }
-
-      if(deliveryFormData.inAdvancedPayment){
-        if(deliveryFormData.paymentMethod === 'transfer_to_courier'){
-          await assignInitialMoney.mutateAsync({
-          account: deliveryFormData.inAdvancedPaymentMethod,
-          type: 'income',
-          amount: parseFloat(deliveryFormData.totalToCollect),
-          notes: `Pago por adelantado en pedido ${delivery.data.id.substring(0, 8).toUpperCase()}`
-        })
-        }
-        
-      }
-
-      /**
-       * 
-       
-      const { data: delivery, error } = await supabase
-        .from('deliveries')
-        .insert({
+      if (delivery) {
+        // Edit mode — update the existing delivery
+        const { data: updated } = await api.put(`/deliveries/${delivery.id}`, {
+          client_id: clientFormData.clientId,
+          courier_id: deliveryFormData.courierId,
+          recipient_name: clientFormData.recipientName || null,
+          notes: clientFormData.notes || null,
+          service_value: serviceNum,
+          total_to_collect: totalNum,
+          loan: loanNum,
+          amount: totalNum,
+          payment_method: deliveryFormData.paymentMethod as 'cash' | 'transfer_to_courier' | 'transfer_to_client',
+          advanced_payment: deliveryFormData.inAdvancedPayment,
+          reason: 'Editado desde panel de administrador',
+        });
+        savedDelivery = updated.data;
+      } else {
+        // Create mode — insert a new delivery
+        const { data: created } = await api.post("/deliveries", {
           client_id: clientFormData.clientId,
           courier_id: deliveryFormData.courierId,
           created_by: user.id,
-          recipient_name: deliveryFormData.recipientName || null,
-          notes: deliveryFormData.notes || null,
+          recipient_name: clientFormData.recipientName || null,
+          notes: clientFormData.notes || null,
           week_start: weekStart,
           week_end: weekEnd,
           delivery_date: getTodayDate(),
           status: 'pending' as const,
           service_value: serviceNum,
           total_to_collect: totalNum,
+          loan: loanNum,
           amount: totalNum,
           payment_method: deliveryFormData.paymentMethod as 'cash' | 'transfer_to_courier' | 'transfer_to_client',
-        })
-        .select()
-        .single();
+          advanced_payment: deliveryFormData.inAdvancedPayment,
+          inAdvancedPaymentMethod: ''
+        });
+        savedDelivery = created.data;
 
-      if (error) throw error;
+        if (deliveryFormData.loan.subAccount) {
+          await assignInitialMoney.mutateAsync({
+            account: deliveryFormData.loan.subAccount,
+            type: 'expense',
+            amount: loanNum,
+            notes: `Prestamo registrado para el pedido ${savedDelivery.id.substring(0, 8).toUpperCase()}`
+          });
+        }
 
-      */
+        if (deliveryFormData.inAdvancedPayment && deliveryFormData.paymentMethod === 'transfer_to_courier') {
+          await assignInitialMoney.mutateAsync({
+            account: deliveryFormData.inAdvancedPaymentMethod,
+            type: 'income',
+            amount: totalNum,
+            notes: `Pago por adelantado en pedido ${savedDelivery.id.substring(0, 8).toUpperCase()}`
+          });
+        }
+      }
 
-      // Reopen daily settlement if it was already closed
-      //await reopenDailySettlement(deliveryFormData.courierId);
-
-      // Audit log
-      /**
-       *  await supabase.from('delivery_audit_log').insert({
-        delivery_id: delivery.id,
-        action: 'created',
-        changed_by: user.id,
-        new_values: delivery as any,
-      });
-       */
-     
-
-      return delivery;
+      return savedDelivery;
     },
     onSuccess: async () => {
       queryClient.invalidateQueries({ queryKey: ['deliveries']});
       queryClient.invalidateQueries({ queryKey: ['daily-settlements'] });
       Swal.fire({
         title: 'Éxito',
-        text: 'Pedido creado exitosamente',
+        text: delivery ? 'Pedido actualizado exitosamente' : 'Pedido creado exitosamente',
         icon: 'success',
         confirmButtonColor: 'hsl(var(--primary))',
       });
@@ -263,9 +269,10 @@ const ModalDomis = ({ isOpen, onClose }: ModalDomisProps) => {
             />
         </div>
 
-        <PaymentServices 
+        <PaymentServices
           deliveryFormData={deliveryFormData}
           setDeliveryFormData={setDeliveryFormData}
+          editDelivery={delivery}
         />
         </div>
 

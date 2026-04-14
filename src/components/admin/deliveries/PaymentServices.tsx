@@ -54,9 +54,11 @@ interface PaymentServicesProps {
     inAdvancedPaymentMethod: string;
     paymentMethod: string;
   }>>;
+  /** When provided, pre-populates service rows from this delivery's saved values */
+  editDelivery?: { service_value?: number | null; loan?: number | null } | null;
 }
 
-const PaymentServices = ({deliveryFormData, setDeliveryFormData}: PaymentServicesProps) => {
+const PaymentServices = ({deliveryFormData, setDeliveryFormData, editDelivery}: PaymentServicesProps) => {
   const { data: couriers, isLoading: loadingCouriers } = useCouriersTest();
 
   const [enabledServices, setEnabledServices]       = useState<string[]>([])
@@ -66,6 +68,32 @@ const PaymentServices = ({deliveryFormData, setDeliveryFormData}: PaymentService
   const [alert, setAlert] = useState('')
   const [regularService, setRegularService]         = useState('')
   const [selectedServiceToAdd, setSelectedServiceToAdd] = useState('')
+
+  // Pre-populate service rows when editing an existing delivery
+  useEffect(() => {
+    if (!editDelivery) return;
+    const services: string[] = [];
+    const amounts: Record<string, string> = {};
+    const subAccounts: string[] = [];
+
+    const svc = Number(editDelivery.service_value || 0);
+    if (svc > 0) {
+      services.push('domi');
+      amounts['domi'] = String(svc);
+    }
+
+    const loan = Number(editDelivery.loan || 0);
+    if (loan > 0) {
+      services.push('caja');
+      amounts['caja'] = String(loan);
+      // default sub-account to 'cash'; user can change if needed
+      subAccounts.push('cash');
+    }
+
+    setEnabledServices(services);
+    setServiceAmounts(amounts);
+    setEnabledSubAccounts(subAccounts);
+  }, [editDelivery]);
 
   useEffect(() => {
     const total = enabledServices
@@ -128,10 +156,14 @@ const PaymentServices = ({deliveryFormData, setDeliveryFormData}: PaymentService
     }
   }
 
-  const [paymentMethod, setPaymentMethod] = useState('cash')
-  
-  
-    const handlePaymentMethod = (value: string) => {
+  const [paymentMethod, setPaymentMethod] = useState(deliveryFormData.paymentMethod || 'cash')
+
+  // Sync local paymentMethod when the parent pre-populates deliveryFormData (edit mode)
+  useEffect(() => {
+    setPaymentMethod(deliveryFormData.paymentMethod || 'cash');
+  }, [deliveryFormData.paymentMethod]);
+
+  const handlePaymentMethod = (value: string) => {
       setPaymentMethod(value)
       setDeliveryFormData(
         (value === 'cash' || value === 'transfer_to_client') ?

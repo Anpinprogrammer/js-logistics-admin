@@ -12,7 +12,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Camera, Loader2, DollarSign, CreditCard, ArrowLeftRight, CheckCircle, AlertTriangle, XCircle, Package } from 'lucide-react';
+import { Camera, Loader2, DollarSign, CreditCard, ArrowLeftRight, CheckCircle, AlertTriangle, XCircle, Package, Pencil } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { SUB_ACCOUNTS } from '@/utils';
 
@@ -43,6 +43,8 @@ interface RegisterDeliveryDialogProps {
     receipt_photo_url?: string;
   }) => Promise<void>;
   loading?: boolean;
+  /** When true the dialog is in correction mode: pre-populates current values */
+  correctionMode?: boolean;
 }
 
 export function RegisterDeliveryDialog({
@@ -51,8 +53,9 @@ export function RegisterDeliveryDialog({
   onOpenChange,
   onRegister,
   loading,
+  correctionMode = false,
 }: RegisterDeliveryDialogProps) {
-  
+
   const [formData, setFormData] = useState({
     final_status: '' as DeliveryFinalStatus | '',
     received_amount: '',
@@ -64,19 +67,31 @@ export function RegisterDeliveryDialog({
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Reset form when dialog opens
+  // Reset or pre-populate form depending on mode
   useEffect(() => {
     if (delivery && open) {
-      setFormData({
-        final_status: '',
-        received_amount: '',
-        payment_method: '',
-        subAccount: '',
-        notes: '',
-      });
-      setPhotoUrl(null);
+      if (correctionMode) {
+        // Pre-populate with the delivery's current saved values
+        setFormData({
+          final_status: (delivery.status as DeliveryFinalStatus) || '',
+          received_amount: delivery.received_amount != null ? String(delivery.received_amount) : '',
+          payment_method: delivery.payment_method || '',
+          subAccount: '',
+          notes: delivery.notes || '',
+        });
+        setPhotoUrl(delivery.receipt_photo_url || null);
+      } else {
+        setFormData({
+          final_status: '',
+          received_amount: '',
+          payment_method: '',
+          subAccount: '',
+          notes: '',
+        });
+        setPhotoUrl(null);
+      }
     }
-  }, [delivery, open]);
+  }, [delivery, open, correctionMode]);
 
   const handlePhotoCapture = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -152,11 +167,16 @@ export function RegisterDeliveryDialog({
       <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <CheckCircle className="w-5 h-5 text-success" />
-            Registrar Entrega
+            {correctionMode
+              ? <><Pencil className="w-5 h-5 text-primary" /> Corregir Entrega</>
+              : <><CheckCircle className="w-5 h-5 text-success" /> Registrar Entrega</>
+            }
           </DialogTitle>
           <DialogDescription>
-            Completa los datos de la entrega a <strong>{delivery?.client?.name}</strong>
+            {correctionMode
+              ? <>Corrige los datos de la entrega a <strong>{delivery?.client?.name}</strong>. Los balances del cliente y los resúmenes diarios se actualizarán automáticamente.</>
+              : <>Completa los datos de la entrega a <strong>{delivery?.client?.name}</strong></>
+            }
           </DialogDescription>
         </DialogHeader>
 
@@ -389,7 +409,7 @@ export function RegisterDeliveryDialog({
             {loading ? (
               <Loader2 className="w-4 h-4 animate-spin mr-2" />
             ) : null}
-            Confirmar Registro
+            {correctionMode ? 'Guardar Corrección' : 'Confirmar Registro'}
           </Button>
         </form>
       </DialogContent>

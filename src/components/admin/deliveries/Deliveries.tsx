@@ -5,12 +5,12 @@ import { es } from 'date-fns/locale';
 import ModalDomis from './ModalDomis';
 import DomisTab from './DomisTab';
 import DeliveryDetailModal from './DeliveryDetailModal';
-import EditDeliveryModal from './EditDeliveryModal';
 import DeleteDeliveryModal from './DeleteDeliveryModal';
 import ReassignDeliveryModal from './ReassignDeliveryModal';
 import { RegisterDeliveryDialog } from '@/components/courier/RegisterDeliveryDialog';
 import { useDeliveriesTest, Delivery } from '@/hooks/useDeliveries';
 import { useAdminCompleteDelivery } from '@/hooks/useAdminCompleteDelivery';
+import { useAdminCorrectDelivery } from '@/hooks/useAdminCorrectDelivery';
 import { useIsMobile } from '@/hooks/use-mobile';
 
 // The backend returns company on the client object; extend the type locally
@@ -68,10 +68,12 @@ const Deliveries = ({ courierId }: DeliveryListProps) => {
   const [deleteDelivery, setDeleteDelivery] = useState<Delivery | null>(null);
   const [reassignDelivery, setReassignDelivery] = useState<Delivery | null>(null);
   const [completeDelivery, setCompleteDelivery] = useState<Delivery | null>(null);
+  const [correctDelivery, setCorrectDelivery] = useState<Delivery | null>(null);
 
   const { data: rawDeliveries, isLoading, error } = useDeliveriesTest(courierId);
   const deliveries = rawDeliveries as DeliveryWithCompany[] | undefined;
   const adminComplete = useAdminCompleteDelivery();
+  const adminCorrect = useAdminCorrectDelivery();
 
   const activeFilterCount = [filterDate, filterCourier, filterCompany, filterPaymentMethod, filterWeek]
     .filter(Boolean).length;
@@ -195,6 +197,23 @@ const Deliveries = ({ courierId }: DeliveryListProps) => {
       ...data,
     });
     setCompleteDelivery(null);
+  };
+
+  const handleAdminCorrect = async (data: {
+    final_status: 'completed' | 'not_delivered_collected' | 'not_delivered_no_collection';
+    received_amount: number;
+    payment_method: 'cash' | 'transfer_to_courier' | 'transfer_to_client';
+    subAccount: string;
+    notes?: string;
+    receipt_photo_url?: string;
+  }) => {
+    if (!correctDelivery) return;
+    await adminCorrect.mutateAsync({
+      deliveryId: correctDelivery.id,
+      courierId: correctDelivery.courier_id,
+      ...data,
+    });
+    setCorrectDelivery(null);
   };
 
   return (
@@ -430,6 +449,7 @@ const Deliveries = ({ courierId }: DeliveryListProps) => {
               onDelete={toggleState === 1 ? setDeleteDelivery : undefined}
               onReassign={toggleState === 3 ? setReassignDelivery : undefined}
               onComplete={toggleState === 1 ? setCompleteDelivery : undefined}
+              onCorrect={toggleState === 2 ? setCorrectDelivery : undefined}
             />
             <Pagination
               currentPage={currentPage}
@@ -465,6 +485,7 @@ const Deliveries = ({ courierId }: DeliveryListProps) => {
                     onDelete={toggleState === 1 ? setDeleteDelivery : undefined}
                     onReassign={toggleState === 3 ? setReassignDelivery : undefined}
                     onComplete={toggleState === 1 ? setCompleteDelivery : undefined}
+                    onCorrect={toggleState === 2 ? setCorrectDelivery : undefined}
                   />
                 </tbody>
               </table>
@@ -482,7 +503,11 @@ const Deliveries = ({ courierId }: DeliveryListProps) => {
 
       {/* ── Modals ── */}
       {typeof window !== 'undefined' && (
-        <ModalDomis isOpen={modalOpen} onClose={() => setModalOpen(false)} />
+        <ModalDomis
+          isOpen={modalOpen || !!editDelivery}
+          onClose={() => { setModalOpen(false); setEditDelivery(null); }}
+          delivery={editDelivery}
+        />
       )}
       <DeliveryDetailModal
         delivery={detailDelivery}
@@ -490,7 +515,6 @@ const Deliveries = ({ courierId }: DeliveryListProps) => {
         onClose={() => setDetailDelivery(null)}
         showProof={toggleState === 2}
       />
-      <EditDeliveryModal delivery={editDelivery} isOpen={!!editDelivery} onClose={() => setEditDelivery(null)} />
       <DeleteDeliveryModal delivery={deleteDelivery} isOpen={!!deleteDelivery} onClose={() => setDeleteDelivery(null)} />
       <ReassignDeliveryModal delivery={reassignDelivery} isOpen={!!reassignDelivery} onClose={() => setReassignDelivery(null)} />
       <RegisterDeliveryDialog
@@ -499,6 +523,14 @@ const Deliveries = ({ courierId }: DeliveryListProps) => {
         onOpenChange={(open) => { if (!open) setCompleteDelivery(null); }}
         onRegister={handleAdminComplete}
         loading={adminComplete.isPending}
+      />
+      <RegisterDeliveryDialog
+        delivery={correctDelivery}
+        open={!!correctDelivery}
+        onOpenChange={(open) => { if (!open) setCorrectDelivery(null); }}
+        onRegister={handleAdminCorrect}
+        loading={adminCorrect.isPending}
+        correctionMode
       />
     </div>
   );

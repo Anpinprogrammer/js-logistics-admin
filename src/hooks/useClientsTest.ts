@@ -31,6 +31,10 @@ export interface ClientResponse {
     error: any;
 }
 
+export interface AllClientsResponse {
+  allClients: ClientResponse
+}
+
 // ========================================
 // QUERIES (GET)
 // ========================================
@@ -50,6 +54,37 @@ export function useClients(page: number = 1, limit: number = 9) {
     },
     enabled: !!user, // Solo ejecuta si hay usuario autenticado
   });
+}
+
+//Clients in favor
+export function useClientsInFavor(page: number = 1, limit: number = 9) {
+  const { user } = useAuth();
+
+  return useQuery({
+    queryKey: ['clientsInFavor', page, limit],
+    queryFn: async () => {
+      const response = await api.get<ClientResponse>('/clients/in-favor', { params: { page, limit } });
+      return response.data;
+    },
+    enabled: !!user,
+    staleTime: 0, // Balance data changes on every delivery — always fetch fresh on mount
+  });
+}
+
+//Clients with debt
+export function useClientsWithdebt(page: number = 1, limit: number = 9) {
+  const { user } = useAuth();
+
+  return useQuery({
+    queryKey: ['clientsWithDebt', page, limit],
+    queryFn: async () => {
+      const response = await api.get<ClientResponse>('/clients/with-debt', { params: { page, limit } });
+      console.log(response.data)
+      return response.data
+    },
+    enabled: !!user,
+    staleTime: 0,
+  })
 }
 
 /*

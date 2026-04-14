@@ -14,6 +14,7 @@ interface DomisTabProps {
   onDelete?: (delivery: Delivery) => void;
   onReassign?: (delivery: Delivery) => void;
   onComplete?: (delivery: Delivery) => void;
+  onCorrect?: (delivery: Delivery) => void;
 }
 
 const statusLabels: Record<string, { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline' }> = {
@@ -38,6 +39,7 @@ function ActionButtons({
   onDelete,
   onReassign,
   onComplete,
+  onCorrect,
 }: {
   delivery: Delivery;
   toggleState: number;
@@ -46,6 +48,7 @@ function ActionButtons({
   onDelete?: (d: Delivery) => void;
   onReassign?: (d: Delivery) => void;
   onComplete?: (d: Delivery) => void;
+  onCorrect?: (d: Delivery) => void;
 }) {
   return (
     <div className="flex items-center gap-1">
@@ -73,10 +76,19 @@ function ActionButtons({
           )}
         </>
       )}
-      {toggleState === 2 && onViewDetail && (
-        <button onClick={() => onViewDetail(delivery)} className="p-2 rounded-lg hover:bg-muted text-muted-foreground hover:text-primary transition-colors" title="Ver detalle y prueba">
-          <Eye className="w-4 h-4" />
-        </button>
+      {toggleState === 2 && (
+        <>
+          {onViewDetail && (
+            <button onClick={() => onViewDetail(delivery)} className="p-2 rounded-lg hover:bg-muted text-muted-foreground hover:text-primary transition-colors" title="Ver detalle y prueba">
+              <Eye className="w-4 h-4" />
+            </button>
+          )}
+          {onCorrect && (
+            <button onClick={() => onCorrect(delivery)} className="p-2 rounded-lg hover:bg-primary/10 text-muted-foreground hover:text-primary transition-colors" title="Corregir entrega">
+              <Pencil className="w-4 h-4" />
+            </button>
+          )}
+        </>
       )}
       {toggleState === 3 && (
         <>
@@ -96,7 +108,7 @@ function ActionButtons({
   );
 }
 
-const DomisTab = ({ data, toggleState, busqueda, onViewDetail, onEdit, onDelete, onReassign, onComplete }: DomisTabProps) => {
+const DomisTab = ({ data, toggleState, busqueda, onViewDetail, onEdit, onDelete, onReassign, onComplete, onCorrect }: DomisTabProps) => {
   const isMobile = useIsMobile();
 
   if (data.length === 0) {
@@ -155,6 +167,7 @@ const DomisTab = ({ data, toggleState, busqueda, onViewDetail, onEdit, onDelete,
                   onDelete={onDelete}
                   onReassign={onReassign}
                   onComplete={onComplete}
+                  onCorrect={onCorrect}
                 />
               </div>
             </div>
@@ -204,6 +217,7 @@ const DomisTab = ({ data, toggleState, busqueda, onViewDetail, onEdit, onDelete,
                 onDelete={onDelete}
                 onReassign={onReassign}
                 onComplete={onComplete}
+                onCorrect={onCorrect}
               />
             </td>
           </tr>
