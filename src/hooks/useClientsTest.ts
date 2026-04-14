@@ -43,48 +43,47 @@ export interface AllClientsResponse {
  * Obtener todos los clientes
  * GET /api/clients
  */
-export function useClients(page: number = 1, limit: number = 9) {
+export function useClients(page: number = 1, limit: number = 9, search: string = '') {
   const { user } = useAuth();
-  
+
   return useQuery({
-    queryKey: ['clients', page, limit],
+    queryKey: ['clients', page, limit, search],
     queryFn: async () => {
-      const response = await api.get<ClientResponse>('/clients', { params: { page, limit } });
+      const response = await api.get<ClientResponse>('/clients', { params: { page, limit, ...(search ? { search } : {}) } });
       return response.data;
     },
-    enabled: !!user, // Solo ejecuta si hay usuario autenticado
+    enabled: !!user,
   });
 }
 
 //Clients in favor
-export function useClientsInFavor(page: number = 1, limit: number = 9) {
+export function useClientsInFavor(page: number = 1, limit: number = 9, search: string = '') {
   const { user } = useAuth();
 
   return useQuery({
-    queryKey: ['clientsInFavor', page, limit],
+    queryKey: ['clientsInFavor', page, limit, search],
     queryFn: async () => {
-      const response = await api.get<ClientResponse>('/clients/in-favor', { params: { page, limit } });
+      const response = await api.get<ClientResponse>('/clients/in-favor', { params: { page, limit, ...(search ? { search } : {}) } });
       return response.data;
     },
     enabled: !!user,
-    staleTime: 0, // Balance data changes on every delivery — always fetch fresh on mount
+    staleTime: 0,
   });
 }
 
 //Clients with debt
-export function useClientsWithdebt(page: number = 1, limit: number = 9) {
+export function useClientsWithdebt(page: number = 1, limit: number = 9, search: string = '') {
   const { user } = useAuth();
 
   return useQuery({
-    queryKey: ['clientsWithDebt', page, limit],
+    queryKey: ['clientsWithDebt', page, limit, search],
     queryFn: async () => {
-      const response = await api.get<ClientResponse>('/clients/with-debt', { params: { page, limit } });
-      console.log(response.data)
-      return response.data
+      const response = await api.get<ClientResponse>('/clients/with-debt', { params: { page, limit, ...(search ? { search } : {}) } });
+      return response.data;
     },
     enabled: !!user,
     staleTime: 0,
-  })
+  });
 }
 
 /*

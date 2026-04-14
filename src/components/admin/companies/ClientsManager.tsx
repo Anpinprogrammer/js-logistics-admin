@@ -54,10 +54,22 @@ export function ClientsManager() {
   const [allPage, setAllPage] = useState(1);
   const [debtPage, setDebtPage] = useState(1);
   const [favorPage, setFavorPage] = useState(1);
+  const [searchInput, setSearchInput] = useState('');
+  const [search, setSearch] = useState('');
 
-  const { data: clients, isLoading } = useClients(allPage, 9);
-  const { data: clientsInFavor, isLoading: isLoadingInFavor } = useClientsInFavor(favorPage, 9);
-  const { data: clientsWithDebt, isLoading: isLoadingWithDebt } = useClientsWithdebt(debtPage, 9);
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setSearch(searchInput);
+      setAllPage(1);
+      setFavorPage(1);
+      setDebtPage(1);
+    }, 350);
+    return () => clearTimeout(timer);
+  }, [searchInput]);
+
+  const { data: clients, isLoading: isLoadingAll } = useClients(allPage, 9, search);
+  const { data: clientsInFavor, isLoading: isLoadingInFavor } = useClientsInFavor(favorPage, 9, search);
+  const { data: clientsWithDebt, isLoading: isLoadingWithDebt } = useClientsWithdebt(debtPage, 9, search);
 
 
 
@@ -134,14 +146,6 @@ export function ClientsManager() {
       setDeleting(false);
     }
   };
-
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center py-12">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
-      </div>
-    );
-  }
 
   //const clientsWithDebt = clients?.data.filter(c => Number(c.balance) < 0) || [];
   const allClients = clients?.data || [];
@@ -223,14 +227,18 @@ export function ClientsManager() {
               type="text"
               placeholder="Buscar por nombre, empresa o documento"
               className="w-full py-2.5 md:py-3 px-3 md:px-4 bg-transparent outline-none text-sm md:text-base text-foreground placeholder-muted-foreground"
-              onChange={() => {}}
-              value={''}
+              onChange={(e) => setSearchInput(e.target.value)}
+              value={searchInput}
             />
           </div>
         </div>
         
         <TabsContent value="all" className="mt-4">
-          {allClients.length === 0 ? (
+          {isLoadingAll ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="w-8 h-8 animate-spin text-primary" />
+            </div>
+          ) : allClients.length === 0 ? (
             <Card>
               <CardContent className="py-12 text-center text-muted-foreground">
                 No hay clientes registrados. Crea el primero usando el botón de arriba.
